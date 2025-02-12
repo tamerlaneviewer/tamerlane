@@ -11,6 +11,7 @@ const IIIFViewer = ({ manifestUrl }: { manifestUrl?: string }) => {
         id: viewerRef.current.id,
         tileSources: manifestUrl || defaultImage,
         showNavigator: true,
+        prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
       });
     }
   }, [manifestUrl]);
@@ -19,3 +20,4 @@ const IIIFViewer = ({ manifestUrl }: { manifestUrl?: string }) => {
 };
 
 export default IIIFViewer;
+
