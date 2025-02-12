@@ -1,23 +1,23 @@
-import React, { useEffect, useRef } from 'react';
-import OpenSeadragon from 'openseadragon';
+import React, { useEffect, useRef } from "react";
+import OpenSeadragon from "openseadragon";
 
-const IIIFViewer = ({ manifestUrl }: { manifestUrl?: string }) => {
+const IIIFViewer = () => {
   const viewerRef = useRef<HTMLDivElement>(null);
-  const defaultImage = 'https://openseadragon.github.io/example-images/highsmith/highsmith.dzi';
 
   useEffect(() => {
     if (viewerRef.current) {
       OpenSeadragon({
         id: viewerRef.current.id,
-        tileSources: manifestUrl || defaultImage,
+        tileSources: "https://iiif.io/api/image/3.0/example/reference/918ecd18c2592080851777620de9bcb5-gottingen/info.json",
         showNavigator: true,
         prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
       });
     }
-  }, [manifestUrl]);
+  }, []);
 
-  return <div id='iiif-viewer' ref={viewerRef} className='w-3/4 h-screen'></div>;
+  return <div id="iiif-viewer" ref={viewerRef} className="w-full h-screen"></div>;
 };
 
 export default IIIFViewer;
+
 
