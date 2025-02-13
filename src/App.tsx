@@ -4,11 +4,15 @@ import Footer from './components/Footer.tsx';
 import SearchResults from './components/SearchResults.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
+import MetadataPanel from './components/MetadataPanel.tsx';
+
 
 const App = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedManifest, setSelectedManifest] = useState('');
   const [annotations] = useState([]);
+  const [manifestMetadata] = useState( {});
+  const [itemMetadata] = useState({});
 
   const handleSearch = (query: string) => {
     // Implement search logic here
@@ -28,7 +32,8 @@ const App = () => {
     <div className='flex flex-col h-screen'>
       <Header onSearch={handleSearch} />
       <div className='flex flex-grow'>
-        <SearchResults results={searchResults} />
+        <MetadataPanel manifestMetadata={manifestMetadata} itemMetadata={itemMetadata} />
+        {/* <SearchResults results={searchResults} /> */}
         <IIIFViewer manifestUrl={selectedManifest} />
         <AnnotationsPanel annotations={annotations} />
       </div>
