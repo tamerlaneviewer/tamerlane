@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
+import Header from './components/Header.tsx';
 import SearchResults from './components/SearchResults.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import Workspace from './components/Workspace.tsx';
 
 const App = () => {
-  const [searchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [selectedManifest, setSelectedManifest] = useState('');
   const [annotations] = useState([]);
 
+
+  const handleSearch = (query: string) => {
+    // Implement search logic here
+    console.log('Searching for:', query);
+  };
+
   return (
-    <div className='flex h-screen'>
-      <SearchResults results={searchResults} onSelectManifest={setSelectedManifest} />
-      <IIIFViewer manifestUrl={selectedManifest} />
-      <AnnotationsPanel annotations={annotations} />
-      <Workspace />
+    <div className='flex flex-col h-screen'>
+      <Header onSearch={handleSearch} />
+      <div className='flex flex-grow'>
+        <SearchResults results={searchResults} onSelectManifest={setSelectedManifest} />
+        <IIIFViewer manifestUrl={selectedManifest} />
+        <AnnotationsPanel annotations={annotations} />
+        <Workspace />
+      </div>
     </div>
   );
 };
