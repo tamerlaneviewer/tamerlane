@@ -12,7 +12,7 @@ const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
     <form onSubmit={handleSubmit} className='p-1 flex gap-1'>
       <input
         type='text'
-        className='border rounded p-0.5 w-32 text-sm'
+        className='border rounded p-0.5 w-32 text-sm text-black bg-white'
         placeholder='Search...'
         value={query}
         onChange={(e) => setQuery(e.target.value)}
