@@ -10,21 +10,29 @@ const App = () => {
   const [selectedManifest, setSelectedManifest] = useState('');
   const [annotations] = useState([]);
 
-
   const handleSearch = (query: string) => {
     // Implement search logic here
     console.log('Searching for:', query);
+
+    // Set dummy search results
+    const dummyResults = [
+      { id: 1, title: 'Dummy Result 1' },
+      { id: 2, title: 'Dummy Result 2' },
+      { id: 3, title: 'Dummy Result 3' },
+    ];
+
+    setSearchResults(dummyResults);
   };
 
   return (
     <div className='flex flex-col h-screen'>
       <Header onSearch={handleSearch} />
       <div className='flex flex-grow'>
-        <SearchResults results={searchResults} onSelectManifest={setSearchResults} />
+        <SearchResults results={searchResults} />
         <IIIFViewer manifestUrl={selectedManifest} />
         <AnnotationsPanel annotations={annotations} />
       </div>
-      <Footer />
+      <Footer onSelectManifest={setSelectedManifest} />
     </div>
   );
 };
