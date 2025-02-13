@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Header from './components/Header.tsx';
+import Footer from './components/Footer.tsx';
 import SearchResults from './components/SearchResults.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
-import Workspace from './components/Workspace.tsx';
 
 const App = () => {
   const [searchResults, setSearchResults] = useState([]);
@@ -20,11 +20,11 @@ const App = () => {
     <div className='flex flex-col h-screen'>
       <Header onSearch={handleSearch} />
       <div className='flex flex-grow'>
-        <SearchResults results={searchResults} onSelectManifest={setSelectedManifest} />
+        <SearchResults results={searchResults} onSelectManifest={setSearchResults} />
         <IIIFViewer manifestUrl={selectedManifest} />
         <AnnotationsPanel annotations={annotations} />
-        <Workspace />
       </div>
+      <Footer />
     </div>
   );
 };
