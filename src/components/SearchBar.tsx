@@ -1,4 +1,3 @@
-// filepath: /home/john/git/tamerlane/src/components/SearchBar.tsx
 import React, { useState } from 'react';
 
 const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
@@ -10,15 +9,15 @@ const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className='p-4 flex gap-2'>
+    <form onSubmit={handleSubmit} className='p-1 flex gap-1'>
       <input
         type='text'
-        className='border rounded p-2 w-full'
-        placeholder='Search IIIF collections...'
+        className='border rounded p-0.5 w-32 text-sm'
+        placeholder='Search...'
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <button type='submit' className='bg-blue-500 text-white p-2 rounded'>
+      <button type='submit' className='bg-blue-500 text-white p-0.5 rounded text-sm'>
         Search
       </button>
     </form>
