@@ -6,22 +6,33 @@ const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
   const [activeTab, setActiveTab] = useState('manifest');
 
   return (
-    <div className='flex flex-col h-full'>
-      <div className='flex'>
+    <div className="flex flex-col h-full border shadow-md bg-white">
+      {/* Tabs */}
+      <div className="flex border-b bg-gray-100">
         <button
-          className={`p-2 ${activeTab === 'manifest' ? 'bg-gray-300' : 'bg-gray-200'}`}
+          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center ${
+            activeTab === 'manifest'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          }`}
           onClick={() => setActiveTab('manifest')}
         >
-          Manifest Metadata
+          Manifest
         </button>
         <button
-          className={`p-2 ${activeTab === 'item' ? 'bg-gray-300' : 'bg-gray-200'}`}
+          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center ${
+            activeTab === 'item'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          }`}
           onClick={() => setActiveTab('item')}
         >
-          Item Metadata
+          Item
         </button>
       </div>
-      <div className='flex-grow overflow-auto p-4'>
+
+      {/* Content */}
+      <div className="flex-grow overflow-auto p-4">
         {activeTab === 'manifest' && <ManifestMetadata manifestMetadata={manifestMetadata} />}
         {activeTab === 'item' && <ItemMetadata itemMetadata={itemMetadata} />}
       </div>
