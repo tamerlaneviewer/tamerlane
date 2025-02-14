@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
 import Header from './components/Header.tsx';
 import Footer from './components/Footer.tsx';
-import SearchResults from './components/SearchResults.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 
-
 const App = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedManifest, setSelectedManifest] = useState('');
-  const [annotations] = useState([]);
-  const [manifestMetadata] = useState( {});
+  const [annotations, setAnnotations] = useState([]);
+  const [manifestMetadata] = useState({});
   const [itemMetadata] = useState({});
 
   const handleSearch = (query: string) => {
-    // Implement search logic here
     console.log('Searching for:', query);
 
-    // Set dummy search results
+    // Dummy search results
     const dummyResults = [
       { id: 1, title: 'Dummy Result 1' },
       { id: 2, title: 'Dummy Result 2' },
@@ -33,9 +30,9 @@ const App = () => {
       <Header onSearch={handleSearch} />
       <div className='flex flex-grow'>
         <MetadataPanel manifestMetadata={manifestMetadata} itemMetadata={itemMetadata} />
-        {/* <SearchResults results={searchResults} /> */}
         <IIIFViewer manifestUrl={selectedManifest} />
-        <AnnotationsPanel annotations={annotations} />
+        {/* ✅ Pass searchResults to AnnotationsPanel */}
+        <AnnotationsPanel annotations={annotations} searchResults={searchResults} />
       </div>
       <Footer onSelectManifest={setSelectedManifest} />
     </div>
@@ -43,3 +40,5 @@ const App = () => {
 };
 
 export default App;
+
+

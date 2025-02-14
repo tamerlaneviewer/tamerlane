@@ -1,27 +1,20 @@
 import React from 'react';
 
-interface SearchResult {
-  id: number;
-  title: string;
-}
-
-interface SearchResultsProps {
-  results: SearchResult[];
-}
-
-const SearchResults: React.FC<SearchResultsProps> = ({ results }) => {
+const SearchResults = ({ searchResults = [] }) => {
   return (
-    <div className='p-4'>
-      <h2 className='text-lg font-bold mb-2'>Search Results</h2>
-      <ul>
-        {results.map(result => (
-          <li key={result.id} className='mb-2'>
-            <span className='text-blue-500'>{result.title}</span>
-          </li>
-        ))}
-      </ul>
+    <div>
+      {searchResults.length === 0 ? (
+        <p className="text-gray-500 text-center">No search results found.</p>
+      ) : (
+        searchResults.map((result) => (
+          <div key={result.id} className="border p-2 mb-2 rounded bg-white shadow">
+            {result.title}
+          </div>
+        ))
+      )}
     </div>
   );
 };
 
 export default SearchResults;
+
