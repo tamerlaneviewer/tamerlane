@@ -1,11 +1,34 @@
-// filepath: /home/john/git/tamerlane/src/components/Footer.tsx
-import React from 'react';
-import Thumbnails from './Thumbnails.tsx';
+// fiimport React from "react";
+import IIIFControls from "./IIIFControls.tsx"; // ✅ Import Navigation Controls
 
-const Footer = () => {
+const Footer = ({ 
+  currentIndex, 
+  totalImages, 
+  totalManifests, 
+  onPreviousImage, 
+  onNextImage, 
+  onPreviousManifest, 
+  onNextManifest 
+}: { 
+  currentIndex: number; 
+  totalImages: number; 
+  totalManifests: number; 
+  onPreviousImage: () => void; 
+  onNextImage: () => void; 
+  onPreviousManifest: () => void; 
+  onNextManifest: () => void; 
+}) => {
   return (
-    <footer className='bg-gray-800 text-white p-4 flex justify-center items-center fixed bottom-0 w-full'>
-      <Thumbnails />
+    <footer className="bg-gray-900 text-white p-3 flex justify-center">
+      <IIIFControls
+        currentIndex={currentIndex}
+        totalImages={totalImages}
+        totalManifests={totalManifests}
+        onPreviousImage={onPreviousImage}
+        onNextImage={onNextImage}
+        onPreviousManifest={onPreviousManifest}
+        onNextManifest={onNextManifest}
+      />
     </footer>
   );
 };

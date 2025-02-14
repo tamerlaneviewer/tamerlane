@@ -1,40 +1,53 @@
-import React, { useState } from 'react';
-import AnnotationsList from './AnnotationsList.tsx';
-import SearchResults from './SearchResults.tsx';
+import React, { useState } from "react";
 
-const AnnotationsPanel = ({ annotations = [], searchResults = [] }) => {
-  const [activeTab, setActiveTab] = useState('annotations');
+const AnnotationsPanel = ({ annotations, searchResults }: { annotations: any[], searchResults: any[] }) => {
+  const [activeTab, setActiveTab] = useState("annotations");
 
   return (
-    <div className="flex flex-col h-full border shadow-md bg-white w-1/4">
-      {/* Tabs */}
-      <div className="flex border-b bg-gray-100">
+    <div className="h-full flex flex-col">
+      {/* ✅ Tabs Navigation */}
+      <div className="flex border-b">
         <button
-          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center whitespace-nowrap ${
-            activeTab === 'annotations'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          className={`flex-1 py-2 text-center ${
+            activeTab === "annotations" ? "bg-gray-300 font-bold" : "bg-gray-200"
           }`}
-          onClick={() => setActiveTab('annotations')}
+          onClick={() => setActiveTab("annotations")}
         >
           Annotations
         </button>
         <button
-          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center whitespace-nowrap ${
-            activeTab === 'search'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          className={`flex-1 py-2 text-center ${
+            activeTab === "searchResults" ? "bg-gray-300 font-bold" : "bg-gray-200"
           }`}
-          onClick={() => setActiveTab('search')}
+          onClick={() => setActiveTab("searchResults")}
         >
           Search Results
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-grow overflow-auto p-4">
-        {activeTab === 'annotations' && <AnnotationsList annotations={annotations} />}
-        {activeTab === 'search' && <SearchResults searchResults={searchResults} />}
+      {/* ✅ Tab Content */}
+      <div className="flex-grow overflow-auto p-3">
+        {activeTab === "annotations" ? (
+          annotations.length === 0 ? (
+            <p className="text-gray-500">No annotations available.</p>
+          ) : (
+            annotations.map((annotation, index) => (
+              <div key={index} className="border p-2 mb-2 rounded">
+                {annotation.text}
+              </div>
+            ))
+          )
+        ) : (
+          searchResults.length === 0 ? (
+            <p className="text-gray-500">No search results found.</p>
+          ) : (
+            searchResults.map((result, index) => (
+              <div key={index} className="border p-2 mb-2 rounded">
+                {result.title}
+              </div>
+            ))
+          )
+        )}
       </div>
     </div>
   );
