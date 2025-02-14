@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from "react";
 import OpenSeadragon from "openseadragon";
 
 const IIIFViewer = ({ imageUrl }: { imageUrl: string }) => {
-  const viewerRef = useRef<HTMLDivElement>(null);
-  const osdViewerRef = useRef<any>(null);
+  const viewerRef = useRef(null);
+  const osdViewerRef = useRef(null);
 
   useEffect(() => {
     if (!viewerRef.current) return;

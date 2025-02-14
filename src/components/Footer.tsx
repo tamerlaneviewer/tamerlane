@@ -1,4 +1,4 @@
-// fiimport React from "react";
+import React from "react";
 import IIIFControls from "./IIIFControls.tsx"; // ✅ Import Navigation Controls
 
 const Footer = ({ 
