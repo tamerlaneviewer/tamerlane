@@ -41,7 +41,7 @@ const IIIFControls = ({
       <span className="text-xs font-medium">
         {mode === "image" 
           ? `Item ${currentIndex + 1} / ${totalImages}`
-          : `Manifest ${currentIndex + 1} / ${totalManifests}`
+          : `Item ${currentIndex + 1} / ${totalManifests}`
         }
       </span>
       <button 

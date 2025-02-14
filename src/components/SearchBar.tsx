@@ -13,7 +13,7 @@ const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
       <input
         type='text'
         className='border rounded p-0.5 w-32 text-sm text-black bg-white'
-        placeholder='Annotations...'
+        placeholder='Keywords...'
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
