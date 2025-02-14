@@ -27,8 +27,8 @@ const IIIFControls = ({
         value={mode} 
         onChange={(e) => setMode(e.target.value)}
       >
-        <option value="image">Navigate Images</option>
-        <option value="manifest">Navigate Manifests</option>
+        <option value="image">Images</option>
+        <option value="manifest">Manifests</option>
       </select>
 
       {/* ✅ Navigation Buttons */}

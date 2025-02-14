@@ -1,25 +1,36 @@
 import React, { useEffect, useRef } from "react";
 import OpenSeadragon from "openseadragon";
 
-const IIIFViewer = () => {
+const IIIFViewer = ({ imageUrl }: { imageUrl: string }) => {
   const viewerRef = useRef<HTMLDivElement>(null);
+  const osdViewerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (viewerRef.current) {
-      const osdViewer = OpenSeadragon({
+    if (!viewerRef.current) return;
+
+    const isIIIF = imageUrl.endsWith("/info.json"); // ✅ Detect if it's a IIIF Image API source
+    const tileSource = isIIIF
+      ? imageUrl
+      : {
+          type: "image",
+          url: imageUrl, // ✅ Load JPGs or standard images as simple images
+        };
+
+    if (!osdViewerRef.current) {
+      // ✅ Initialize OpenSeadragon
+      osdViewerRef.current = OpenSeadragon({
         element: viewerRef.current,
-        tileSources: "https://iiif.io/api/image/3.0/example/reference/918ecd18c2592080851777620de9bcb5-gottingen/info.json",
-        showNavigator: true,
         prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+        tileSources: tileSource,
+        showNavigator: true,
       });
-
-      return () => {
-        osdViewer.destroy(); // Clean up the viewer when unmounting
-      };
+    } else {
+      // ✅ Update image dynamically when changed
+      osdViewerRef.current.open(tileSource);
     }
-  }, []); // Empty dependency array ensures this effect runs only once
+  }, [imageUrl]); // ✅ Re-run effect when `imageUrl` changes
 
-  return <div id="iiif-viewer" ref={viewerRef} className="w-full h-screen"></div>;
+  return <div id="iiif-viewer" ref={viewerRef} className="w-full h-full"></div>;
 };
 
 export default IIIFViewer;

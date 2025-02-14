@@ -18,8 +18,8 @@ const App = () => {
     {
       name: "Manifest 1",
       images: [
-        "https://iiif.io/api/image/3.0/example/reference/918ecd18c2592080851777620de9bcb5-gottingen/info.json",
-        "https://iiif.io/api/image/3.0/example/reference/8b7c3d55a1b7d3c7991c53e4a16240d6-manchu/info.json",
+        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img0.jpg",
+        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img1.jpg",
       ],
     },
     {
@@ -53,26 +53,10 @@ const App = () => {
     setSelectedImageIndex(0); // Reset image index on manifest change
   };
 
-  const handleSearch = (query: string) => {
-    console.log('Searching for:', query);
-
-    // Dummy search results
-    const dummyResults = [
-      { id: 1, title: 'Dummy Result 1' },
-      { id: 2, title: 'Dummy Result 2' },
-      { id: 3, title: 'Dummy Result 3' },
-    ];
-
-    setSearchResults(dummyResults);
-  };
-
   return (
     <div className="flex flex-col h-screen">
-      {/* ✅ Pass Navigation Props to Header */}
-      <Header
-        onSearch={handleSearch}
-      />
-      
+      <Header onSearch={() => {}} />
+
       <div className="flex flex-grow">
         {/* Left Column: Metadata Panel */}
         <div className="w-1/4 border-r flex flex-col">
@@ -82,7 +66,7 @@ const App = () => {
         {/* Middle Column: IIIF Viewer */}
         <div className="w-1/2 flex flex-col">
           <div className="flex-grow">
-            <IIIFViewer manifestUrl={currentManifest.images[selectedImageIndex]} />
+            <IIIFViewer imageUrl={currentManifest.images[selectedImageIndex]} />
           </div>
         </div>
 
