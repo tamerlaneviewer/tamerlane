@@ -10,7 +10,7 @@ const AnnotationsPanel = ({ annotations = [], searchResults = [] }) => {
       {/* Tabs */}
       <div className="flex border-b bg-gray-100">
         <button
-          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center ${
+          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center whitespace-nowrap ${
             activeTab === 'annotations'
               ? 'bg-blue-500 text-white'
               : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -20,7 +20,7 @@ const AnnotationsPanel = ({ annotations = [], searchResults = [] }) => {
           Annotations
         </button>
         <button
-          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center ${
+          className={`w-1/2 px-4 py-2 text-sm font-medium transition duration-200 flex justify-center items-center whitespace-nowrap ${
             activeTab === 'search'
               ? 'bg-blue-500 text-white'
               : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
