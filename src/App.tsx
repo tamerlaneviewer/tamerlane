@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom'; // ✅ Get URL params
 import Header from './components/Header.tsx';
 import Footer from './components/Footer.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
@@ -6,16 +7,40 @@ import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 import { constructManifests } from './service/maniiifestService.ts';
 
-  const manifests = await constructManifests('https://gist.githubusercontent.com/jptmoore/b67cb149bbd11590022db9178cd23843/raw/60828ef3fb7b4cf2dc8ed9ecdd41869296bdf596/copy1.json')
-
 const App = () => {
-  const [searchResults, setSearchResults] = useState([]);
+  // ✅ Get `iiif-content` URL parameter
+  const [searchParams] = useSearchParams();
+  const iiifContentUrl = searchParams.get('iiif-content');
+
+  // ✅ Store manifests in state
+  const [manifests, setManifests] = useState<any[]>([]);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [annotations, setAnnotations] = useState([]);
   const [manifestMetadata, setManifestMetadata] = useState({});
   const [itemMetadata, setItemMetadata] = useState({});
+  const [searchResults, setSearchResults] = useState([]);
 
+  // ✅ Fetch manifests from the provided URL
+  useEffect(() => {
+    if (!iiifContentUrl) return; // Do nothing if the URL param is missing
+
+    async function fetchManifests() {
+      try {
+        const fetchedManifests = await constructManifests(iiifContentUrl as string);
+        setManifests(fetchedManifests);
+      } catch (error) {
+        console.error("Error fetching manifests:", error);
+      }
+    }
+
+    fetchManifests();
+  }, [iiifContentUrl]); // ✅ Fetch when `iiif-content` param changes
+
+  // ✅ Prevent rendering if manifests are not yet loaded
+  if (manifests.length === 0) {
+    return <div>Loading manifests...</div>;
+  }
 
   const currentManifest = manifests[selectedManifestIndex];
   const totalManifests = manifests.length;
