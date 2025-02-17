@@ -25,8 +25,8 @@ const App = () => {
     {
       name: "Manifest 2",
       images: [
-        "https://iiif.io/api/image/3.0/example/reference/1d1c154cc895e25dfb06b9a1b0cb89c6-washington/info.json",
-        "https://iiif.io/api/image/3.0/example/reference/5f71e11b6dd64a7e1a7e3f8e8fc5f76a-cassini/info.json",
+        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img2.jpg",
+        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img3.jpg",
       ],
     },
   ];
