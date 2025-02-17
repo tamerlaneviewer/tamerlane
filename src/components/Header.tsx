@@ -30,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       {/* ✅ Left: App Title */}
       <div className="flex items-center">
-        <Logo className="h-12 w-12" />
+        <Logo className="h-12 w-12 fill-slate-600" />
         <span className="text-lg font-semibold">Tamerlane</span>
       </div>
 
