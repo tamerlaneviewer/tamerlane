@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom'; // ✅ Get URL params
 import Header from './components/Header.tsx';
-import Footer from './components/Footer.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 import { constructManifests } from './service/maniiifestService.ts';
 
-const App = () => {
+const App: React.FC = () => {
   // ✅ Get `iiif-content` URL parameter
   const [searchParams] = useSearchParams();
   const iiifContentUrl = searchParams.get('iiif-content');
@@ -23,7 +22,7 @@ const App = () => {
 
   // ✅ Fetch manifests from the provided URL
   useEffect(() => {
-    if (!iiifContentUrl) return; // Do nothing if the URL param is missing
+    if (!iiifContentUrl) return;
 
     async function fetchManifests() {
       try {
@@ -35,7 +34,7 @@ const App = () => {
     }
 
     fetchManifests();
-  }, [iiifContentUrl]); // ✅ Fetch when `iiif-content` param changes
+  }, [iiifContentUrl]); 
 
   // ✅ Prevent rendering if manifests are not yet loaded
   if (manifests.length === 0) {
@@ -57,16 +56,26 @@ const App = () => {
   // ✅ Manifest Navigation
   const handlePreviousManifest = () => {
     setSelectedManifestIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : totalManifests - 1));
-    setSelectedImageIndex(0); // Reset image index on manifest change
+    setSelectedImageIndex(0);
   };
   const handleNextManifest = () => {
     setSelectedManifestIndex((prevIndex) => (prevIndex < totalManifests - 1 ? prevIndex + 1 : 0));
-    setSelectedImageIndex(0); // Reset image index on manifest change
+    setSelectedImageIndex(0);
   };
 
   return (
     <div className="flex flex-col h-screen">
-      <Header onSearch={() => {}} />
+      {/* ✅ Pass navigation props to Header */}
+      <Header 
+        onSearch={() => {}} 
+        currentIndex={selectedImageIndex} 
+        totalImages={totalImages} 
+        totalManifests={totalManifests} 
+        onPreviousImage={handlePreviousImage} 
+        onNextImage={handleNextImage} 
+        onPreviousManifest={handlePreviousManifest} 
+        onNextManifest={handleNextManifest} 
+      />
 
       <div className="flex flex-grow">
         {/* Left Column: Metadata Panel */}
@@ -86,17 +95,6 @@ const App = () => {
           <AnnotationsPanel annotations={annotations} searchResults={searchResults} />
         </div>
       </div>
-
-      {/* ✅ Footer Now Contains IIIF Navigation Controls */}
-      <Footer 
-        currentIndex={selectedImageIndex} 
-        totalImages={totalImages} 
-        totalManifests={totalManifests} 
-        onPreviousImage={handlePreviousImage} 
-        onNextImage={handleNextImage} 
-        onPreviousManifest={handlePreviousManifest} 
-        onNextManifest={handleNextManifest} 
-      />
     </div>
   );
 };
