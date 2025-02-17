@@ -1,36 +1,59 @@
 import React, { useEffect, useRef } from "react";
 import OpenSeadragon from "openseadragon";
 
-const IIIFViewer = ({ imageUrl }: { imageUrl: string }) => {
-  const viewerRef = useRef(null);
-  const osdViewerRef = useRef(null);
+// Define props type
+interface IIIFViewerProps {
+  imageUrl: string;
+}
+
+const IIIFViewer: React.FC<IIIFViewerProps> = ({ imageUrl }) => {
+  // Use proper typing for refs
+  const viewerRef = useRef<HTMLDivElement | null>(null);
+  const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
 
   useEffect(() => {
-    if (!viewerRef.current) return;
+    console.log("🔄 Updating IIIFViewer with imageUrl:", imageUrl);
 
-    const isIIIF = imageUrl.endsWith("/info.json"); // ✅ Detect if it's a IIIF Image API source
-    const tileSource = isIIIF
+    if (!viewerRef.current) {
+      console.warn("⚠️ viewerRef is not assigned.");
+      return;
+    }
+
+    const isIIIF = imageUrl.includes("/info.json");
+    const tileSource: string | OpenSeadragon.TileSourceOptions = isIIIF
       ? imageUrl
       : {
           type: "image",
-          url: imageUrl, // ✅ Load JPGs or standard images as simple images
+          url: imageUrl, // Load JPGs or standard images as simple images
         };
 
-    if (!osdViewerRef.current) {
-      // ✅ Initialize OpenSeadragon
-      osdViewerRef.current = OpenSeadragon({
-        element: viewerRef.current,
-        prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
-        tileSources: tileSource,
-        showNavigator: true,
-      });
-    } else {
-      // ✅ Update image dynamically when changed
-      osdViewerRef.current.open(tileSource);
+    // Destroy existing viewer before creating a new one
+    if (osdViewerRef.current) {
+      console.log("🛑 Destroying existing OpenSeadragon instance...");
+      osdViewerRef.current.destroy();
+      osdViewerRef.current = null;
     }
-  }, [imageUrl]); // ✅ Re-run effect when `imageUrl` changes
 
-  return <div id="iiif-viewer" ref={viewerRef} className="w-full h-full"></div>;
+    // Initialize OpenSeadragon
+    console.log("🚀 Initializing OpenSeadragon with:", tileSource);
+    osdViewerRef.current = OpenSeadragon({
+      element: viewerRef.current,
+      prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+      tileSources: tileSource,
+      showNavigator: true,
+    });
+
+    // Cleanup function to properly destroy OpenSeadragon on unmount or image change
+    return () => {
+      if (osdViewerRef.current) {
+        console.log("🧹 Cleaning up OpenSeadragon instance...");
+        osdViewerRef.current.destroy();
+        osdViewerRef.current = null;
+      }
+    };
+  }, [imageUrl]); // Re-run effect when `imageUrl` changes
+
+  return <div ref={viewerRef} className="w-full h-full"></div>;
 };
 
 export default IIIFViewer;
