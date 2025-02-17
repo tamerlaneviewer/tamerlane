@@ -1,4 +1,6 @@
 // Define the type for the IIIF resource
+import { Maniiifest } from 'maniiifest';
+
 interface IIIFResource {
   type: string;
   data: any;
@@ -25,10 +27,28 @@ async function fetchResource(url: string): Promise<IIIFResource> {
   }
 }
 
+
+function parseManifest(jsonData: any) {
+    const parser = new Maniiifest(jsonData);
+    const type = parser.getSpecificationType();
+    if (type !== 'Manifest') {
+        throw new Error('Invalid IIIF resource type: ' + type);
+    }
+    const annotationPages = parser.iterateManifestCanvasAnnotation();
+    for (const page of annotationPages) {
+        if (page.body) {
+            console.log((page.body as any).id as string);
+        } else {
+            console.warn('page.body is undefined');
+        }
+    }
+}
+
 function parseResource(resource: IIIFResource) {
   if (resource.type === "Manifest") {
     // Handle manifest
-    console.log('Manifest:', resource.data);
+    parseManifest(resource.data);
+    //console.log('Manifest:', resource.data);
   } else if (resource.type === "Collection") {
     // Handle collection
     console.log('Collection:', resource.data);
