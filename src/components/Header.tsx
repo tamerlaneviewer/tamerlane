@@ -1,6 +1,7 @@
-import React from 'react';
-import SearchBar from './SearchBar.tsx';
-import IIIFControls from "./IIIFControls.tsx"; // ✅ Import Navigation Controls
+import React from "react";
+import SearchBar from "./SearchBar.tsx";
+import IIIFControls from "./IIIFControls.tsx";
+import { ReactComponent as Logo } from "../logo.svg";
 
 // ✅ Define the TypeScript interface for props
 interface HeaderProps {
@@ -23,12 +24,15 @@ const Header: React.FC<HeaderProps> = ({
   onPreviousImage,
   onNextImage,
   onPreviousManifest,
-  onNextManifest
+  onNextManifest,
 }) => {
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       {/* ✅ Left: App Title */}
-      <span className="text-lg font-semibold">Tamerlane IIIF Viewer</span>
+      <div className="flex items-center">
+        <Logo className="h-12 w-12" />
+        <span className="text-lg font-semibold">Tamerlane</span>
+      </div>
 
       {/* ✅ Center: IIIF Navigation Controls */}
       <IIIFControls
