@@ -4,6 +4,9 @@ import Footer from './components/Footer.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
+import { constructManifests } from './service/maniiifestService.ts';
+
+  const manifests = await constructManifests('https://gist.githubusercontent.com/jptmoore/b67cb149bbd11590022db9178cd23843/raw/60828ef3fb7b4cf2dc8ed9ecdd41869296bdf596/copy1.json')
 
 const App = () => {
   const [searchResults, setSearchResults] = useState([]);
@@ -13,23 +16,6 @@ const App = () => {
   const [manifestMetadata, setManifestMetadata] = useState({});
   const [itemMetadata, setItemMetadata] = useState({});
 
-  // ✅ Array of IIIF Manifests
-  const manifests = [
-    {
-      name: "Manifest 1",
-      images: [
-        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img0.jpg",
-        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img1.jpg",
-      ],
-    },
-    {
-      name: "Manifest 2",
-      images: [
-        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img2.jpg",
-        "https://rae-drt.github.io/Copy1Hackathon/Images/PDFs_COPY1_COPY-1-60_1_img3.jpg",
-      ],
-    },
-  ];
 
   const currentManifest = manifests[selectedManifestIndex];
   const totalManifests = manifests.length;
