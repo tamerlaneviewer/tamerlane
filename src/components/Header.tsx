@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       {/* ✅ Left: App Title */}
-      <span className="text-lg font-semibold">Tamerlane Viewer</span>
+      <span className="text-lg font-semibold">Tamerlane IIIF Viewer</span>
 
       {/* ✅ Center: IIIF Navigation Controls */}
       <IIIFControls
