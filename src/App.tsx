@@ -4,7 +4,7 @@ import Header from './components/Header.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
-import { constructManifests } from './service/maniiifestService.ts';
+import { constructManifests } from './service/parser.ts';
 
 const App: React.FC = () => {
   // ✅ Get `iiif-content` URL parameter

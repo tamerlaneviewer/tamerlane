@@ -1,9 +1,5 @@
 import { Maniiifest } from 'maniiifest';
-
-interface IIIFResource {
-    type: string;
-    data: any;
-}
+import { IIIFResource, IIIFManifest } from '../types';
 
 async function fetchResource(url: string): Promise<IIIFResource> {
     try {
@@ -75,7 +71,7 @@ async function parseResource(resource: IIIFResource) {
 }
 
 
-export async function constructManifests(url: string) {
+export async function constructManifests(url: string): Promise<IIIFManifest[]> {
     try {
         const resource = await fetchResource(url);
         return await parseResource(resource);
