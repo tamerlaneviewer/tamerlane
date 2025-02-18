@@ -39,10 +39,9 @@ function parseManifest(jsonData: any) {
     // Extract images from annotations
     const images: string[] = [];
     for (const anno of parser.iterateManifestCanvasAnnotation()) {
-        if (anno.body && (anno.body as any).id) {
-            images.push((anno.body as any).id as string);
-        } else {
-            console.warn('Warning: No image found in annotation.');
+        const annoParser = new Maniiifest(anno, "Annotation");
+        for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
+            images.push(resourceBody.id);
         }
     }
 
