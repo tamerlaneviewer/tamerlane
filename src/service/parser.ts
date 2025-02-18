@@ -21,25 +21,26 @@ async function fetchResource(url: string): Promise<IIIFResource> {
 }
 
 function getImage(resource: any): IIIFImage {
-    let url: string;
-    let type: "standard" | "iiif";
+    let url: string | undefined;
+    let type: "standard" | "iiif" = "standard";
 
-    if (resource.service && Array.isArray(resource.service)) {
-        if (resource.service.length > 0 && typeof resource.service[0].id === 'string') {
-            url = resource.service[0].id;
-            type = "iiif";
-        } else {
-            throw new Error('Invalid resource array: No valid id found in the first object.');
-        }
-    } else if (typeof resource.id === 'string') {
+    if (resource.service && Array.isArray(resource.service) && resource.service.length > 0) {
+        const service = resource.service[0];
+        url = typeof service.id === 'string' ? service.id 
+            : typeof service["@id"] === 'string' ? service["@id"]
+            : undefined;
+        type = "iiif";
+    } 
+    if (!url && typeof resource.id === 'string') {
         url = resource.id;
         type = "standard";
-    } else {
-        throw new Error('Invalid resource: No valid id found.');
     }
-
+    if (!url) {
+        throw new Error("Unable to get image resource id.");
+    }
     return { imageUrl: url, imageType: type };
 }
+
 
 function parseManifest(jsonData: any): IIIFManifest {
     const parser = new Maniiifest(jsonData);
