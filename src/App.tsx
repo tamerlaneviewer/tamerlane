@@ -86,7 +86,10 @@ const App: React.FC = () => {
         {/* Middle Column: IIIF Viewer */}
         <div className="w-1/2 flex flex-col">
           <div className="flex-grow">
-            <IIIFViewer imageUrl={currentManifest.images[selectedImageIndex]} />
+          <IIIFViewer 
+              imageUrl={currentManifest.images[selectedImageIndex].imageUrl} 
+              imageType={currentManifest.images[selectedImageIndex].imageType} 
+            />
           </div>
         </div>
 

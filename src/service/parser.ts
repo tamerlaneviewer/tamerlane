@@ -1,5 +1,5 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFResource, IIIFManifest } from '../types';
+import { IIIFResource, IIIFManifest, IIIFImage } from '../types';
 
 async function fetchResource(url: string): Promise<IIIFResource> {
     try {
@@ -20,21 +20,28 @@ async function fetchResource(url: string): Promise<IIIFResource> {
     }
 }
 
-function getResourceUrl(resource: any): string {
+function getImage(resource: any): IIIFImage {
+    let url: string;
+    let type: "standard" | "iiif";
+
     if (resource.service && Array.isArray(resource.service)) {
         if (resource.service.length > 0 && typeof resource.service[0].id === 'string') {
-            return resource.service[0].id;
+            url = resource.service[0].id;
+            type = "iiif";
         } else {
             throw new Error('Invalid resource array: No valid id found in the first object.');
         }
     } else if (typeof resource.id === 'string') {
-        return resource.id;
+        url = resource.id;
+        type = "standard";
     } else {
         throw new Error('Invalid resource: No valid id found.');
     }
+
+    return { imageUrl: url, imageType: type };
 }
 
-function parseManifest(jsonData: any) {
+function parseManifest(jsonData: any): IIIFManifest {
     const parser = new Maniiifest(jsonData);
     const type = parser.getSpecificationType();
 
@@ -42,45 +49,28 @@ function parseManifest(jsonData: any) {
         throw new Error('Invalid IIIF resource type: ' + type);
     }
 
-    // Extract label
     const labelData: any = parser.getManifestLabelByLanguage('en');
-    const label: string = labelData?.en?.[0] ?? ''; 
+    const label: string = labelData?.en?.[0] ?? '';
 
-    // Extract images from annotations
-    const images: string[] = [];
+    const images: IIIFImage[] = [];
     for (const anno of parser.iterateManifestCanvasAnnotation()) {
         const annoParser = new Maniiifest(anno, "Annotation");
         for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
-            const url = getResourceUrl(resourceBody)
-            images.push(url);
+            const image = getImage(resourceBody)
+            images.push(image);
         }
     }
 
     return { name: label, images };
 }
 
-async function parseResource(resource: IIIFResource) {
+async function parseResource(resource: IIIFResource): Promise<IIIFManifest[]> {
     if (resource.type === "Manifest") {
-        // Handle single manifest
         const manifestData = parseManifest(resource.data);
         return [manifestData]; // Return as an array
     } else if (resource.type === "Collection") {
-        // Handle collection (Multiple Manifests)
-        const collectionData = resource.data;
-        if (!collectionData.items) {
-            throw new Error("Invalid IIIF Collection: No items found.");
-        }
-
-        // Iterate through collection and parse each manifest
-        const manifests: { name: string; images: string[] }[] = [];
-        for (const item of collectionData.items) {
-            if (item.type === "Manifest") {
-                const manifestResource = await fetchResource(item.id);
-                const result = parseManifest(manifestResource.data);
-                manifests.push(result as any);
-            }
-        }
-        return manifests;
+        console.log("Not implemented yet")
+        return [];
     }
     return [];
 }

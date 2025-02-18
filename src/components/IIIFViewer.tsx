@@ -4,27 +4,27 @@ import OpenSeadragon from "openseadragon";
 // Define props type
 interface IIIFViewerProps {
   imageUrl: string;
+  imageType: "standard" | "iiif";
 }
 
-const IIIFViewer: React.FC<IIIFViewerProps> = ({ imageUrl }) => {
+const IIIFViewer: React.FC<IIIFViewerProps> = ({ imageUrl, imageType }) => {
   // Use proper typing for refs
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
 
   useEffect(() => {
-    console.log("🔄 Updating IIIFViewer with imageUrl:", imageUrl);
+    console.log("🔄 Updating IIIFViewer with imageUrl:", imageUrl, "and imageType:", imageType);
 
     if (!viewerRef.current) {
       console.warn("⚠️ viewerRef is not assigned.");
       return;
     }
 
-    const isIIIF = imageUrl.includes("/info.json");
-    const tileSource: string | OpenSeadragon.TileSourceOptions = isIIIF
+    const tileSource: string | OpenSeadragon.TileSourceOptions = imageType === "iiif"
       ? imageUrl
       : {
           type: "image",
-          url: imageUrl, // Load JPGs or standard images as simple images
+          url: imageUrl, // Load standard images as simple images
         };
 
     // Destroy existing viewer before creating a new one
@@ -51,7 +51,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({ imageUrl }) => {
         osdViewerRef.current = null;
       }
     };
-  }, [imageUrl]); // Re-run effect when `imageUrl` changes
+  }, [imageUrl, imageType]); // Re-run effect when `imageUrl` or `imageType` changes
 
   return <div ref={viewerRef} className="w-full h-full"></div>;
 };
