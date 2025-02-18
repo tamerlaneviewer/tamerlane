@@ -20,6 +20,20 @@ async function fetchResource(url: string): Promise<IIIFResource> {
     }
 }
 
+function getResourceUrl(resource: any): string {
+    if (resource.service && Array.isArray(resource.service)) {
+        if (resource.service.length > 0 && typeof resource.service[0].id === 'string') {
+            return resource.service[0].id;
+        } else {
+            throw new Error('Invalid resource array: No valid id found in the first object.');
+        }
+    } else if (typeof resource.id === 'string') {
+        return resource.id;
+    } else {
+        throw new Error('Invalid resource: No valid id found.');
+    }
+}
+
 function parseManifest(jsonData: any) {
     const parser = new Maniiifest(jsonData);
     const type = parser.getSpecificationType();
@@ -37,7 +51,8 @@ function parseManifest(jsonData: any) {
     for (const anno of parser.iterateManifestCanvasAnnotation()) {
         const annoParser = new Maniiifest(anno, "Annotation");
         for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
-            images.push(resourceBody.id);
+            const url = getResourceUrl(resourceBody)
+            images.push(url);
         }
     }
 
