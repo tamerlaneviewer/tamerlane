@@ -4,6 +4,7 @@ import Header from './components/Header.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
+import SplashScreen from './components/SplashScreen.tsx';
 import { constructManifests } from './service/parser.ts';
 
 const App: React.FC = () => {
@@ -89,7 +90,7 @@ const App: React.FC = () => {
   }
 
   if (manifests.length === 0) {
-    return <div className="flex items-center justify-center h-screen">Loading manifests...</div>;
+    return <SplashScreen />;
   }
 
   const currentManifest = manifests[selectedManifestIndex];
