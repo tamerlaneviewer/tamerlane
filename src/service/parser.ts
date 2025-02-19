@@ -1,22 +1,23 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFResource, IIIFManifest, IIIFImage } from '../types';
+import { IIIFResource, IIIFManifest, IIIFImage } from '../types/index.ts';
+import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
 
 async function fetchResource(url: string): Promise<IIIFResource> {
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new TamerlaneNetworkError(`HTTP error! status: ${response.status}`);
         }
         const data: any = await response.json();
 
         if (data.type !== "Manifest" && data.type !== "Collection") {
-            throw new Error(`Invalid IIIF resource type: ${data.type}`);
+            throw new TamerlaneParseError(`Invalid IIIF resource type: ${data.type}`);
         }
 
         return { type: data.type, data };
     } catch (error) {
         console.error('Error fetching IIIF resource:', error);
-        throw error;
+        throw new TamerlaneResourceError('Error fetching IIIF resource');
     }
 }
 
@@ -36,7 +37,7 @@ function getImage(resource: any): IIIFImage {
         type = "standard";
     }
     if (!url) {
-        throw new Error("Unable to get image resource id.");
+        throw new TamerlaneParseError("Unable to get image resource id.");
     }
     return { imageUrl: url, imageType: type };
 }
@@ -47,7 +48,7 @@ function parseManifest(jsonData: any): IIIFManifest {
     const type = parser.getSpecificationType();
 
     if (type !== 'Manifest') {
-        throw new Error('Invalid IIIF resource type: ' + type);
+        throw new TamerlaneParseError('Invalid IIIF resource type: ' + type);
     }
 
     const labelData: any = parser.getManifestLabelByLanguage('en');
@@ -78,15 +79,9 @@ async function parseResource(resource: IIIFResource): Promise<IIIFManifest[]> {
 
 
 export async function constructManifests(url: string): Promise<IIIFManifest[]> {
-    try {
-        const resource = await fetchResource(url);
-        return await parseResource(resource);
-    } catch (error) {
-        console.error("Error constructing manifests:", error);
-        return [];
-    }
+    const resource = await fetchResource(url);
+    return await parseResource(resource);
 }
-
 
 // const exampleUrl = 'https://gist.githubusercontent.com/jptmoore/b67cb149bbd11590022db9178cd23843/raw/60828ef3fb7b4cf2dc8ed9ecdd41869296bdf596/copy1.json';
 

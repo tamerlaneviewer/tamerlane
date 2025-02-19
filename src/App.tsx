@@ -5,6 +5,7 @@ import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 import { constructManifests } from './service/parser.ts';
+import { TamerlaneResourceError } from './errors/index.ts';
 
 const App: React.FC = () => {
   // ✅ Get `iiif-content` URL parameter
@@ -30,6 +31,8 @@ const App: React.FC = () => {
         setManifests(fetchedManifests);
       } catch (error) {
         console.error("Error fetching manifests:", error);
+        throw new TamerlaneResourceError('Error fetching manifests');
+
       }
     }
 
