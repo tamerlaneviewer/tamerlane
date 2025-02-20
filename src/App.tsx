@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import Header from './components/Header.tsx';
-import IIIFViewer from './components/IIIFViewer.tsx';
-import AnnotationsPanel from './components/AnnotationsPanel.tsx';
-import MetadataPanel from './components/MetadataPanel.tsx';
-import SplashScreen from './components/SplashScreen.tsx';
-import { constructManifests } from './service/parser.ts';
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import Header from "./components/Header.tsx";
+import IIIFViewer from "./components/IIIFViewer.tsx";
+import AnnotationsPanel from "./components/AnnotationsPanel.tsx";
+import MetadataPanel from "./components/MetadataPanel.tsx";
+import SplashScreen from "./components/SplashScreen.tsx";
+import { constructManifests } from "./service/parser.ts";
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const iiifContentUrlFromParams = searchParams.get('iiif-content');
+  const iiifContentUrlFromParams = searchParams.get("iiif-content");
 
-  const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(iiifContentUrlFromParams);
+  const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
+    iiifContentUrlFromParams
+  );
   const [manifests, setManifests] = useState<any[]>([]);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -27,7 +29,9 @@ const App: React.FC = () => {
 
     async function fetchManifests() {
       try {
-        const fetchedManifests = await constructManifests(iiifContentUrl as string);
+        const fetchedManifests = await constructManifests(
+          iiifContentUrl as string
+        );
         setManifests(fetchedManifests);
       } catch (error) {
         console.error("Error fetching manifests:", error);
@@ -41,10 +45,10 @@ const App: React.FC = () => {
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const url = formData.get('iiifContentUrl') as string;
+    const url = formData.get("iiifContentUrl") as string;
     setIiifContentUrl(url);
     setShowUrlDialog(false);
-    setSearchParams({ 'iiif-content': url });
+    setSearchParams({ "iiif-content": url });
   };
 
   if (showUrlDialog) {
@@ -96,20 +100,39 @@ const App: React.FC = () => {
   const currentManifest = manifests[selectedManifestIndex];
   const totalManifests = manifests.length;
   const totalImages = currentManifest.images.length;
+  const canvasWidth = 1200; 
+  const canvasHeight = 1800;
+
+  const selectedImage = currentManifest.images[selectedImageIndex];
+
+  const imageUrl = selectedImage.imageUrl;
+  const imageType = selectedImage.imageType;
+  const imageWidth = selectedImage.imageWidth || canvasWidth; // Fallback to canvas
+  const imageHeight = selectedImage.imageHeight || canvasHeight;
+
+  
 
   const handlePreviousImage = () => {
-    setSelectedImageIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : totalImages - 1));
+    setSelectedImageIndex((prevIndex) =>
+      prevIndex > 0 ? prevIndex - 1 : totalImages - 1
+    );
   };
   const handleNextImage = () => {
-    setSelectedImageIndex((prevIndex) => (prevIndex < totalImages - 1 ? prevIndex + 1 : 0));
+    setSelectedImageIndex((prevIndex) =>
+      prevIndex < totalImages - 1 ? prevIndex + 1 : 0
+    );
   };
 
   const handlePreviousManifest = () => {
-    setSelectedManifestIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : totalManifests - 1));
+    setSelectedManifestIndex((prevIndex) =>
+      prevIndex > 0 ? prevIndex - 1 : totalManifests - 1
+    );
     setSelectedImageIndex(0);
   };
   const handleNextManifest = () => {
-    setSelectedManifestIndex((prevIndex) => (prevIndex < totalManifests - 1 ? prevIndex + 1 : 0));
+    setSelectedManifestIndex((prevIndex) =>
+      prevIndex < totalManifests - 1 ? prevIndex + 1 : 0
+    );
     setSelectedImageIndex(0);
   };
 
@@ -128,20 +151,30 @@ const App: React.FC = () => {
 
       <div className="flex flex-grow">
         <div className="w-1/4 border-r flex flex-col">
-          <MetadataPanel manifestMetadata={manifestMetadata} itemMetadata={itemMetadata} />
+          <MetadataPanel
+            manifestMetadata={manifestMetadata}
+            itemMetadata={itemMetadata}
+          />
         </div>
 
         <div className="w-1/2 flex flex-col">
           <div className="flex-grow">
             <IIIFViewer
-              imageUrl={currentManifest.images[selectedImageIndex].imageUrl}
-              imageType={currentManifest.images[selectedImageIndex].imageType}
+              imageUrl={imageUrl}
+              imageType={imageType}
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
+              imageWidth={imageWidth}
+              imageHeight={imageHeight}
             />
           </div>
         </div>
 
         <div className="w-1/4 border-l flex flex-col overflow-hidden">
-          <AnnotationsPanel annotations={annotations} searchResults={searchResults} />
+          <AnnotationsPanel
+            annotations={annotations}
+            searchResults={searchResults}
+          />
         </div>
       </div>
     </div>
