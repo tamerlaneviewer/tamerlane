@@ -7,7 +7,8 @@ const IIIFControls = ({
   onPreviousImage, 
   onNextImage, 
   onPreviousManifest, 
-  onNextManifest 
+  onNextManifest, 
+  resetImageIndex 
 }: { 
   currentIndex: number; 
   totalImages: number; 
@@ -16,8 +17,17 @@ const IIIFControls = ({
   onNextImage: () => void; 
   onPreviousManifest: () => void; 
   onNextManifest: () => void; 
+  resetImageIndex: () => void;
 }) => {
   const [mode, setMode] = useState("image"); // "image" or "manifest"
+
+  const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newMode = e.target.value;
+    setMode(newMode);
+    if (newMode === "manifest") {
+      resetImageIndex(); // ✅ Reset item index when switching to manifests
+    }
+  };
 
   return (
     <div className="flex items-center space-x-2 bg-gray-800 text-white px-3 py-1 rounded">
@@ -25,7 +35,7 @@ const IIIFControls = ({
       <select 
         className="bg-gray-700 text-white p-1 rounded" 
         value={mode} 
-        onChange={(e) => setMode(e.target.value)}
+        onChange={handleModeChange}
       >
         <option value="image">Images</option>
         <option value="manifest">Manifests</option>

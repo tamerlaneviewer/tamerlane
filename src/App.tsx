@@ -51,6 +51,10 @@ const App: React.FC = () => {
     setSearchParams({ "iiif-content": url });
   };
 
+  const resetImageIndex = () => {
+    setSelectedImageIndex(0); // ✅ Reset item index when switching manifests
+  };  
+
   if (showUrlDialog) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
@@ -149,6 +153,7 @@ const App: React.FC = () => {
         onNextImage={handleNextImage}
         onPreviousManifest={handlePreviousManifest}
         onNextManifest={handleNextManifest}
+        resetImageIndex={resetImageIndex}
       />
 
       <div className="flex flex-grow">

@@ -25,6 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   onNextImage,
   onPreviousManifest,
   onNextManifest,
+  resetImageIndex,
 }) => {
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
@@ -43,6 +44,7 @@ const Header: React.FC<HeaderProps> = ({
         onNextImage={onNextImage}
         onPreviousManifest={onPreviousManifest}
         onNextManifest={onNextManifest}
+        resetImageIndex={resetImageIndex}
       />
 
       {/* ✅ Right: Search Bar */}
