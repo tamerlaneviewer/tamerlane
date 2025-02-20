@@ -28,22 +28,29 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       "🔄 Updating IIIFViewer with imageUrl:",
       imageUrl,
       "and imageType:",
-      imageType
+      imageType,
+      "and dimensions:",
+      canvasWidth,
+      canvasHeight,
+      imageWidth,
+      imageHeight       
     );
 
     if (!viewerRef.current) {
       console.warn("⚠️ viewerRef is not assigned.");
       return;
     }
-
-    const scaleX = canvasWidth / imageWidth;
-    const scaleY = canvasHeight / imageHeight;
+    
+    // Compute scaling to fit image into canvas space
+    const aspectRatio = imageWidth / imageHeight;
+    const imageWidthInCanvas = canvasWidth;
+    const imageHeightInCanvas = canvasWidth / aspectRatio; // Maintain aspect ratio
 
     const imagePosition = {
-      x: 0, // Adjust this if image is not at (0,0)
+      x: 0, 
       y: 0,
-      width: scaleX, // Scale image relative to canvas
-      height: scaleY,
+      width: imageWidthInCanvas,
+      height: imageHeightInCanvas 
     };
 
     const tileSource: string | OpenSeadragon.TileSourceOptions =
@@ -74,8 +81,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       tileSource: tileSource,
       x: imagePosition.x,
       y: imagePosition.y,
-      width: imagePosition.width,
-      height: imagePosition.height,
+      width: imagePosition.width
     });
 
     // Cleanup function to properly destroy OpenSeadragon on unmount or image change
