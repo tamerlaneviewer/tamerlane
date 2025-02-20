@@ -2,6 +2,20 @@ import { Maniiifest } from 'maniiifest';
 import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
 import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
 
+export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): { canvasWidth: number; canvasHeight: number } {
+    // Find the canvas that matches the given canvasId
+    const canvas = manifest.canvases.find(c => c.id === canvasId);
+
+    if (!canvas) {
+        throw new TamerlaneParseError(`Canvas with ID ${canvasId} not found.`);
+    }
+
+    return {
+        canvasWidth: canvas.canvasWidth ?? 1000,
+        canvasHeight: canvas.canvasHeight ?? 1000
+    };
+}
+
 async function fetchResource(url: string): Promise<IIIFResource> {
     try {
         const response = await fetch(url);
@@ -29,11 +43,11 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
 
     if (resource.service && Array.isArray(resource.service) && resource.service.length > 0) {
         const service = resource.service[0];
-        url = typeof service.id === 'string' ? service.id 
+        url = typeof service.id === 'string' ? service.id
             : typeof service["@id"] === 'string' ? service["@id"]
-            : undefined;
+                : undefined;
         type = "iiif";
-    } 
+    }
     if (!url && typeof resource.id === 'string') {
         url = resource.id;
         type = "standard";
@@ -47,7 +61,7 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
         imageHeight = resource.height;
     }
 
-    return { imageUrl: url, imageType: type , imageWidth, imageHeight, canvasTarget };
+    return { imageUrl: url, imageType: type, imageWidth, imageHeight, canvasTarget };
 }
 
 

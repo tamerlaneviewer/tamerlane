@@ -29,29 +29,33 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       imageUrl,
       "and imageType:",
       imageType,
-      "and dimensions:",
-      canvasWidth,
+      "and canvasHeight:",
       canvasHeight,
-      imageWidth,
-      imageHeight       
+      "and canvasWidth:",
+      canvasWidth,
+      "and imageHeight:",
+      imageHeight,
+      "and imageWidth:",
+      imageWidth       
     );
 
     if (!viewerRef.current) {
       console.warn("⚠️ viewerRef is not assigned.");
       return;
     }
-    
+
     // Compute scaling to fit image into canvas space
     const aspectRatio = imageWidth / imageHeight;
     const imageWidthInCanvas = canvasWidth;
     const imageHeightInCanvas = canvasWidth / aspectRatio; // Maintain aspect ratio
 
     const imagePosition = {
-      x: 0, 
-      y: 0,
+      x: (canvasWidth - imageWidthInCanvas) / 2,  // Center horizontally
+      y: (canvasHeight - imageHeightInCanvas) / 2, // Center vertically
       width: imageWidthInCanvas,
       height: imageHeightInCanvas 
     };
+    
 
     const tileSource: string | OpenSeadragon.TileSourceOptions =
       imageType === "iiif"

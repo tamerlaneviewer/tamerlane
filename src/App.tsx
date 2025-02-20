@@ -5,7 +5,7 @@ import IIIFViewer from "./components/IIIFViewer.tsx";
 import AnnotationsPanel from "./components/AnnotationsPanel.tsx";
 import MetadataPanel from "./components/MetadataPanel.tsx";
 import SplashScreen from "./components/SplashScreen.tsx";
-import { constructManifests } from "./service/parser.ts";
+import { constructManifests, getCanvasDimensions } from "./service/parser.ts";
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -100,10 +100,12 @@ const App: React.FC = () => {
   const currentManifest = manifests[selectedManifestIndex];
   const totalManifests = manifests.length;
   const totalImages = currentManifest.images.length;
-  const canvasWidth = 1200; 
-  const canvasHeight = 1800;
 
   const selectedImage = currentManifest.images[selectedImageIndex];
+
+  const manifestId = currentManifest.images[selectedImageIndex].canvasTarget;
+  const { canvasWidth, canvasHeight } = getCanvasDimensions(currentManifest, manifestId);
+
 
   const imageUrl = selectedImage.imageUrl;
   const imageType = selectedImage.imageType;
