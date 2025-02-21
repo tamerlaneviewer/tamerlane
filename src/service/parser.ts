@@ -2,6 +2,8 @@ import { Maniiifest } from 'maniiifest';
 import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
 import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
 
+const manifestCache = new Map<string, IIIFManifest>(); // ✅ Caching fetched manifests
+
 export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): { canvasWidth: number; canvasHeight: number } {
     const canvas = manifest.canvases.find(c => c.id === canvasId);
     if (!canvas) {
@@ -62,7 +64,6 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
 function parseManifest(jsonData: any): IIIFManifest {
     const parser = new Maniiifest(jsonData);
     const type = parser.getSpecificationType();
-
     if (type !== 'Manifest') {
         throw new TamerlaneParseError('Invalid IIIF resource type: ' + type);
     }
@@ -99,45 +100,63 @@ function parseManifest(jsonData: any): IIIFManifest {
     return { name: label, canvases, images };
 }
 
-async function parseCollection(jsonData: any): Promise<IIIFManifest[]> {
+async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFManifest | null, manifestUrls: string[], total: number }> {
     const parser = new Maniiifest(jsonData);
-    const type = parser.getSpecificationType();
-    if (type !== 'Collection') {
-        throw new TamerlaneParseError('Invalid IIIF resource type: ' + type);
+    if (parser.getSpecificationType() !== 'Collection') {
+        throw new TamerlaneParseError('Invalid IIIF resource type: Collection expected');
     }
 
-    const manifests: IIIFManifest[] = [];
+    const manifestUrls: string[] = []; // ✅ Ensure consistent naming
+    let firstManifest: IIIFManifest | null = null;
+
     for (const item of parser.iterateCollectionManifest()) {
         const manifestRef = new Maniiifest(item);
         const manifestId = manifestRef.getManifestId();
         if (manifestId) {
-            const manifestResource = await fetchResource(manifestId);
-            const parsedManifest = parseManifest(manifestResource.data);
-            manifests.push(parsedManifest);  
+            manifestUrls.push(manifestId);
+            if (!firstManifest) {
+                const manifestResource = await fetchResource(manifestId);
+                firstManifest = parseManifest(manifestResource.data);
+                manifestCache.set(manifestId, firstManifest); // ✅ Cache first manifest
+            }
         } else {
             throw new TamerlaneParseError('Manifest ID is null');
         }
     }
-    return manifests;  
+
+    return { firstManifest, manifestUrls, total: manifestUrls.length }; // ✅ Return consistent structure
 }
 
-async function parseResource(resource: IIIFResource): Promise<IIIFManifest[]> {
-    if (resource.type === "Manifest") {
-        const manifestData = parseManifest(resource.data);
-        return [manifestData]; // Return as an array
-    } else if (resource.type === "Collection") {
-        return await parseCollection(resource.data);  
+async function fetchManifest(manifestId: string): Promise<IIIFManifest> {
+    if (manifestCache.has(manifestId)) {
+        return manifestCache.get(manifestId)!;
     }
-    return [];
+
+    const manifestResource = await fetchResource(manifestId);
+    const parsedManifest = parseManifest(manifestResource.data);
+    manifestCache.set(manifestId, parsedManifest);
+    return parsedManifest;
 }
 
-export async function constructManifests(url: string): Promise<IIIFManifest[]> {
+export async function constructManifests(url: string): Promise<{ firstManifest: IIIFManifest, manifestUrls: string[], total: number }> {
     const resource = await fetchResource(url);
-    return await parseResource(resource);
-}
 
-// Example usage:
-// const exampleUrl = "https://iiif.io/api/cookbook/recipe/0001-mvm-image/manifest.json";
-// constructManifests(exampleUrl).then((manifests) => {
-//     console.log(JSON.stringify(manifests, null, 2));
-// });
+    if (resource.type === "Manifest") {
+        const parsedManifest = parseManifest(resource.data);
+        return { firstManifest: parsedManifest, manifestUrls: [], total: 1 };
+    } else if (resource.type === "Collection") {
+        const { firstManifest, manifestUrls, total } = await parseCollection(resource.data);
+
+        if (!firstManifest && manifestUrls.length > 0) {
+            // ✅ Fetch the first manifest if it wasn't already fetched
+            const firstFetchedManifest = await fetchManifest(manifestUrls[0]);
+            return { firstManifest: firstFetchedManifest, manifestUrls, total };
+        } else if (!firstManifest) {
+            throw new TamerlaneParseError("Collection does not contain any valid manifests.");
+        }
+
+        return { firstManifest, manifestUrls, total };
+    }
+
+    throw new TamerlaneParseError("Unknown IIIF resource type");
+}

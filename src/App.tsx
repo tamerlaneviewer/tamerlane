@@ -15,6 +15,8 @@ const App: React.FC = () => {
     iiifContentUrlFromParams
   );
   const [manifests, setManifests] = useState<any[]>([]);
+  const [manifestUrls, setManifestUrls] = useState<string[]>([]);
+  const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [annotations, setAnnotations] = useState([]);
@@ -29,11 +31,14 @@ const App: React.FC = () => {
 
     async function fetchManifests() {
       try {
-        const fetchedManifests = await constructManifests(
-          iiifContentUrl as string
+        const { firstManifest, manifestUrls, total } = await constructManifests(
+          iiifContentUrl
         );
-        setManifests(fetchedManifests);
-      } catch (error) {
+
+        setManifests([firstManifest]); 
+        setManifestUrls(manifestUrls); 
+        setTotalManifests(total); 
+      } catch (error: any) {
         console.error("Error fetching manifests:", error);
         setError(error.message);
       }
@@ -46,14 +51,32 @@ const App: React.FC = () => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const url = formData.get("iiifContentUrl") as string;
-    setIiifContentUrl(url);
-    setShowUrlDialog(false);
-    setSearchParams({ "iiif-content": url });
+    if (url !== iiifContentUrl) {
+      setIiifContentUrl(url);
+      setSearchParams({ "iiif-content": url });
+      setShowUrlDialog(false);
+    }
   };
 
   const resetImageIndex = () => {
-    setSelectedImageIndex(0); // ✅ Reset item index when switching manifests
-  };  
+    setSelectedImageIndex(0); 
+  };
+
+  const fetchManifestByIndex = async (index: number) => {
+    if (!manifestUrls[index]) return;
+
+    try {
+      const newManifest = await constructManifests(manifestUrls[index]);
+      setManifests((prevManifests) => {
+        const updatedManifests = [...prevManifests];
+        updatedManifests[index] = newManifest.firstManifest;
+        return updatedManifests;
+      });
+    } catch (error) {
+      console.error("Error fetching new manifest:", error);
+      setError(error.message);
+    }
+  };
 
   if (showUrlDialog) {
     return (
@@ -101,22 +124,37 @@ const App: React.FC = () => {
     return <SplashScreen />;
   }
 
-  const currentManifest = manifests[selectedManifestIndex];
-  const totalManifests = manifests.length;
-  const totalImages = currentManifest.images.length;
+  const currentManifest = manifests[selectedManifestIndex] || null;
+  const totalImages = currentManifest?.images.length ?? 0;
+
+  if (totalImages === 0) {
+    return (
+      <div className="text-center mt-10 text-gray-500">
+        No images available in this manifest.
+      </div>
+    );
+  }
 
   const selectedImage = currentManifest.images[selectedImageIndex];
+  const canvasId = selectedImage?.canvasTarget;
 
-  const manifestId = currentManifest.images[selectedImageIndex].canvasTarget;
-  const { canvasWidth, canvasHeight } = getCanvasDimensions(currentManifest, manifestId);
+  let canvasWidth = 1000;
+  let canvasHeight = 1000;
 
+  try {
+    if (canvasId) {
+      const dimensions = getCanvasDimensions(currentManifest, canvasId);
+      canvasWidth = dimensions.canvasWidth;
+      canvasHeight = dimensions.canvasHeight;
+    }
+  } catch (error) {
+    console.warn("Error retrieving canvas dimensions:", error);
+  }
 
-  const imageUrl = selectedImage.imageUrl;
-  const imageType = selectedImage.imageType;
-  const imageWidth = selectedImage.imageWidth || canvasWidth; // Fallback to canvas
-  const imageHeight = selectedImage.imageHeight || canvasHeight;
-
-  
+  const imageUrl = selectedImage?.imageUrl || "";
+  const imageType = selectedImage?.imageType || "standard";
+  const imageWidth = selectedImage?.imageWidth || canvasWidth;
+  const imageHeight = selectedImage?.imageHeight || canvasHeight;
 
   const handlePreviousImage = () => {
     setSelectedImageIndex((prevIndex) =>
@@ -130,16 +168,21 @@ const App: React.FC = () => {
   };
 
   const handlePreviousManifest = () => {
-    setSelectedManifestIndex((prevIndex) =>
-      prevIndex > 0 ? prevIndex - 1 : totalManifests - 1
-    );
-    setSelectedImageIndex(0);
+    setSelectedManifestIndex((prevIndex) => {
+      const newIndex = prevIndex > 0 ? prevIndex - 1 : totalManifests - 1;
+      if (!manifests[newIndex]) fetchManifestByIndex(newIndex);
+      return newIndex;
+    });
+    resetImageIndex();
   };
+
   const handleNextManifest = () => {
-    setSelectedManifestIndex((prevIndex) =>
-      prevIndex < totalManifests - 1 ? prevIndex + 1 : 0
-    );
-    setSelectedImageIndex(0);
+    setSelectedManifestIndex((prevIndex) => {
+      const newIndex = prevIndex < totalManifests - 1 ? prevIndex + 1 : 0;
+      if (!manifests[newIndex]) fetchManifestByIndex(newIndex);
+      return newIndex;
+    });
+    resetImageIndex();
   };
 
   return (
