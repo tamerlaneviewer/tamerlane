@@ -14,7 +14,7 @@ const App: React.FC = () => {
   const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
     iiifContentUrlFromParams
   );
-  const [manifests, setManifests] = useState<any[]>([]);
+  const [currentManifest, setCurrentManifest] = useState<any | null>(null);
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState(0);
@@ -29,22 +29,21 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!iiifContentUrl) return;
 
-    async function fetchManifests() {
+    async function fetchInitialManifest() {
       try {
         const { firstManifest, manifestUrls, total } = await constructManifests(
           iiifContentUrl
         );
-
-        setManifests([firstManifest]); 
-        setManifestUrls(manifestUrls); 
-        setTotalManifests(total); 
+        setCurrentManifest(firstManifest);
+        setManifestUrls(manifestUrls);
+        setTotalManifests(total);
       } catch (error: any) {
         console.error("Error fetching manifests:", error);
         setError(error.message);
       }
     }
 
-    fetchManifests();
+    fetchInitialManifest();
   }, [iiifContentUrl]);
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -59,19 +58,18 @@ const App: React.FC = () => {
   };
 
   const resetImageIndex = () => {
-    setSelectedImageIndex(0); 
+    setSelectedImageIndex(0);
   };
 
   const fetchManifestByIndex = async (index: number) => {
-    if (!manifestUrls[index]) return;
+    if (index < 0 || index >= totalManifests) return;
 
     try {
-      const newManifest = await constructManifests(manifestUrls[index]);
-      setManifests((prevManifests) => {
-        const updatedManifests = [...prevManifests];
-        updatedManifests[index] = newManifest.firstManifest;
-        return updatedManifests;
-      });
+      const manifestUrl = manifestUrls[index];
+      const { firstManifest } = await constructManifests(manifestUrl);
+      setCurrentManifest(firstManifest);
+      setSelectedManifestIndex(index);
+      resetImageIndex();
     } catch (error) {
       console.error("Error fetching new manifest:", error);
       setError(error.message);
@@ -120,11 +118,10 @@ const App: React.FC = () => {
     );
   }
 
-  if (manifests.length === 0) {
+  if (!currentManifest) {
     return <SplashScreen />;
   }
 
-  const currentManifest = manifests[selectedManifestIndex] || null;
   const totalImages = currentManifest?.images.length ?? 0;
 
   if (totalImages === 0) {
@@ -161,6 +158,7 @@ const App: React.FC = () => {
       prevIndex > 0 ? prevIndex - 1 : totalImages - 1
     );
   };
+
   const handleNextImage = () => {
     setSelectedImageIndex((prevIndex) =>
       prevIndex < totalImages - 1 ? prevIndex + 1 : 0
@@ -168,21 +166,11 @@ const App: React.FC = () => {
   };
 
   const handlePreviousManifest = () => {
-    setSelectedManifestIndex((prevIndex) => {
-      const newIndex = prevIndex > 0 ? prevIndex - 1 : totalManifests - 1;
-      if (!manifests[newIndex]) fetchManifestByIndex(newIndex);
-      return newIndex;
-    });
-    resetImageIndex();
+    fetchManifestByIndex(selectedManifestIndex - 1);
   };
 
   const handleNextManifest = () => {
-    setSelectedManifestIndex((prevIndex) => {
-      const newIndex = prevIndex < totalManifests - 1 ? prevIndex + 1 : 0;
-      if (!manifests[newIndex]) fetchManifestByIndex(newIndex);
-      return newIndex;
-    });
-    resetImageIndex();
+    fetchManifestByIndex(selectedManifestIndex + 1);
   };
 
   return (
