@@ -61,8 +61,9 @@ const App: React.FC = () => {
     try {
       const manifestUrl = manifestUrls[index];
       const { firstManifest } = await constructManifests(manifestUrl);
+
       setCurrentManifest(firstManifest);
-      setSelectedManifestIndex(index);
+      setSelectedManifestIndex(!isNaN(index) ? index : 0); //mEnsure a valid index
       setSelectedImageIndex(0);
     } catch (error: any) {
       console.error("Error fetching new manifest:", error);
@@ -175,10 +176,25 @@ const App: React.FC = () => {
     );
   };
 
-  const handlePreviousManifest = () =>
-    fetchManifestByIndex(selectedManifestIndex - 1);
-  const handleNextManifest = () =>
-    fetchManifestByIndex(selectedManifestIndex + 1);
+  const handlePreviousManifest = () => {
+    const newIndex =
+      selectedManifestIndex > 0
+        ? selectedManifestIndex - 1
+        : totalManifests - 1;
+    if (!isNaN(newIndex)) {
+      fetchManifestByIndex(newIndex);
+    }
+  };
+
+  const handleNextManifest = () => {
+    const newIndex =
+      selectedManifestIndex < totalManifests - 1
+        ? selectedManifestIndex + 1
+        : 0;
+    if (!isNaN(newIndex)) {
+      fetchManifestByIndex(newIndex);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -187,6 +203,7 @@ const App: React.FC = () => {
         currentIndex={selectedImageIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}
+        selectedManifestIndex={selectedManifestIndex}
         onPreviousImage={handlePreviousImage}
         onNextImage={handleNextImage}
         onPreviousManifest={handlePreviousManifest}

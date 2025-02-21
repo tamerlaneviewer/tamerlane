@@ -3,24 +3,25 @@ import SearchBar from "./SearchBar.tsx";
 import IIIFControls from "./IIIFControls.tsx";
 import { ReactComponent as Logo } from "../logo.svg";
 
-// ✅ Define the TypeScript interface for props
 interface HeaderProps {
   onSearch: (query: string) => void;
   currentIndex: number;
   totalImages: number;
   totalManifests: number;
+  selectedManifestIndex: number;
   onPreviousImage: () => void;
   onNextImage: () => void;
   onPreviousManifest: () => void;
   onNextManifest: () => void;
+  resetImageIndex: () => void;
 }
 
-// ✅ Header component with IIIF Controls and Search Bar
 const Header: React.FC<HeaderProps> = ({
   onSearch,
   currentIndex,
   totalImages,
   totalManifests,
+  selectedManifestIndex, // ✅ Fix: Use manifest index in UI
   onPreviousImage,
   onNextImage,
   onPreviousManifest,
@@ -29,17 +30,16 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
-      {/* ✅ Left: App Title */}
       <div className="flex items-center">
         <Logo className="h-12 w-12 fill-slate-600" />
         <span className="text-lg font-semibold">Tamerlane</span>
       </div>
 
-      {/* ✅ Center: IIIF Navigation Controls */}
       <IIIFControls
         currentIndex={currentIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}
+        selectedManifestIndex={selectedManifestIndex} // ✅ Fix: Pass manifest index
         onPreviousImage={onPreviousImage}
         onNextImage={onNextImage}
         onPreviousManifest={onPreviousManifest}
@@ -47,7 +47,6 @@ const Header: React.FC<HeaderProps> = ({
         resetImageIndex={resetImageIndex}
       />
 
-      {/* ✅ Right: Search Bar */}
       <div>
         <SearchBar onSearch={onSearch} />
       </div>
