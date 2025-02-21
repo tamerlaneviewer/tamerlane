@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import OpenSeadragon from "openseadragon";
+import SplashScreen from "./SplashScreen.tsx";
 
 // Define props type
 interface IIIFViewerProps {
@@ -22,6 +23,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   // Use proper typing for refs
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     console.log(
@@ -36,7 +38,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       "and imageHeight:",
       imageHeight,
       "and imageWidth:",
-      imageWidth       
+      imageWidth
     );
 
     if (!viewerRef.current) {
@@ -50,12 +52,11 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     const imageHeightInCanvas = canvasWidth / aspectRatio; // Maintain aspect ratio
 
     const imagePosition = {
-      x: (canvasWidth - imageWidthInCanvas) / 2,  // Center horizontally
+      x: (canvasWidth - imageWidthInCanvas) / 2, // Center horizontally
       y: (canvasHeight - imageHeightInCanvas) / 2, // Center vertically
       width: imageWidthInCanvas,
-      height: imageHeightInCanvas 
+      height: imageHeightInCanvas,
     };
-    
 
     const tileSource: string | OpenSeadragon.TileSourceOptions =
       imageType === "iiif"
@@ -72,6 +73,8 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       osdViewerRef.current = null;
     }
 
+    setIsLoading(true);
+
     // Initialize OpenSeadragon
     console.log("🚀 Initializing OpenSeadragon with:", tileSource);
     osdViewerRef.current = OpenSeadragon({
@@ -80,12 +83,20 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       showNavigator: true,
     });
 
-    // Add image at correct position & scale
+    // ✅ Detect when the image is fully loaded
     osdViewerRef.current.addTiledImage({
       tileSource: tileSource,
       x: imagePosition.x,
       y: imagePosition.y,
-      width: imagePosition.width
+      width: imagePosition.width,
+      success: () => {
+        console.log("✅ Image loaded successfully!");
+        setIsLoading(false); // ✅ Hide SplashScreen when loaded
+      },
+      error: (error) => {
+        console.error("❌ Error loading image:", error);
+        setIsLoading(false); // ✅ Hide SplashScreen if error
+      },
     });
 
     // Cleanup function to properly destroy OpenSeadragon on unmount or image change
@@ -98,7 +109,15 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     };
   }, [imageUrl, imageType, canvasWidth, canvasHeight, imageWidth, imageHeight]);
 
-  return <div ref={viewerRef} className="w-full h-full"></div>;
+  return (
+    <div className="w-full h-full relative">
+      {/* Show SplashScreen while loading */}
+      {isLoading && <SplashScreen />}
+
+      {/* OpenSeadragon Viewer */}
+      <div ref={viewerRef} className="w-full h-full"></div>
+    </div>
+  );
 };
 
 export default IIIFViewer;
