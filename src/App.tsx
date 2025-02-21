@@ -6,6 +6,7 @@ import AnnotationsPanel from "./components/AnnotationsPanel.tsx";
 import MetadataPanel from "./components/MetadataPanel.tsx";
 import SplashScreen from "./components/SplashScreen.tsx";
 import { constructManifests, getCanvasDimensions } from "./service/parser.ts";
+import { IIIFManifest } from "./types/index.ts";
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,22 +15,27 @@ const App: React.FC = () => {
   const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
     iiifContentUrlFromParams
   );
-  const [currentManifest, setCurrentManifest] = useState<any | null>(null);
+  const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
+    null
+  );
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
-  const [selectedManifestIndex, setSelectedManifestIndex] = useState(0);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [annotations, setAnnotations] = useState([]);
-  const [manifestMetadata, setManifestMetadata] = useState({});
-  const [itemMetadata, setItemMetadata] = useState({});
-  const [searchResults, setSearchResults] = useState([]);
+  const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+  const [annotations, setAnnotations] = useState<any[]>([]);
+  const [manifestMetadata, setManifestMetadata] = useState<any>({});
+  const [itemMetadata, setItemMetadata] = useState<any>({});
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [showUrlDialog, setShowUrlDialog] = useState(!iiifContentUrl);
+  const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
 
+  /**
+   * Fetches the first manifest when a new URL is provided.
+   */
   useEffect(() => {
     if (!iiifContentUrl) return;
 
-    async function fetchInitialManifest() {
+    const fetchInitialManifest = async () => {
       try {
         const { firstManifest, manifestUrls, total } = await constructManifests(
           iiifContentUrl
@@ -41,26 +47,14 @@ const App: React.FC = () => {
         console.error("Error fetching manifests:", error);
         setError(error.message);
       }
-    }
+    };
 
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
-  const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const url = formData.get("iiifContentUrl") as string;
-    if (url !== iiifContentUrl) {
-      setIiifContentUrl(url);
-      setSearchParams({ "iiif-content": url });
-      setShowUrlDialog(false);
-    }
-  };
-
-  const resetImageIndex = () => {
-    setSelectedImageIndex(0);
-  };
-
+  /**
+   * Fetches a specific manifest when navigating between them.
+   */
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
 
@@ -69,12 +63,30 @@ const App: React.FC = () => {
       const { firstManifest } = await constructManifests(manifestUrl);
       setCurrentManifest(firstManifest);
       setSelectedManifestIndex(index);
-      resetImageIndex();
-    } catch (error) {
+      setSelectedImageIndex(0);
+    } catch (error: any) {
       console.error("Error fetching new manifest:", error);
       setError(error.message);
     }
   };
+
+  /**
+   * Handles submission of a new IIIF content URL.
+   */
+  const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const url = formData.get("iiifContentUrl") as string;
+
+    if (url !== iiifContentUrl) {
+      setIiifContentUrl(url);
+      setSearchParams({ "iiif-content": url });
+      setShowUrlDialog(false);
+    }
+  };
+
+  /** Resets the image index when switching manifests. */
+  const resetImageIndex = () => setSelectedImageIndex(0);
 
   if (showUrlDialog) {
     return (
@@ -118,11 +130,9 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentManifest) {
-    return <SplashScreen />;
-  }
+  if (!currentManifest) return <SplashScreen />;
 
-  const totalImages = currentManifest?.images.length ?? 0;
+  const totalImages = currentManifest.images.length;
 
   if (totalImages === 0) {
     return (
@@ -133,7 +143,7 @@ const App: React.FC = () => {
   }
 
   const selectedImage = currentManifest.images[selectedImageIndex];
-  const canvasId = selectedImage?.canvasTarget;
+  const canvasId = selectedImage?.canvasTarget ?? "";
 
   let canvasWidth = 1000;
   let canvasHeight = 1000;
@@ -148,10 +158,10 @@ const App: React.FC = () => {
     console.warn("Error retrieving canvas dimensions:", error);
   }
 
-  const imageUrl = selectedImage?.imageUrl || "";
-  const imageType = selectedImage?.imageType || "standard";
-  const imageWidth = selectedImage?.imageWidth || canvasWidth;
-  const imageHeight = selectedImage?.imageHeight || canvasHeight;
+  const imageUrl = selectedImage?.imageUrl ?? "";
+  const imageType = selectedImage?.imageType ?? "standard";
+  const imageWidth = selectedImage?.imageWidth ?? canvasWidth;
+  const imageHeight = selectedImage?.imageHeight ?? canvasHeight;
 
   const handlePreviousImage = () => {
     setSelectedImageIndex((prevIndex) =>
@@ -165,13 +175,10 @@ const App: React.FC = () => {
     );
   };
 
-  const handlePreviousManifest = () => {
+  const handlePreviousManifest = () =>
     fetchManifestByIndex(selectedManifestIndex - 1);
-  };
-
-  const handleNextManifest = () => {
+  const handleNextManifest = () =>
     fetchManifestByIndex(selectedManifestIndex + 1);
-  };
 
   return (
     <div className="flex flex-col h-screen">
