@@ -102,30 +102,54 @@ function parseManifest(jsonData: any): IIIFManifest {
 
 async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFManifest | null, manifestUrls: string[], total: number }> {
     const parser = new Maniiifest(jsonData);
+    
     if (parser.getSpecificationType() !== 'Collection') {
         throw new TamerlaneParseError('Invalid IIIF resource type: Collection expected');
     }
-
-    const manifestUrls: string[] = []; // ✅ Ensure consistent naming
+    const manifestUrls: string[] = [];
     let firstManifest: IIIFManifest | null = null;
 
-    for (const item of parser.iterateCollectionManifest()) {
-        const manifestRef = new Maniiifest(item);
-        const manifestId = manifestRef.getManifestId();
-        if (manifestId) {
-            manifestUrls.push(manifestId);
-            if (!firstManifest) {
-                const manifestResource = await fetchResource(manifestId);
-                firstManifest = parseManifest(manifestResource.data);
-                manifestCache.set(manifestId, firstManifest); // ✅ Cache first manifest
+    async function process(parsedJson: any, processedCollections: Set<string>) {
+        if (processedCollections.has(parsedJson.id)) return; 
+        processedCollections.add(parsedJson.id); 
+
+        const parser = new Maniiifest(parsedJson);
+        let foundManifests = false;
+
+        for (const manifestItem of parser.iterateCollectionManifest()) {
+            const manifestRef = new Maniiifest(manifestItem);
+            const manifestId = manifestRef.getManifestId();
+
+            if (manifestId) {
+                manifestUrls.push(manifestId);
+                foundManifests = true;
+
+                if (!firstManifest) {
+                    if (manifestCache.has(manifestId)) {
+                        firstManifest = manifestCache.get(manifestId)!;
+                    } else {
+                        const manifestResource = await fetchResource(manifestId);
+                        firstManifest = parseManifest(manifestResource.data);
+                        manifestCache.set(manifestId, firstManifest);
+                    }
+                }
             }
-        } else {
-            throw new TamerlaneParseError('Manifest ID is null');
+        }
+        if (!foundManifests) {
+            for (const collectionItem of parser.iterateCollectionCollection()) {
+                if (collectionItem.items) {
+                    await process(collectionItem, processedCollections);
+                } else {
+                    const nestedJson = await fetchResource(collectionItem.id);
+                    await process(nestedJson.data, processedCollections);
+                }
+            }
         }
     }
-
-    return { firstManifest, manifestUrls, total: manifestUrls.length }; // ✅ Return consistent structure
+    await process(jsonData, new Set()); 
+    return { firstManifest, manifestUrls, total: manifestUrls.length };
 }
+
 
 async function fetchManifest(manifestId: string): Promise<IIIFManifest> {
     if (manifestCache.has(manifestId)) {
