@@ -81,6 +81,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       element: viewerRef.current,
       prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
       showNavigator: true,
+      crossOriginPolicy: "Anonymous",
     });
 
     // ✅ Detect when the image is fully loaded
