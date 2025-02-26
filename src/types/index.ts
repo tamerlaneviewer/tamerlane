@@ -19,6 +19,8 @@ export interface IIIFImage {
 
 export interface IIIFManifest {
     name: string;
+    metadata: Array<{ label: any; value: any }>; 
+    provider?: Array<{ id?: string; type?: string; label?: any; homepage?: any; logo?: any }>; 
     canvases: IIIFCanvas[];
     images: IIIFImage[];
 }

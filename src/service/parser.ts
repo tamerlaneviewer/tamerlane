@@ -2,7 +2,7 @@ import { Maniiifest } from 'maniiifest';
 import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
 import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
 
-const manifestCache = new Map<string, IIIFManifest>(); // ✅ Caching fetched manifests
+const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
 
 export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): { canvasWidth: number; canvasHeight: number } {
     const canvas = manifest.canvases.find(c => c.id === canvasId);
@@ -70,7 +70,9 @@ function parseManifest(jsonData: any): IIIFManifest {
     }
 
     const labelData: any = parser.getManifestLabelByLanguage('en');
-    const label: string = labelData?.en?.[0] ?? '';
+    const label: string = labelData?.en?.[0] ?? labelData?.none?.[0] ?? 'Untitled Manifest';
+    const metadata = Array.from(parser.iterateManifestMetadata());
+    const provider = Array.from(parser.iterateManifestProvider());
 
     const canvases: IIIFCanvas[] = [];
     for (const canvas of parser.iterateManifestCanvas()) {
@@ -98,8 +100,15 @@ function parseManifest(jsonData: any): IIIFManifest {
         }
     }
 
-    return { name: label, canvases, images };
+    return { 
+        name: label, 
+        metadata, 
+        provider, 
+        canvases, 
+        images 
+    };
 }
+
 
 async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFManifest | null, manifestUrls: string[], total: number }> {
     const parser = new Maniiifest(jsonData);

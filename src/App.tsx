@@ -34,46 +34,61 @@ const App: React.FC = () => {
    */
   useEffect(() => {
     if (!iiifContentUrl) return;
-
+  
     const fetchInitialManifest = async () => {
       try {
-        const { firstManifest, manifestUrls, total } = await constructManifests(
-          iiifContentUrl
-        );
+        const { firstManifest, manifestUrls, total } = await constructManifests(iiifContentUrl);
+        
         setCurrentManifest(firstManifest);
         setManifestUrls(manifestUrls);
         setTotalManifests(total);
+  
+        // ✅ metadata is set when the first manifest loads
+        if (firstManifest) {
+          setManifestMetadata({
+            label: firstManifest.name || "Untitled Manifest",
+            metadata: firstManifest.metadata || [],
+            provider: firstManifest.provider || [],
+          });
+        }
       } catch (error: any) {
         console.error("Error fetching manifests:", error);
         setError(error.message);
       }
     };
-
+  
     fetchInitialManifest();
   }, [iiifContentUrl]);
+  
 
   /**
    * Fetches a specific manifest when navigating between them.
    */
   const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= manifestUrls.length) return; // Ensure we stay within bounds
-
+    if (index < 0 || index >= totalManifests) return;
+  
     try {
-        const manifestUrl = manifestUrls[index];
-        if (!manifestUrl) return; 
-
-        const { firstManifest } = await constructManifests(manifestUrl);
-
-        if (firstManifest) {
-            setCurrentManifest(firstManifest);
-            setSelectedManifestIndex(index);
-            setSelectedImageIndex(0);
-        }
+      const manifestUrl = manifestUrls[index];
+      const { firstManifest } = await constructManifests(manifestUrl);
+  
+      setCurrentManifest(firstManifest);
+      setSelectedManifestIndex(!isNaN(index) ? index : 0);
+      setSelectedImageIndex(0);
+  
+      // Extract and update metadata properly
+      if (firstManifest) {
+        setManifestMetadata({
+          label: firstManifest.name || "Untitled Manifest",
+          metadata: firstManifest.metadata || [],
+          provider: firstManifest.provider || [],
+        });
+      }
     } catch (error: any) {
-        console.error("Error fetching new manifest:", error);
-        setError(error.message);
+      console.error("Error fetching new manifest:", error);
+      setError(error.message);
     }
-};
+  };
+  
 
 
   /**

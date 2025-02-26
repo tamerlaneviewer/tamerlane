@@ -8,37 +8,25 @@ const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
 
   return (
     <div className="flex flex-col h-full flex-grow border shadow-md bg-white">
-      {/* ✅ Tabs with Icons - Matches AnnotationsPanel */}
       <div className="flex border-b">
         <button
-          className={`flex-1 py-2 text-center flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 text-center flex items-center justify-center ${
             activeTab === "manifest" ? "bg-gray-300 font-bold" : "bg-gray-200"
           }`}
           onClick={() => setActiveTab("manifest")}
         >
-          <FileText
-            className={`w-5 h-5 transition-colors ${
-              activeTab === "manifest"
-                ? "text-black font-bold"
-                : "text-gray-500"
-            }`}
-          />
+          <FileText className="w-5 h-5 transition-colors text-gray-700" />
         </button>
         <button
-          className={`flex-1 py-2 text-center flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 text-center flex items-center justify-center ${
             activeTab === "item" ? "bg-gray-300 font-bold" : "bg-gray-200"
           }`}
           onClick={() => setActiveTab("item")}
         >
-          <Image
-            className={`w-5 h-5 transition-colors ${
-              activeTab === "item" ? "text-black font-bold" : "text-gray-500"
-            }`}
-          />
+          <Image className="w-5 h-5 transition-colors text-gray-700" />
         </button>
       </div>
 
-      {/* ✅ Content - Matches AnnotationsPanel */}
       <div className="flex-grow overflow-auto p-3">
         {activeTab === "manifest" ? (
           <ManifestMetadata manifestMetadata={manifestMetadata} />
