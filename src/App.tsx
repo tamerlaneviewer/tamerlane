@@ -56,20 +56,25 @@ const App: React.FC = () => {
    * Fetches a specific manifest when navigating between them.
    */
   const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= totalManifests) return;
+    if (index < 0 || index >= manifestUrls.length) return; // Ensure we stay within bounds
 
     try {
-      const manifestUrl = manifestUrls[index];
-      const { firstManifest } = await constructManifests(manifestUrl);
+        const manifestUrl = manifestUrls[index];
+        if (!manifestUrl) return; 
 
-      setCurrentManifest(firstManifest);
-      setSelectedManifestIndex(!isNaN(index) ? index : 0); //mEnsure a valid index
-      setSelectedImageIndex(0);
+        const { firstManifest } = await constructManifests(manifestUrl);
+
+        if (firstManifest) {
+            setCurrentManifest(firstManifest);
+            setSelectedManifestIndex(index);
+            setSelectedImageIndex(0);
+        }
     } catch (error: any) {
-      console.error("Error fetching new manifest:", error);
-      setError(error.message);
+        console.error("Error fetching new manifest:", error);
+        setError(error.message);
     }
-  };
+};
+
 
   /**
    * Handles submission of a new IIIF content URL.

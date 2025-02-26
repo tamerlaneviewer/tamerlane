@@ -162,7 +162,7 @@ async function fetchManifest(manifestId: string): Promise<IIIFManifest> {
     return parsedManifest;
 }
 
-export async function constructManifests(url: string): Promise<{ firstManifest: IIIFManifest, manifestUrls: string[], total: number }> {
+export async function constructManifests(url: string): Promise<{ firstManifest: IIIFManifest | null, manifestUrls: string[], total: number }> {
     const resource = await fetchResource(url);
 
     if (resource.type === "Manifest") {
@@ -171,12 +171,13 @@ export async function constructManifests(url: string): Promise<{ firstManifest: 
     } else if (resource.type === "Collection") {
         const { firstManifest, manifestUrls, total } = await parseCollection(resource.data);
 
+        if (manifestUrls.length === 0) {
+            return { firstManifest: null, manifestUrls: [], total: 0 };
+        }
+
         if (!firstManifest && manifestUrls.length > 0) {
-            // ✅ Fetch the first manifest if it wasn't already fetched
             const firstFetchedManifest = await fetchManifest(manifestUrls[0]);
             return { firstManifest: firstFetchedManifest, manifestUrls, total };
-        } else if (!firstManifest) {
-            throw new TamerlaneParseError("Collection does not contain any valid manifests.");
         }
 
         return { firstManifest, manifestUrls, total };
@@ -184,3 +185,4 @@ export async function constructManifests(url: string): Promise<{ firstManifest: 
 
     throw new TamerlaneParseError("Unknown IIIF resource type");
 }
+
