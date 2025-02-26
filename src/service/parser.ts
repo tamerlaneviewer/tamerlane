@@ -43,21 +43,22 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
         url = typeof service.id === 'string' ? service.id
             : typeof service["@id"] === 'string' ? service["@id"]
                 : undefined;
+        imageWidth = service.width ?? resource.width;
+        imageHeight = service.height ?? resource.height;        
         type = "iiif";
     }
     if (!url && typeof resource.id === 'string') {
         url = resource.id;
         type = "standard";
+        if (resource.width && resource.height) {
+            imageWidth = resource.width;
+            imageHeight = resource.height;
+        }
     }
     if (!url) {
         throw new TamerlaneParseError("Unable to get image resource id.");
     }
-
-    if (resource.width && resource.height) {
-        imageWidth = resource.width;
-        imageHeight = resource.height;
-    }
-
+    console.log(`Found image: ${url} with type: ${type} and dimensions: ${imageWidth}x${imageHeight}`);
     return { imageUrl: url, imageType: type, imageWidth, imageHeight, canvasTarget };
 }
 
