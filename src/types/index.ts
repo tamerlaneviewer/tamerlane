@@ -3,10 +3,19 @@ export interface IIIFResource {
     data: any;
 }
 
+export interface W3CAnnotation {
+    id: string,
+    motivation: string,
+    text: string
+    format?: string,
+    language?: string
+}
+
 export interface IIIFCanvas {
     id: string;
     canvasWidth?: number;
     canvasHeight?: number;
+    W3CAnnotationIds?: string[]
 }
 
 export interface IIIFImage {
@@ -19,7 +28,7 @@ export interface IIIFImage {
 
 export interface IIIFManifest {
     name: string;
-    metadata: Array<{ label: any; value: any }>; 
+    metadata?: Array<{ label: any; value: any }>; 
     provider?: Array<{ id?: string; type?: string; label?: any; homepage?: any; logo?: any }>; 
     canvases: IIIFCanvas[];
     images: IIIFImage[];
