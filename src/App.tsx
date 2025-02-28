@@ -36,57 +36,46 @@ const App: React.FC = () => {
     if (!iiifContentUrl) return;
   
     const fetchInitialManifest = async () => {
-      try {
-        const { firstManifest, manifestUrls, total } = await constructManifests(iiifContentUrl);
-        
-        setCurrentManifest(firstManifest);
-        setManifestUrls(manifestUrls);
-        setTotalManifests(total);
-  
-        // ✅ metadata is set when the first manifest loads
-        if (firstManifest) {
-          setManifestMetadata({
-            label: firstManifest.name || "Untitled Manifest",
-            metadata: firstManifest.metadata || [],
-            provider: firstManifest.provider || [],
-          });
-        }
-      } catch (error: any) {
-        console.error("Error fetching manifests:", error);
-        setError(error.message);
-      }
+      const { firstManifest, manifestUrls, total } = await constructManifests(iiifContentUrl);
+      handleManifestUpdate(firstManifest, manifestUrls, total);
     };
   
     fetchInitialManifest();
   }, [iiifContentUrl]);
   
-
+  /**
+   * Updates manifest-related state.
+   */
+  const handleManifestUpdate = (
+    firstManifest: IIIFManifest | null,
+    manifestUrls: string[],
+    total: number
+  ) => {
+    setCurrentManifest(firstManifest);
+    setManifestUrls(manifestUrls);
+    setTotalManifests(total);
+  
+    // Ensure metadata updates correctly
+    setManifestMetadata({
+      label: firstManifest?.name || "Untitled Manifest",
+      metadata: firstManifest?.metadata || [],
+      provider: firstManifest?.provider || [],
+    });
+  };
+  
   /**
    * Fetches a specific manifest when navigating between them.
    */
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
   
-    try {
-      const manifestUrl = manifestUrls[index];
-      const { firstManifest } = await constructManifests(manifestUrl);
+    const manifestUrl = manifestUrls[index];
+    const { firstManifest } = await constructManifests(manifestUrl);
+    
+    setSelectedManifestIndex(index);
+    setSelectedImageIndex(0);
   
-      setCurrentManifest(firstManifest);
-      setSelectedManifestIndex(!isNaN(index) ? index : 0);
-      setSelectedImageIndex(0);
-  
-      // Extract and update metadata properly
-      if (firstManifest) {
-        setManifestMetadata({
-          label: firstManifest.name || "Untitled Manifest",
-          metadata: firstManifest.metadata || [],
-          provider: firstManifest.provider || [],
-        });
-      }
-    } catch (error: any) {
-      console.error("Error fetching new manifest:", error);
-      setError(error.message);
-    }
+    handleManifestUpdate(firstManifest, manifestUrls, totalManifests);
   };
   
 
