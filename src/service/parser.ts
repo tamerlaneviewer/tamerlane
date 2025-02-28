@@ -4,6 +4,51 @@ import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } fr
 
 const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
 
+function getAnnotationsIds(parser: Maniiifest): [string[], string[]] {
+    const annotationIds: string[] = [];
+    const targetIds: string[] = [];
+
+    for (const anno of parser.iterateManifestCanvasW3cAnnotation()) {
+        const annoParser = new Maniiifest(anno, "Annotation");
+
+        // Extract targets safely
+        const targets: string[] = Array.from(annoParser.iterateAnnotationTarget())
+            .map(target => (typeof target === "string" ? target : target.value)) // Ensure we extract `target.value`
+            .filter(target => typeof target === "string"); // Filter out anything invalid
+
+        if (targets.length === 0) {
+            throw new TamerlaneParseError("Expected at least one valid canvas target");
+        }
+
+        const id: string | null = annoParser.getAnnotationId();
+        if (!id) {
+            throw new TamerlaneParseError("Missing annotation ID");
+        }
+
+        // Pair the annotation ID with each target
+        for (const canvasTarget of targets) {
+            annotationIds.push(id);
+            targetIds.push(canvasTarget);
+        }
+    }
+
+    return [annotationIds, targetIds]; // ✅ Returns a tuple of paired lists
+}
+
+function getAnnotationIdsForCanvas(
+    annotationData: [string[], string[]], // Accepts the tuple directly
+    canvasTarget: string
+): string[] {
+    const [annotationIds, canvasTargets] = annotationData;
+
+    // Filter annotation IDs where the corresponding target matches `canvasTarget`
+    return annotationIds.filter((_, index) => canvasTargets[index] === canvasTarget);
+}
+
+
+
+
+
 export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): { canvasWidth: number; canvasHeight: number } {
     const canvas = manifest.canvases.find(c => c.id === canvasId);
     if (!canvas) {
@@ -74,12 +119,15 @@ function parseManifest(jsonData: any): IIIFManifest {
     const metadata = Array.from(parser.iterateManifestMetadata());
     const provider = Array.from(parser.iterateManifestProvider());
 
+    const annotationData = getAnnotationsIds(parser);
+
     const canvases: IIIFCanvas[] = [];
     for (const canvas of parser.iterateManifestCanvas()) {
         const id = canvas.id;
         const canvasHeight = canvas.height;
         const canvasWidth = canvas.width;
-        canvases.push({ id, canvasWidth, canvasHeight });
+        const annotationIds = getAnnotationIdsForCanvas(annotationData, id);
+        canvases.push({ id, canvasWidth, canvasHeight, annotationIds });
     }
 
     const images: IIIFImage[] = [];

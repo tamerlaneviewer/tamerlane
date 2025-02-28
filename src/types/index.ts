@@ -15,7 +15,7 @@ export interface IIIFCanvas {
     id: string;
     canvasWidth?: number;
     canvasHeight?: number;
-    W3CAnnotationIds?: string[]
+    annotationIds?: string[]
 }
 
 export interface IIIFImage {
