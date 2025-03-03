@@ -5,8 +5,8 @@ export interface IIIFResource {
 
 export interface W3CAnnotation {
     id: string,
-    motivation: string,
-    text: string
+    motivation?: string,
+    text?: string
     format?: string,
     language?: string
 }
@@ -15,7 +15,6 @@ export interface IIIFCanvas {
     id: string;
     canvasWidth?: number;
     canvasHeight?: number;
-    annotationIds?: string[]
 }
 
 export interface IIIFImage {

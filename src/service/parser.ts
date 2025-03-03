@@ -1,98 +1,8 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index';
-import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index';
+import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
+import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
 
 const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
-
-function getAnnotationIdsForCanvas(
-    annotationData: [string, string][], // Updated to accept an array of tuples
-    canvasTarget: string
-): string[] {
-    return annotationData
-        .filter(([_, target]) => target === canvasTarget)
-        .map(([id, _]) => id);
-}
-
-function processAnnotationWorker(parser: Maniiifest): [string, string][] {
-    const annotationPairs: [string, string][] = [];
-
-    for (const anno of parser.iterateAnnotationPageAnnotation()) {
-        const annoParser = new Maniiifest(anno, "Annotation");
-
-        // Extract targets and ensure they are strings
-        const targets: string[] = Array.from(annoParser.iterateAnnotationTarget()).map((target: any) => {
-            if (typeof target === "string") {
-                return target;
-            }
-
-            // Handle cases where the target is an object with a string inside
-            if (target && typeof target === "object") {
-                if (typeof target.source === "string") {
-                    return target.source;
-                }
-                if (typeof target.id === "string") {
-                    return target.id;
-                }
-            }
-
-            throw new TamerlaneParseError(`Invalid annotation target: ${JSON.stringify(target)}`);
-        });
-
-        if (targets.length === 0) {
-            throw new TamerlaneParseError("Expected at least one valid canvas target");
-        }
-
-        const id: string | null = annoParser.getAnnotationId();
-        if (!id) {
-            throw new TamerlaneParseError("Missing annotation ID");
-        }
-
-        // Store annotation ID and canvas ID as pairs
-        for (const canvasTarget of targets) {
-            annotationPairs.push([id, canvasTarget]);
-        }
-    }
-
-    return annotationPairs;
-}
-
-
-async function processAnnotations(parser: any) {
-    let annotationData: [string, string][] = [];
-    let currentParser = parser;
-    while (currentParser) {
-        const pairs = Array.from(processAnnotationWorker(currentParser));
-        annotationData = annotationData.concat(pairs);
-        // Move to the next annotation page if available
-        const annotationPage = currentParser.getAnnotationPage();
-        if (annotationPage && annotationPage.next) {
-            const nextPageUrl = annotationPage.next;
-            const annotationPageResource = await fetchResource(nextPageUrl);
-            if (!annotationPageResource) {
-                throw new TamerlaneNetworkError('No JSON data returned from annotation page');
-            }
-            currentParser = new Maniiifest(annotationPageResource.data, "AnnotationPage");
-        } else {
-            currentParser = null;
-        }
-    }
-    return annotationData;
-}
-
-async function processAnnotationPageRef(annotationPageUrl: string) {
-    const annotationPageResource = await fetchResource(annotationPageUrl);
-    const parser = new Maniiifest(annotationPageResource.data, "AnnotationPage");
-    return await processAnnotations(parser);
-}
-
-async function processAnnotationPage(page: any) {
-    const parser = new Maniiifest(page, "AnnotationPage");
-    return await processAnnotations(parser);
-}
-
-
-
-
 
 
 export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): { canvasWidth: number; canvasHeight: number } {
@@ -164,25 +74,13 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     const label: string = labelData?.en?.[0] ?? labelData?.none?.[0] ?? 'Untitled Manifest';
     const metadata = Array.from(parser.iterateManifestMetadata());
     const provider = Array.from(parser.iterateManifestProvider());
-    let annotationData: [string, string][] = [];
-    const annotationPages = parser.iterateManifestCanvasW3cAnnotationPage();
-    for (const page of annotationPages) {
-        if (page.items) {
-            annotationData = await processAnnotationPage(page);
-        } else {
-            annotationData = await processAnnotationPageRef(page.id);
-        }
-    }
     
-    console.log(annotationData);
-
     const canvases: IIIFCanvas[] = [];
     for (const canvas of parser.iterateManifestCanvas()) {
         const id = canvas.id;
         const canvasHeight = canvas.height;
         const canvasWidth = canvas.width;
-        const annotationIds = getAnnotationIdsForCanvas(annotationData, id);
-        canvases.push({ id, canvasWidth, canvasHeight, annotationIds });
+        canvases.push({ id, canvasWidth, canvasHeight });
     }
 
     const images: IIIFImage[] = [];
@@ -282,7 +180,8 @@ export async function constructManifests(url: string): Promise<{ firstManifest: 
 
     if (resource.type === "Manifest") {
         const parsedManifest = await parseManifest(resource.data);
-        return { firstManifest: parsedManifest, manifestUrls: [], total: 1 };
+        const manifestUrls = [url]; // Add the single manifest URL to the array
+        return { firstManifest: parsedManifest, manifestUrls, total: 1 };
     } else if (resource.type === "Collection") {
         const { firstManifest, manifestUrls, total } = await parseCollection(resource.data);
 
