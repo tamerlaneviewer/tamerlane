@@ -1,20 +1,33 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
-import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
+import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index';
+import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index';
 
 const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
 
-function getAnnotationsIds(parser: Maniiifest): [string[], string[]] {
-    const annotationIds: string[] = [];
-    const targetIds: string[] = [];
+function getAnnotationsIds(parser: Maniiifest): [string, string][] {
+    const annotationPairs: [string, string][] = [];
 
     for (const anno of parser.iterateManifestCanvasW3cAnnotation()) {
         const annoParser = new Maniiifest(anno, "Annotation");
 
-        // Extract targets safely
-        const targets: string[] = Array.from(annoParser.iterateAnnotationTarget())
-            .map(target => (typeof target === "string" ? target : target.value)) // Ensure we extract `target.value`
-            .filter(target => typeof target === "string"); // Filter out anything invalid
+        // Extract targets and ensure they are strings
+        const targets: string[] = Array.from(annoParser.iterateAnnotationTarget()).map((target: any) => {
+            if (typeof target === "string") {
+                return target;
+            }
+
+            // Handle cases where the target is an object with a string inside
+            if (target && typeof target === "object") {
+                if (typeof target.source === "string") {
+                    return target.source;
+                }
+                if (typeof target.id === "string") {
+                    return target.id;
+                }
+            }
+
+            throw new TamerlaneParseError(`Invalid annotation target: ${JSON.stringify(target)}`);
+        });
 
         if (targets.length === 0) {
             throw new TamerlaneParseError("Expected at least one valid canvas target");
@@ -25,27 +38,24 @@ function getAnnotationsIds(parser: Maniiifest): [string[], string[]] {
             throw new TamerlaneParseError("Missing annotation ID");
         }
 
-        // Pair the annotation ID with each target
+        // Store annotation ID and canvas ID as pairs
         for (const canvasTarget of targets) {
-            annotationIds.push(id);
-            targetIds.push(canvasTarget);
+            annotationPairs.push([id, canvasTarget]);
         }
     }
 
-    return [annotationIds, targetIds]; // ✅ Returns a tuple of paired lists
+    return annotationPairs; 
 }
+
 
 function getAnnotationIdsForCanvas(
-    annotationData: [string[], string[]], // Accepts the tuple directly
+    annotationData: [string, string][], // Updated to accept an array of tuples
     canvasTarget: string
 ): string[] {
-    const [annotationIds, canvasTargets] = annotationData;
-
-    // Filter annotation IDs where the corresponding target matches `canvasTarget`
-    return annotationIds.filter((_, index) => canvasTargets[index] === canvasTarget);
+    return annotationData
+        .filter(([_, target]) => target === canvasTarget)
+        .map(([id, _]) => id);
 }
-
-
 
 
 
@@ -89,7 +99,7 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
             : typeof service["@id"] === 'string' ? service["@id"]
                 : undefined;
         imageWidth = service.width ?? resource.width;
-        imageHeight = service.height ?? resource.height;        
+        imageHeight = service.height ?? resource.height;
         type = "iiif";
     }
     if (!url && typeof resource.id === 'string') {
@@ -103,7 +113,7 @@ function getImage(resource: any, canvasTarget: string): IIIFImage {
     if (!url) {
         throw new TamerlaneParseError("Unable to get image resource id.");
     }
-    console.log(`Found image: ${url} with type: ${type} and dimensions: ${imageWidth}x${imageHeight}`);
+    //console.log(`Found image: ${url} with type: ${type} and dimensions: ${imageWidth}x${imageHeight}`);
     return { imageUrl: url, imageType: type, imageWidth, imageHeight, canvasTarget };
 }
 
@@ -148,19 +158,19 @@ function parseManifest(jsonData: any): IIIFManifest {
         }
     }
 
-    return { 
-        name: label, 
-        metadata, 
-        provider, 
-        canvases, 
-        images 
+    return {
+        name: label,
+        metadata,
+        provider,
+        canvases,
+        images
     };
 }
 
 
 async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFManifest | null, manifestUrls: string[], total: number }> {
     const parser = new Maniiifest(jsonData);
-    
+
     if (parser.getSpecificationType() !== 'Collection') {
         throw new TamerlaneParseError('Invalid IIIF resource type: Collection expected');
     }
@@ -168,8 +178,8 @@ async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFMani
     let firstManifest: IIIFManifest | null = null;
 
     async function process(parsedJson: any, processedCollections: Set<string>) {
-        if (processedCollections.has(parsedJson.id)) return; 
-        processedCollections.add(parsedJson.id); 
+        if (processedCollections.has(parsedJson.id)) return;
+        processedCollections.add(parsedJson.id);
 
         const parser = new Maniiifest(parsedJson);
         let foundManifests = false;
@@ -204,7 +214,7 @@ async function parseCollection(jsonData: any): Promise<{ firstManifest: IIIFMani
             }
         }
     }
-    await process(jsonData, new Set()); 
+    await process(jsonData, new Set());
     return { firstManifest, manifestUrls, total: manifestUrls.length };
 }
 
@@ -244,3 +254,11 @@ export async function constructManifests(url: string): Promise<{ firstManifest: 
     throw new TamerlaneParseError("Unknown IIIF resource type");
 }
 
+
+constructManifests("https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/manifest.json")
+    .then(manifest => console.log(JSON.stringify(manifest, null, 2))) // Pretty-print JSON
+    .catch(console.error);
+
+//   constructManifests("https://iiif.wellcomecollection.org/presentation/b19974760_1_0007")
+//   .then(manifest => console.log(JSON.stringify(manifest, null, 2))) // Pretty-print JSON
+//   .catch(console.error);  
