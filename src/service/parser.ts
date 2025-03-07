@@ -218,8 +218,8 @@ export async function constructManifests(
 //     .then(manifest => console.log(JSON.stringify(manifest, null, 2))) // Pretty-print JSON
 //     .catch(console.error);
 
-constructManifests(
-  'https://iiif.wellcomecollection.org/presentation/b19974760_1_0007',
-)
-  .then((manifest) => console.log(JSON.stringify(manifest, null, 2))) // Pretty-print JSON
-  .catch(console.error);
+// constructManifests(
+//   'https://iiif.wellcomecollection.org/presentation/b19974760_1_0007',
+// )
+//   .then((manifest) => console.log(JSON.stringify(manifest, null, 2))) // Pretty-print JSON
+//   .catch(console.error);

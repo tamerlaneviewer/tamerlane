@@ -1,12 +1,20 @@
 import React, { useState } from "react";
 import { BookOpen, Search } from "lucide-react";
+import AnnotationsList from "./AnnotationsList.tsx";
+import { AnnotationText } from "../types/index"; // Ensure correct import
 
-const AnnotationsPanel = ({ annotations, searchResults }: { annotations: any[], searchResults: any[] }) => {
-  const [activeTab, setActiveTab] = useState("annotations");
+// ✅ Explicitly define the expected prop types
+interface AnnotationsPanelProps {
+  annotations: AnnotationText[];
+  searchResults: { title: string }[];
+}
+
+const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({ annotations, searchResults }) => {
+  const [activeTab, setActiveTab] = useState<"annotations" | "searchResults">("annotations");
 
   return (
     <div className="flex flex-col h-full border shadow-md bg-white">
-      {/* ✅ Tabs with Icons - Matches MetadataPanel */}
+      {/* Tabs Section */}
       <div className="flex border-b">
         <button
           className={`flex-1 py-2 text-center flex items-center justify-center gap-2 ${
@@ -14,7 +22,7 @@ const AnnotationsPanel = ({ annotations, searchResults }: { annotations: any[], 
           }`}
           onClick={() => setActiveTab("annotations")}
         >
-          <BookOpen className={`w-5 h-5 transition-colors ${activeTab === "annotations" ? "text-black font-bold" : "text-gray-500"}`} />
+          <BookOpen className="w-5 h-5 transition-colors text-gray-500" />
         </button>
         <button
           className={`flex-1 py-2 text-center flex items-center justify-center gap-2 ${
@@ -22,21 +30,17 @@ const AnnotationsPanel = ({ annotations, searchResults }: { annotations: any[], 
           }`}
           onClick={() => setActiveTab("searchResults")}
         >
-          <Search className={`w-5 h-5 transition-colors ${activeTab === "searchResults" ? "text-black font-bold" : "text-gray-500"}`} />
+          <Search className="w-5 h-5 transition-colors text-gray-500" />
         </button>
       </div>
 
-      {/* ✅ Content - Matches MetadataPanel */}
-      <div className="flex-grow overflow-auto p-3">
+      {/* ✅ Scrollable Content Section */}
+      <div className="flex-grow overflow-y-auto p-3 max-h-[400px]">
         {activeTab === "annotations" ? (
           annotations.length === 0 ? (
             <p className="text-gray-500">No annotations available.</p>
           ) : (
-            annotations.map((annotation, index) => (
-              <div key={index} className="border p-2 mb-2 rounded bg-white shadow">
-                {annotation.text}
-              </div>
-            ))
+            <AnnotationsList annotations={annotations} />
           )
         ) : (
           searchResults.length === 0 ? (

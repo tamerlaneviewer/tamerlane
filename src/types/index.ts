@@ -7,9 +7,9 @@ export interface AnnotationText {
     id: string;
     motivation: string | string[];
     target: string;
-    body: any[];
-  };
-
+    body: { value?: string }[]; 
+}
+  
 export interface W3CAnnotation {
     id: string,
     motivation?: string,

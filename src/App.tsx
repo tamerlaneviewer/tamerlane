@@ -6,7 +6,8 @@ import AnnotationsPanel from "./components/AnnotationsPanel.tsx";
 import MetadataPanel from "./components/MetadataPanel.tsx";
 import SplashScreen from "./components/SplashScreen.tsx";
 import { constructManifests, getCanvasDimensions } from "./service/parser.ts";
-import { IIIFManifest } from "./types/index.ts";
+import { getAnnotationsForTarget } from "./service/annotation.ts";
+import { IIIFManifest, AnnotationText } from "./types/index.ts";
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,16 +19,42 @@ const App: React.FC = () => {
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
     null
   );
+  
+  const [canvasId, setCanvasId] = useState<string>("");
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  const [annotations, setAnnotations] = useState<any[]>([]);
+  const [annotations, setAnnotations] = useState<AnnotationText[]>([]);
   const [manifestMetadata, setManifestMetadata] = useState<any>({});
   const [itemMetadata, setItemMetadata] = useState<any>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
+
+  useEffect(() => {
+    if (currentManifest && selectedImageIndex >= 0) {
+      const selectedImage = currentManifest.images[selectedImageIndex];
+      setCanvasId(selectedImage?.canvasTarget || ""); // Update canvasId
+    }
+  }, [currentManifest, selectedImageIndex]); // Runs when manifest or image index changes
+
+  useEffect(() => {
+    if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
+    const manifestUrl = manifestUrls[0]; // Get first item in manifestUrls array
+    const fetchAnnotations = async () => {
+      try {
+        const results = await getAnnotationsForTarget(manifestUrl, canvasId);
+        setAnnotations(results); // Update annotations state
+      } catch (error) {
+        console.error("Error fetching annotations:", error);
+        setAnnotations([]); // Reset if error occurs
+      }
+    };
+    fetchAnnotations();
+  }, [currentManifest, canvasId]); // Runs when manifest or canvasId changes
+  
+
 
   /**
    * Fetches the first manifest when a new URL is provided.
@@ -153,7 +180,6 @@ const App: React.FC = () => {
   }
 
   const selectedImage = currentManifest.images[selectedImageIndex];
-  const canvasId = selectedImage?.canvasTarget ?? "";
 
   let canvasWidth = 1000;
   let canvasHeight = 1000;
