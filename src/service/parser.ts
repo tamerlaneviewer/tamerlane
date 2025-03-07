@@ -1,6 +1,8 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFResource, IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
-import { TamerlaneResourceError, TamerlaneNetworkError, TamerlaneParseError } from '../errors/index.ts';
+import { IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
+import { TamerlaneParseError } from '../errors/index.ts';
+import { fetchResource } from './utils.ts';
+
 
 const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
 
@@ -14,23 +16,6 @@ export function getCanvasDimensions(manifest: IIIFManifest, canvasId: string): {
         canvasWidth: canvas.canvasWidth ?? 1000,
         canvasHeight: canvas.canvasHeight ?? 1000
     };
-}
-
-async function fetchResource(url: string): Promise<IIIFResource> {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new TamerlaneNetworkError(`HTTP error! status: ${response.status}`);
-        }
-        const data: any = await response.json();
-        if (data.type !== "Manifest" && data.type !== "Collection" && data.type !== "AnnotationPage") {
-            throw new TamerlaneParseError(`Invalid IIIF resource type: ${data.type}`);
-        }
-        return { type: data.type, data };
-    } catch (error) {
-        console.error('Error fetching IIIF resource:', error);
-        throw new TamerlaneResourceError('Error fetching IIIF resource');
-    }
 }
 
 function getImage(resource: any, canvasTarget: string): IIIFImage {

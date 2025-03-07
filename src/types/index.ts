@@ -3,6 +3,13 @@ export interface IIIFResource {
     data: any;
 }
 
+export interface AnnotationText {
+    id: string;
+    motivation: string | string[];
+    target: string;
+    body: any[];
+  };
+
 export interface W3CAnnotation {
     id: string,
     motivation?: string,
