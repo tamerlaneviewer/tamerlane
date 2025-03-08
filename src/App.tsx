@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import Header from "./components/Header.tsx";
-import IIIFViewer from "./components/IIIFViewer.tsx";
-import AnnotationsPanel from "./components/AnnotationsPanel.tsx";
-import MetadataPanel from "./components/MetadataPanel.tsx";
-import SplashScreen from "./components/SplashScreen.tsx";
-import { constructManifests, getCanvasDimensions } from "./service/parser.ts";
-import { getAnnotationsForTarget } from "./service/annotation.ts";
-import { IIIFManifest, AnnotationText } from "./types/index.ts";
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import Header from './components/Header.tsx';
+import IIIFViewer from './components/IIIFViewer.tsx';
+import AnnotationsPanel from './components/AnnotationsPanel.tsx';
+import MetadataPanel from './components/MetadataPanel.tsx';
+import SplashScreen from './components/SplashScreen.tsx';
+import { constructManifests, getCanvasDimensions } from './service/parser.ts';
+import { getAnnotationsForTarget } from './service/annotation.ts';
+import { IIIFManifest, AnnotationText } from './types/index.ts';
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const iiifContentUrlFromParams = searchParams.get("iiif-content");
+  const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
   const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
-    iiifContentUrlFromParams
+    iiifContentUrlFromParams,
   );
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
-    null
+    null,
   );
-  
-  const [canvasId, setCanvasId] = useState<string>("");
+
+  const [canvasId, setCanvasId] = useState<string>('');
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
@@ -35,77 +35,78 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
-      setCanvasId(selectedImage?.canvasTarget || ""); // Update canvasId
+      setCanvasId(selectedImage?.canvasTarget || ''); // Update canvasId
     }
   }, [currentManifest, selectedImageIndex]); // Runs when manifest or image index changes
 
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
-    const manifestUrl = manifestUrls[0]; // Get first item in manifestUrls array
+
+    // Ensure we fetch annotations for the current manifest
+    const manifestUrl = manifestUrls[selectedManifestIndex];
+
     const fetchAnnotations = async () => {
       try {
         const results = await getAnnotationsForTarget(manifestUrl, canvasId);
-        setAnnotations(results); // Update annotations state
+        setAnnotations(results);
       } catch (error) {
-        console.error("Error fetching annotations:", error);
+        console.error('Error fetching annotations:', error);
         setAnnotations([]); // Reset if error occurs
       }
     };
-    fetchAnnotations();
-  }, [currentManifest, canvasId]); // Runs when manifest or canvasId changes
-  
 
+    fetchAnnotations();
+  }, [currentManifest, canvasId, selectedManifestIndex]); // Add selectedManifestIndex dependency
 
   /**
    * Fetches the first manifest when a new URL is provided.
    */
   useEffect(() => {
     if (!iiifContentUrl) return;
-  
+
     const fetchInitialManifest = async () => {
-      const { firstManifest, manifestUrls, total } = await constructManifests(iiifContentUrl);
+      const { firstManifest, manifestUrls, total } =
+        await constructManifests(iiifContentUrl);
       handleManifestUpdate(firstManifest, manifestUrls, total);
     };
-  
+
     fetchInitialManifest();
   }, [iiifContentUrl]);
-  
+
   /**
    * Updates manifest-related state.
    */
   const handleManifestUpdate = (
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
-    total: number
+    total: number,
   ) => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
     setTotalManifests(total);
-  
+
     // Ensure metadata updates correctly
     setManifestMetadata({
-      label: firstManifest?.name || "Untitled Manifest",
+      label: firstManifest?.name || 'Untitled Manifest',
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
   };
-  
+
   /**
    * Fetches a specific manifest when navigating between them.
    */
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
-  
+
     const manifestUrl = manifestUrls[index];
     const { firstManifest } = await constructManifests(manifestUrl);
-    
+
     setSelectedManifestIndex(index);
     setSelectedImageIndex(0);
-  
+
     handleManifestUpdate(firstManifest, manifestUrls, totalManifests);
   };
-  
-
 
   /**
    * Handles submission of a new IIIF content URL.
@@ -113,11 +114,11 @@ const App: React.FC = () => {
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const url = formData.get("iiifContentUrl") as string;
+    const url = formData.get('iiifContentUrl') as string;
 
     if (url !== iiifContentUrl) {
       setIiifContentUrl(url);
-      setSearchParams({ "iiif-content": url });
+      setSearchParams({ 'iiif-content': url });
       setShowUrlDialog(false);
     }
   };
@@ -191,23 +192,23 @@ const App: React.FC = () => {
       canvasHeight = dimensions.canvasHeight;
     }
   } catch (error) {
-    console.warn("Error retrieving canvas dimensions:", error);
+    console.warn('Error retrieving canvas dimensions:', error);
   }
 
-  const imageUrl = selectedImage?.imageUrl ?? "";
-  const imageType = selectedImage?.imageType ?? "standard";
+  const imageUrl = selectedImage?.imageUrl ?? '';
+  const imageType = selectedImage?.imageType ?? 'standard';
   const imageWidth = selectedImage?.imageWidth ?? canvasWidth;
   const imageHeight = selectedImage?.imageHeight ?? canvasHeight;
 
   const handlePreviousImage = () => {
     setSelectedImageIndex((prevIndex) =>
-      prevIndex > 0 ? prevIndex - 1 : totalImages - 1
+      prevIndex > 0 ? prevIndex - 1 : totalImages - 1,
     );
   };
 
   const handleNextImage = () => {
     setSelectedImageIndex((prevIndex) =>
-      prevIndex < totalImages - 1 ? prevIndex + 1 : 0
+      prevIndex < totalImages - 1 ? prevIndex + 1 : 0,
     );
   };
 
