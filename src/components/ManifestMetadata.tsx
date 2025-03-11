@@ -22,13 +22,12 @@ const ManifestMetadata = ({ manifestMetadata }) => {
   };
 
   const renderHTML = (value) => {
-    // Ensure value is a string before applying replace
     const safeString = typeof value === "string" ? value.replace(/\n/g, "<br />") : getValue(value);
     return { __html: DOMPurify.sanitize(safeString) };
   };
 
   return (
-    <div className="max-h-[400px] overflow-auto p-4 bg-white">
+    <div className="flex flex-col flex-grow h-full overflow-auto p-4 bg-white">
       {/* Manifest Label */}
       {manifestMetadata.label && (
         <div className="mb-4">

@@ -27,7 +27,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({ annotations = [] }) =
   };
 
   return (
-    <div>
+    <div className="flex flex-col flex-grow h-full overflow-auto p-3">
       {annotations.map((annotation, index) => (
         <div key={index} className="mb-2">
           {/* Use dangerouslySetInnerHTML for sanitized and formatted text */}
