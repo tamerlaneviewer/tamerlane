@@ -31,6 +31,8 @@ const App: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
+  const [selectedAnnotation, setSelectedAnnotation] =
+    useState<AnnotationText | null>(null);
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -232,6 +234,11 @@ const App: React.FC = () => {
     }
   };
 
+  // Function to handle annotation selection
+  const handleAnnotationSelect = (annotation: AnnotationText) => {
+    setSelectedAnnotation(annotation);
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <Header
@@ -264,6 +271,7 @@ const App: React.FC = () => {
               canvasHeight={canvasHeight}
               imageWidth={imageWidth}
               imageHeight={imageHeight}
+              selectedAnnotation={selectedAnnotation}
             />
           </div>
         </div>
@@ -272,6 +280,7 @@ const App: React.FC = () => {
           <AnnotationsPanel
             annotations={annotations}
             searchResults={searchResults}
+            onAnnotationSelect={handleAnnotationSelect}
           />
         </div>
       </div>

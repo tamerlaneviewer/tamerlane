@@ -1,15 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
-import OpenSeadragon from "openseadragon";
-import SplashScreen from "./SplashScreen.tsx";
+import React, { useEffect, useRef, useState } from 'react';
+import OpenSeadragon from 'openseadragon';
+import SplashScreen from './SplashScreen.tsx';
+import { AnnotationText } from '../types/index';
 
 // Define props type
 interface IIIFViewerProps {
   imageUrl: string;
-  imageType: "standard" | "iiif";
+  imageType: 'standard' | 'iiif';
   canvasWidth: number;
   canvasHeight: number;
   imageWidth: number;
   imageHeight: number;
+  selectedAnnotation: AnnotationText | null;
 }
 
 const IIIFViewer: React.FC<IIIFViewerProps> = ({
@@ -19,100 +21,125 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   canvasHeight,
   imageWidth,
   imageHeight,
+  selectedAnnotation,
 }) => {
-  // Use proper typing for refs
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    console.log(
-      "🔄 Updating IIIFViewer with imageUrl:",
+    console.log('🔄 Initializing IIIFViewer:', {
       imageUrl,
-      "and imageType:",
       imageType,
-      "and canvasHeight:",
-      canvasHeight,
-      "and canvasWidth:",
       canvasWidth,
-      "and imageHeight:",
+      canvasHeight,
+      imageWidth,
       imageHeight,
-      "and imageWidth:",
-      imageWidth
-    );
+    });
 
     if (!viewerRef.current) {
-      console.warn("⚠️ viewerRef is not assigned.");
+      console.warn('⚠️ viewerRef is not assigned.');
       return;
     }
 
-    // Compute scaling to fit image into canvas space
-    const aspectRatio = imageWidth / imageHeight;
-    const imageWidthInCanvas = canvasWidth;
-    const imageHeightInCanvas = canvasWidth / aspectRatio; // Maintain aspect ratio
-
-    const imagePosition = {
-      x: (canvasWidth - imageWidthInCanvas) / 2, // Center horizontally
-      y: (canvasHeight - imageHeightInCanvas) / 2, // Center vertically
-      width: imageWidthInCanvas,
-      height: imageHeightInCanvas,
-    };
-
     const tileSource: string | OpenSeadragon.TileSourceOptions =
-      imageType === "iiif"
-        ? imageUrl
-        : {
-            type: "image",
-            url: imageUrl, // Load standard images as simple images
-          };
+      imageType === 'iiif' ? imageUrl : { type: 'image', url: imageUrl };
 
-    // Destroy existing viewer before creating a new one
     if (osdViewerRef.current) {
-      console.log("🛑 Destroying existing OpenSeadragon instance...");
       osdViewerRef.current.destroy();
       osdViewerRef.current = null;
     }
 
     setIsLoading(true);
 
-    // Initialize OpenSeadragon
-    console.log("🚀 Initializing OpenSeadragon with:", tileSource);
     osdViewerRef.current = OpenSeadragon({
       element: viewerRef.current,
-      prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+      prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
       showNavigator: true,
-      crossOriginPolicy: "Anonymous",
+      crossOriginPolicy: 'Anonymous',
     });
 
-    // ✅ Detect when the image is fully loaded
     osdViewerRef.current.addTiledImage({
       tileSource: tileSource,
-      x: imagePosition.x,
-      y: imagePosition.y,
-      width: imagePosition.width,
       success: () => {
-        console.log("✅ Image loaded successfully!");
-        setIsLoading(false); // ✅ Hide SplashScreen when loaded
+        console.log('✅ Image loaded successfully!');
+        setIsLoading(false);
       },
       error: (error) => {
-        console.error("❌ Error loading image:", error);
-        setIsLoading(false); // ✅ Hide SplashScreen if error
+        console.error('❌ Error loading image:', error);
+        setIsLoading(false);
       },
     });
 
-    // Cleanup function to properly destroy OpenSeadragon on unmount or image change
     return () => {
       if (osdViewerRef.current) {
-        console.log("🧹 Cleaning up OpenSeadragon instance...");
         osdViewerRef.current.destroy();
         osdViewerRef.current = null;
       }
     };
   }, [imageUrl, imageType, canvasWidth, canvasHeight, imageWidth, imageHeight]);
 
+  useEffect(() => {
+    if (!selectedAnnotation || !osdViewerRef.current) return;
+
+    console.log(
+      '🖼 Highlighting bounding box for annotation:',
+      selectedAnnotation,
+    );
+
+    const target = selectedAnnotation.target;
+    let bbox: number[] | null = null;
+
+    if (typeof target === 'string' && target.includes('#xywh=')) {
+      bbox = target.split('#xywh=')[1].split(',').map(Number);
+    } else if (
+      typeof target === 'object' &&
+      'id' in target &&
+      target.id.includes('#xywh=')
+    ) {
+      bbox = target.id.split('#xywh=')[1].split(',').map(Number);
+    }
+
+    if (!bbox || bbox.length !== 4) return;
+    const [x, y, width, height] = bbox;
+
+    // Convert annotation coordinates to viewport coordinates
+    const viewportRect = osdViewerRef.current.viewport.imageToViewportRectangle(
+      x,
+      y,
+      width,
+      height,
+    );
+    console.log('📏 Converted Bounding Box:', viewportRect);
+
+    // Ensure the overlay div exists or create a new one
+    let overlayDiv = overlayRef.current;
+    if (!overlayDiv) {
+      overlayDiv = document.createElement('div');
+      overlayDiv.style.position = 'absolute';
+      overlayDiv.style.pointerEvents = 'none';
+      overlayDiv.style.border = '2px solid red';
+      overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+      overlayDiv.id = 'annotation-overlay';
+      overlayRef.current = overlayDiv;
+    }
+
+    // Remove any previous overlays
+    osdViewerRef.current.clearOverlays();
+
+    // Set new overlay position relative to OpenSeadragon’s viewport
+    osdViewerRef.current.addOverlay({
+      element: overlayDiv,
+      location: viewportRect,
+    });
+
+    // Force OpenSeadragon to refresh & display the overlay
+    osdViewerRef.current.forceRedraw();
+  }, [selectedAnnotation]);
+
   return (
     <div className="w-full h-full relative">
-      {/* Show SplashScreen while loading */}
       {isLoading && <SplashScreen />}
 
       {/* OpenSeadragon Viewer */}
