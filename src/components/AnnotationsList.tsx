@@ -19,25 +19,15 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     return <p className="text-gray-500 text-center">No annotations found.</p>;
   }
 
-  // Function to extract and sanitize annotation text
-  const renderHTML = (annotation: AnnotationText) => {
-    const annotationText = Array.isArray(annotation.body)
-      ? annotation.body.find((item) => typeof item.value === 'string')?.value ||
-        'No text available'
-      : 'No text available';
-
-    // Ensure text is formatted properly (replace newlines with <br />)
-    const safeString =
-      typeof annotationText === 'string'
-        ? annotationText.replace(/\n/g, '<br />')
-        : annotationText;
-
+  // Function to sanitize annotation text
+  const renderHTML = (text: string) => {
+    const safeString = text.replace(/\n/g, '<br />');
     return { __html: DOMPurify.sanitize(safeString) };
   };
 
   return (
     <div className="flex flex-col flex-grow h-full overflow-auto p-2">
-      {annotations.map((annotation, index) => {
+      {annotations.map((annotation: AnnotationText, index) => {
         const isSelected = selectedAnnotation === annotation;
 
         return (
@@ -53,11 +43,24 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               onAnnotationSelect(annotation);
             }}
           >
-            {/* Use dangerouslySetInnerHTML for sanitized and formatted text */}
-            <p
-              className="text-sm text-gray-700 leading-tight"
-              dangerouslySetInnerHTML={renderHTML(annotation)}
-            />
+            {Array.isArray(annotation.body) && annotation.body.length > 0 ? (
+              annotation.body
+                .filter(
+                  (item: { value?: string }) =>
+                    typeof item.value === 'string' && item.value.trim() !== '',
+                )
+                .map((item: { value?: string }, itemIndex: number) => (
+                  <p
+                    key={itemIndex}
+                    className="text-sm text-gray-700 leading-tight"
+                    dangerouslySetInnerHTML={renderHTML(item.value as string)}
+                  />
+                ))
+            ) : (
+              <p className="text-sm text-gray-700 leading-tight">
+                No text available
+              </p>
+            )}
           </div>
         );
       })}
