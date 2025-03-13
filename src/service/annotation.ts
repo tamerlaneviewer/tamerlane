@@ -1,5 +1,5 @@
 import { Maniiifest } from 'maniiifest';
-import { fetchResource } from './utils.ts';
+import { fetchResource } from './resource.ts';
 import { AnnotationText } from '../types/index.ts';
 
 async function processAnnotationsWorker(

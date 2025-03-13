@@ -1,7 +1,7 @@
 import { Maniiifest } from 'maniiifest';
 import { IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
-import { fetchResource } from './utils.ts';
+import { fetchResource } from './resource.ts';
 import { getImage } from './image.ts';
 
 async function parseManifest(jsonData: any): Promise<IIIFManifest> {
