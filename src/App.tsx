@@ -5,7 +5,8 @@ import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
-import { constructManifests, getCanvasDimensions } from './service/parser.ts';
+import { constructManifests } from './service/parser.ts';
+import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFManifest, AnnotationText } from './types/index.ts';
 
