@@ -1,5 +1,5 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
+import { IIIFManifest, IIIFImage, IIIFCanvas, TamerlaneResource } from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
 import { fetchResource } from './resource.ts';
 import { getImage } from './image.ts';
@@ -52,11 +52,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   };
 }
 
-async function parseCollection(jsonData: any): Promise<{
-  firstManifest: IIIFManifest | null;
-  manifestUrls: string[];
-  total: number;
-}> {
+async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   const parser = new Maniiifest(jsonData);
 
   if (parser.getSpecificationType() !== 'Collection') {
@@ -103,11 +99,7 @@ async function parseCollection(jsonData: any): Promise<{
   return { firstManifest, manifestUrls, total: manifestUrls.length };
 }
 
-export async function parseResource(url: string): Promise<{
-  firstManifest: IIIFManifest | null;
-  manifestUrls: string[];
-  total: number;
-}> {
+export async function parseResource(url: string): Promise<TamerlaneResource> {
   const resource = await fetchResource(url);
 
   if (resource.type === 'Manifest') {
