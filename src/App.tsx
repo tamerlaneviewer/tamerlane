@@ -8,7 +8,7 @@ import SplashScreen from './components/SplashScreen.tsx';
 import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
-import { IIIFManifest, AnnotationText } from './types/index.ts';
+import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -26,14 +26,14 @@ const App: React.FC = () => {
   const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  const [annotations, setAnnotations] = useState<AnnotationText[]>([]);
+  const [annotations, setAnnotations] = useState<IIIFAnnotation[]>([]);
   const [manifestMetadata, setManifestMetadata] = useState<any>({});
   const [itemMetadata, setItemMetadata] = useState<any>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
   const [selectedAnnotation, setSelectedAnnotation] =
-    useState<AnnotationText | null>(null);
+    useState<IIIFAnnotation | null>(null);
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -236,7 +236,7 @@ const App: React.FC = () => {
   };
 
   // Function to handle annotation selection
-  const handleAnnotationSelect = (annotation: AnnotationText) => {
+  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
     setSelectedAnnotation(annotation);
   };
 

@@ -1,13 +1,13 @@
 import { Maniiifest } from 'maniiifest';
 import { fetchResource } from './resource.ts';
-import { AnnotationText } from '../types/index.ts';
+import { IIIFAnnotation } from '../types/index.ts';
 
 async function processAnnotationsWorker(
   manifest: Maniiifest,
   targetUrl: string,
-  iterateAnnotations: () => Iterable<any>
-): Promise<AnnotationText[]> {
-  const results: AnnotationText[] = [];
+  iterateAnnotations: () => Iterable<any>,
+): Promise<IIIFAnnotation[]> {
+  const results: IIIFAnnotation[] = [];
 
   for (const annotation of iterateAnnotations.call(manifest)) {
     const { id, motivation } = annotation;
@@ -28,7 +28,7 @@ async function processAnnotationsWorker(
 
       if (targetId) {
         // Remove selector suffix from targetId (anything after #)
-        const cleanTargetId = targetId.split("#")[0];
+        const cleanTargetId = targetId.split('#')[0];
 
         if (cleanTargetId === targetUrl) {
           results.push({
@@ -45,15 +45,18 @@ async function processAnnotationsWorker(
   return results;
 }
 
-async function processAnnotations(parser: any, targetUrl: string): Promise<AnnotationText[]> {
+async function processAnnotations(
+  parser: any,
+  targetUrl: string,
+): Promise<IIIFAnnotation[]> {
   let currentParser = parser;
-  let allAnnotations: AnnotationText[] = [];
+  let allAnnotations: IIIFAnnotation[] = [];
 
   while (currentParser) {
     const result = await processAnnotationsWorker(
       currentParser,
       targetUrl,
-      currentParser.iterateAnnotationPageAnnotation
+      currentParser.iterateAnnotationPageAnnotation,
     );
 
     allAnnotations = allAnnotations.concat(result);
@@ -62,10 +65,10 @@ async function processAnnotations(parser: any, targetUrl: string): Promise<Annot
     const nextPageUrl = currentParser.getAnnotationPage().next;
     if (nextPageUrl) {
       const resource = await fetchResource(nextPageUrl);
-      if (!resource.type || resource.type !== "AnnotationPage") {
+      if (!resource.type || resource.type !== 'AnnotationPage') {
         throw new Error('No JSON data returned from fetchJson');
       }
-      currentParser = new Maniiifest(resource.data, "AnnotationPage");
+      currentParser = new Maniiifest(resource.data, 'AnnotationPage');
     } else {
       currentParser = null;
     }
@@ -74,23 +77,32 @@ async function processAnnotations(parser: any, targetUrl: string): Promise<Annot
   return allAnnotations;
 }
 
-async function processAnnotationPageRef(annotationPageUrl: string, targetUrl: string): Promise<AnnotationText[]> {
+async function processAnnotationPageRef(
+  annotationPageUrl: string,
+  targetUrl: string,
+): Promise<IIIFAnnotation[]> {
   const resource = await fetchResource(annotationPageUrl);
-  if (!resource.type || resource.type !== "AnnotationPage") {
+  if (!resource.type || resource.type !== 'AnnotationPage') {
     throw new Error('No JSON data returned from fetchJson');
   }
-  const parser = new Maniiifest(resource.data, "AnnotationPage");
+  const parser = new Maniiifest(resource.data, 'AnnotationPage');
   return processAnnotations(parser, targetUrl);
 }
 
-async function processAnnotationPage(page: any, targetUrl: string): Promise<AnnotationText[]> {
-  const parser = new Maniiifest(page, "AnnotationPage");
+async function processAnnotationPage(
+  page: any,
+  targetUrl: string,
+): Promise<IIIFAnnotation[]> {
+  const parser = new Maniiifest(page, 'AnnotationPage');
   return processAnnotations(parser, targetUrl);
 }
 
-export async function getAnnotationsForTarget(manifestUrl: string, targetUrl: string): Promise<AnnotationText[]> {
+export async function getAnnotationsForTarget(
+  manifestUrl: string,
+  targetUrl: string,
+): Promise<IIIFAnnotation[]> {
   const resource = await fetchResource(manifestUrl);
-  if (!resource.type || resource.type !== "Manifest") {
+  if (!resource.type || resource.type !== 'Manifest') {
     throw new Error('No JSON data returned from fetchJson');
   }
   const parser = new Maniiifest(resource.data);
@@ -100,7 +112,7 @@ export async function getAnnotationsForTarget(manifestUrl: string, targetUrl: st
     throw new Error('Specification should be a Manifest');
   }
 
-  let allAnnotations: AnnotationText[] = [];
+  let allAnnotations: IIIFAnnotation[] = [];
 
   for (const canvas of parser.iterateManifestCanvas()) {
     if (canvas.id === targetUrl) {
@@ -110,15 +122,21 @@ export async function getAnnotationsForTarget(manifestUrl: string, targetUrl: st
 
       if (Array.isArray(annotations) && annotations.length > 0) {
         for (const annotationPage of annotations) {
-          let result: AnnotationText[] = [];
+          let result: IIIFAnnotation[] = [];
           if (Array.isArray(annotationPage.items)) {
             // Inline Annotation Page
             result = await processAnnotationPage(annotationPage, targetUrl);
-          } else if (typeof annotationPage.id === "string") {
+          } else if (typeof annotationPage.id === 'string') {
             // Referenced Annotation Page
-            result = await processAnnotationPageRef(annotationPage.id, targetUrl);
+            result = await processAnnotationPageRef(
+              annotationPage.id,
+              targetUrl,
+            );
           } else {
-            console.warn(`Invalid annotation format in canvas ${canvas.id}:`, annotationPage);
+            console.warn(
+              `Invalid annotation format in canvas ${canvas.id}:`,
+              annotationPage,
+            );
           }
           allAnnotations = allAnnotations.concat(result);
         }
