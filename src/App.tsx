@@ -185,14 +185,14 @@ const App: React.FC = () => {
 
   const selectedImage = currentManifest.images[selectedImageIndex];
 
-  let canvasWidth = 1000;
-  let canvasHeight = 1000;
-
+  let canvasWidth : number | undefined;
+  let canvasHeight : number | undefined;
+    
   try {
     if (canvasId) {
-      const dimensions = getCanvasDimensions(currentManifest, canvasId);
-      canvasWidth = dimensions.canvasWidth;
-      canvasHeight = dimensions.canvasHeight;
+      const canvas = getCanvasDimensions(currentManifest, canvasId);
+      canvasWidth = canvas.canvasWidth ?? 1000;
+      canvasHeight = canvas.canvasHeight ?? 1000;
     }
   } catch (error) {
     console.warn('Error retrieving canvas dimensions:', error);

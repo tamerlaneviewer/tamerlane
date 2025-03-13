@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import OpenSeadragon from 'openseadragon';
 import SplashScreen from './SplashScreen.tsx';
-import { AnnotationText } from '../types/index';
+import { IIIFAnnotation } from '../types/index';
 
 // Define props type
 interface IIIFViewerProps {
@@ -11,7 +11,7 @@ interface IIIFViewerProps {
   canvasHeight: number;
   imageWidth: number;
   imageHeight: number;
-  selectedAnnotation: AnnotationText | null;
+  selectedAnnotation: IIIFAnnotation | null;
 }
 
 const IIIFViewer: React.FC<IIIFViewerProps> = ({
