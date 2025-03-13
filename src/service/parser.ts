@@ -103,7 +103,7 @@ async function parseCollection(jsonData: any): Promise<{
   return { firstManifest, manifestUrls, total: manifestUrls.length };
 }
 
-export async function constructManifests(url: string): Promise<{
+export async function parseResource(url: string): Promise<{
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;

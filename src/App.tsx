@@ -5,7 +5,7 @@ import IIIFViewer from './components/IIIFViewer.tsx';
 import AnnotationsPanel from './components/AnnotationsPanel.tsx';
 import MetadataPanel from './components/MetadataPanel.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
-import { constructManifests } from './service/parser.ts';
+import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFManifest, AnnotationText } from './types/index.ts';
@@ -69,7 +69,7 @@ const App: React.FC = () => {
 
     const fetchInitialManifest = async () => {
       const { firstManifest, manifestUrls, total } =
-        await constructManifests(iiifContentUrl);
+        await parseResource(iiifContentUrl);
       handleManifestUpdate(firstManifest, manifestUrls, total);
     };
 
@@ -103,7 +103,7 @@ const App: React.FC = () => {
     if (index < 0 || index >= totalManifests) return;
 
     const manifestUrl = manifestUrls[index];
-    const { firstManifest } = await constructManifests(manifestUrl);
+    const { firstManifest } = await parseResource(manifestUrl);
 
     setSelectedManifestIndex(index);
     setSelectedImageIndex(0);
