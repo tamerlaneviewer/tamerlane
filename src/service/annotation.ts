@@ -135,19 +135,19 @@ export async function getAnnotationsForTarget(manifestUrl: string, targetUrl: st
 }
 
 // Run the processManifest function and print the result
-(async () => {
-  const manifestUrl =
-    'https://iiif.wellcomecollection.org/presentation/b19974760_1_0014';
-  const canvasId =
-    'https://iiif.wellcomecollection.org/presentation/b19974760_1_0014/canvases/b19974760M0004_0006.jp2';
+// (async () => {
+//   const manifestUrl =
+//     'https://iiif.wellcomecollection.org/presentation/b19974760_1_0014';
+//   const canvasId =
+//     'https://iiif.wellcomecollection.org/presentation/b19974760_1_0014/canvases/b19974760M0004_0006.jp2';
 
-  // const manifestUrl =
-  //   'https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/manifest.json';
-  // const canvasId =
-  //   'https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/canvas-1';
+//   // const manifestUrl =
+//   //   'https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/manifest.json';
+//   // const canvasId =
+//   //   'https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/canvas-1';
 
-  const manifestResult = await getAnnotationsForTarget(manifestUrl, canvasId);
+//   const manifestResult = await getAnnotationsForTarget(manifestUrl, canvasId);
 
-  // Print the final result
-  console.log(JSON.stringify(manifestResult, null, 2));
-})();
+//   // Print the final result
+//   console.log(JSON.stringify(manifestResult, null, 2));
+// })();
