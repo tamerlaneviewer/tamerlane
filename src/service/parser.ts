@@ -3,8 +3,6 @@ import { IIIFManifest, IIIFImage, IIIFCanvas } from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
 import { fetchResource } from './utils.ts';
 
-const manifestCache = new Map<string, IIIFManifest>(); // Caching fetched manifests
-
 export function getCanvasDimensions(
   manifest: IIIFManifest,
   canvasId: string,
@@ -110,9 +108,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   };
 }
 
-async function parseCollection(
-  jsonData: any,
-): Promise<{
+async function parseCollection(jsonData: any): Promise<{
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
@@ -143,15 +139,8 @@ async function parseCollection(
         foundManifests = true;
 
         if (!firstManifest) {
-          if (manifestCache.has(manifestId)) {
-            firstManifest = manifestCache.get(manifestId)!;
-          } else {
-            const manifestResource = await fetchResource(manifestId);
-            firstManifest = await parseManifest(manifestResource.data);
-            if (firstManifest) {
-              manifestCache.set(manifestId, firstManifest);
-            }
-          }
+          const manifestResource = await fetchResource(manifestId);
+          firstManifest = await parseManifest(manifestResource.data);
         }
       }
     }
@@ -170,20 +159,7 @@ async function parseCollection(
   return { firstManifest, manifestUrls, total: manifestUrls.length };
 }
 
-async function fetchManifest(manifestId: string): Promise<IIIFManifest> {
-  if (manifestCache.has(manifestId)) {
-    return manifestCache.get(manifestId)!;
-  }
-
-  const manifestResource = await fetchResource(manifestId);
-  const parsedManifest = await parseManifest(manifestResource.data);
-  manifestCache.set(manifestId, parsedManifest);
-  return parsedManifest;
-}
-
-export async function constructManifests(
-  url: string,
-): Promise<{
+export async function constructManifests(url: string): Promise<{
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
@@ -204,8 +180,9 @@ export async function constructManifests(
     }
 
     if (!firstManifest && manifestUrls.length > 0) {
-      const firstFetchedManifest = await fetchManifest(manifestUrls[0]);
-      return { firstManifest: firstFetchedManifest, manifestUrls, total };
+      const firstFetchedManifest = await fetchResource(manifestUrls[0]);
+      const parsedManifest = await parseManifest(firstFetchedManifest.data);
+      return { firstManifest: parsedManifest, manifestUrls, total };
     }
 
     return { firstManifest, manifestUrls, total };
