@@ -1,15 +1,29 @@
 import { IIIFResource } from '../types/index.ts';
 import { TamerlaneResourceError } from '../errors/index.ts';
 
-const resourceCache = new Map<string, IIIFResource>(); // Caching fetched resources
+const CACHE_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+const resourceCache = new Map<
+  string,
+  { resource: IIIFResource; timestamp: number }
+>(); // Cache with timestamps
 
 export async function fetchResource(url: string): Promise<IIIFResource> {
-  // Check if the resource is already in the cache
+  const currentTime = Date.now();
+  // Check if the resource is in cache and still valid
   if (resourceCache.has(url)) {
-    return resourceCache.get(url)!;
+    const cachedEntry = resourceCache.get(url)!;
+
+    if (currentTime - cachedEntry.timestamp < CACHE_TIMEOUT) {
+      console.log(`🔄 Using cached resource: ${url}`);
+      return cachedEntry.resource;
+    } else {
+      console.log(`🗑 Cache expired for: ${url}, refetching...`);
+      resourceCache.delete(url); // Remove expired entry
+    }
   }
 
   try {
+    console.log(`📥 Fetching new IIIF resource from: ${url}`);
     const response = await fetch(url);
     if (!response.ok) {
       throw new TamerlaneResourceError(
@@ -17,20 +31,15 @@ export async function fetchResource(url: string): Promise<IIIFResource> {
       );
     }
     const data: any = await response.json();
-    if (
-      data.type !== 'Manifest' &&
-      data.type !== 'Collection' &&
-      data.type !== 'AnnotationPage'
-    ) {
+    if (!['Manifest', 'Collection', 'AnnotationPage'].includes(data.type)) {
       throw new Error(`Invalid IIIF resource type: ${data.type}`);
     }
-
     const resource: IIIFResource = { type: data.type, data };
-    // Store the fetched resource in the cache
-    resourceCache.set(url, resource);
+    // Store the fetched resource in cache with timestamp
+    resourceCache.set(url, { resource, timestamp: currentTime });
     return resource;
   } catch (error) {
-    console.error('Error fetching IIIF resource:', error);
+    console.error('❌ Error fetching IIIF resource:', error);
     throw new Error('Error fetching IIIF resource');
   }
 }
