@@ -1,6 +1,9 @@
 import { Maniiifest } from 'maniiifest';
 import { fetchResource } from './resource.ts';
 import { IIIFAnnotation } from '../types/index.ts';
+import { TamerlaneResourceError} from '../errors/index.ts';
+
+const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
 async function processAnnotationsWorker(
   manifest: Maniiifest,
@@ -66,7 +69,7 @@ async function processAnnotations(
     if (nextPageUrl) {
       const resource = await fetchResource(nextPageUrl);
       if (!resource.type || resource.type !== 'AnnotationPage') {
-        throw new Error('No JSON data returned from fetchJson');
+        throw new TamerlaneResourceError('No JSON data returned from fetchJson');
       }
       currentParser = new Maniiifest(resource.data, 'AnnotationPage');
     } else {
@@ -83,7 +86,7 @@ async function processAnnotationPageRef(
 ): Promise<IIIFAnnotation[]> {
   const resource = await fetchResource(annotationPageUrl);
   if (!resource.type || resource.type !== 'AnnotationPage') {
-    throw new Error('No JSON data returned from fetchJson');
+    throw new TamerlaneResourceError('No JSON data returned from fetchJson');
   }
   const parser = new Maniiifest(resource.data, 'AnnotationPage');
   return processAnnotations(parser, targetUrl);
@@ -101,11 +104,23 @@ export async function getAnnotationsForTarget(
   manifestUrl: string,
   targetUrl: string,
 ): Promise<IIIFAnnotation[]> {
-  const resource = await fetchResource(manifestUrl);
-  if (!resource.type || resource.type !== 'Manifest') {
-    throw new Error('No JSON data returned from fetchJson');
+
+  let parser: Maniiifest;
+
+  if (manifestCache[manifestUrl]) {
+    console.log(`🔄 Using cached manifest for: ${manifestUrl}`);
+    parser = manifestCache[manifestUrl];
+  } else {
+    console.log(`📥 Fetching new manifest from: ${manifestUrl}`);
+    const resource = await fetchResource(manifestUrl);
+    if (!resource.type || resource.type !== 'Manifest') {
+      throw new TamerlaneResourceError('No JSON data returned from fetchJson');
+    }
+    parser = new Maniiifest(resource.data);
+    //Store in cache
+    manifestCache[manifestUrl] = parser;
   }
-  const parser = new Maniiifest(resource.data);
+
   const type = parser.getSpecificationType();
 
   if (type !== 'Manifest') {
