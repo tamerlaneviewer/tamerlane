@@ -1,7 +1,7 @@
 import { IIIFResource } from '../types/index.ts';
 import { TamerlaneResourceError } from '../errors/index.ts';
 
-const CACHE_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+const CACHE_TIMEOUT = 1 * 60 * 1000; // 1 minutes
 const resourceCache = new Map<
   string,
   { resource: IIIFResource; timestamp: number }
