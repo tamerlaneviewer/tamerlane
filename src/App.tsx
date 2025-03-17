@@ -76,6 +76,24 @@ const App: React.FC = () => {
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
+  /** Handles search functionality */
+  const handleSearch = (query: string) => {
+    if (!currentManifest?.manifestSearch) {
+      console.warn('No search service available in this manifest.');
+      return;
+    }
+
+    const { service, autocomplete } = currentManifest.manifestSearch;
+
+    console.log('🔍 Search Term:', query);
+    console.log('🔗 Search Endpoint:', `${service}?q=${encodeURIComponent(query)}`);
+
+    if (autocomplete) {
+      console.log('✨ Autocomplete Endpoint:', `${autocomplete}?q=${encodeURIComponent(query)}`);
+    }
+  };
+
+
   /**
    * Updates manifest-related state.
    */
@@ -243,7 +261,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen">
       <Header
-        onSearch={() => {}}
+        onSearch={handleSearch}
         currentIndex={selectedImageIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}
