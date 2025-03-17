@@ -1,5 +1,10 @@
 import { Maniiifest } from 'maniiifest';
-import { IIIFManifest, IIIFImage, IIIFCanvas, TamerlaneResource } from '../types/index.ts';
+import {
+  IIIFManifest,
+  IIIFImage,
+  IIIFCanvas,
+  TamerlaneResource,
+} from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
 import { fetchResource } from './resource.ts';
 import { getImage } from './image.ts';
@@ -43,12 +48,32 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     }
   }
 
+  let manifestSearch: { service: string; autocomplete?: string } | undefined;
+
+  const servicesArray = Array.from(
+    parser.iterateManifestService() as IterableIterator<any>,
+  );
+
+  for (const service of servicesArray) {
+    if (service.type === 'SearchService2') {
+      manifestSearch = {
+        service: service.id, // Assign main search service ID
+        autocomplete: Array.isArray(service.service)
+          ? service.service.find((s: any) => s.type === 'AutoCompleteService2')
+              ?.id
+          : undefined, // Extract nested autocomplete service if present
+      };
+      break; // Stop after extracting the first valid service
+    }
+  }
+  console.log('manifestSearch', manifestSearch);
   return {
     name: label,
     metadata,
     provider,
     canvases,
     images,
+    manifestSearch,
   };
 }
 

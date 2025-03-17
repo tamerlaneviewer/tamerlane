@@ -36,10 +36,12 @@ export interface IIIFManifest {
   }>;
   canvases: IIIFCanvas[];
   images: IIIFImage[];
+  manifestSearch?: { service: string; autocomplete?: string };
 }
 
 export interface TamerlaneResource {
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
+  collectionSearch?: { service: string; autocomplete?: string };
 }
