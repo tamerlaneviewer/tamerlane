@@ -78,6 +78,7 @@ const App: React.FC = () => {
 
   /** Handles search functionality */
   const handleSearch = (query: string) => {
+    console.log('📝 Received Search Term:', query);
     if (!currentManifest?.manifestSearch) {
       console.warn('No search service available in this manifest.');
       return;
