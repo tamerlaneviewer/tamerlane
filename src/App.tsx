@@ -9,6 +9,7 @@ import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
+import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,7 +78,7 @@ const App: React.FC = () => {
   }, [iiifContentUrl]);
 
   /** Handles search functionality */
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     console.log('📝 Received Search Term:', query);
     if (!currentManifest?.manifestSearch) {
       console.warn('No search service available in this manifest.');
@@ -85,13 +86,11 @@ const App: React.FC = () => {
     }
 
     const { service, autocomplete } = currentManifest.manifestSearch;
+    const searchEndpoint = `${service}?q=${encodeURIComponent(query)}`;
+    console.log('🔗 Search Endpoint:', `${searchEndpoint}`);
+    const results = await searchAnnotations(searchEndpoint);
+    console.log('🔍 Search Results:', results);
 
-    console.log('🔍 Search Term:', query);
-    console.log('🔗 Search Endpoint:', `${service}?q=${encodeURIComponent(query)}`);
-
-    if (autocomplete) {
-      console.log('✨ Autocomplete Endpoint:', `${autocomplete}?q=${encodeURIComponent(query)}`);
-    }
   };
 
 
