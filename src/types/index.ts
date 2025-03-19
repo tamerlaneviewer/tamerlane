@@ -10,6 +10,16 @@ export interface IIIFAnnotation {
   body: { value?: string }[];
 }
 
+export interface IIIFSearchSnippet {
+  id: string;
+  motivation: string;
+  prefix?: string;
+  exact: string;
+  suffix?: string;
+  canvasTarget: string;
+  partOf?: string;
+}
+
 export interface IIIFCanvas {
   id: string;
   canvasWidth?: number;
