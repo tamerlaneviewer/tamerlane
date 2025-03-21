@@ -12,6 +12,7 @@ import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
+  const [activePanelTab, setActivePanelTab] = useState<'annotations' | 'searchResults'>('annotations');
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
@@ -90,6 +91,7 @@ const App: React.FC = () => {
     const results = await searchAnnotations(searchEndpoint);
     console.log('🔍 Search Results:', results);
     setSearchResults(results); 
+    setActivePanelTab('searchResults');
   };
   
 
@@ -299,6 +301,8 @@ const App: React.FC = () => {
             annotations={annotations}
             searchResults={searchResults}
             onAnnotationSelect={handleAnnotationSelect}
+            activeTab={activePanelTab}
+            setActiveTab={setActivePanelTab}
           />
         </div>
       </div>

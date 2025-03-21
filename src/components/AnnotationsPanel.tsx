@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BookOpen, Search } from 'lucide-react';
 import AnnotationsList from './AnnotationsList.tsx';
 import SearchResults from './SearchResults.tsx';
@@ -8,17 +8,17 @@ interface AnnotationsPanelProps {
   annotations: IIIFAnnotation[];
   searchResults: IIIFSearchSnippet[];
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
+  activeTab: 'annotations' | 'searchResults';
+  setActiveTab: (tab: 'annotations' | 'searchResults') => void;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   annotations,
   searchResults,
   onAnnotationSelect,
+  activeTab,
+  setActiveTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<'annotations' | 'searchResults'>(
-    'annotations',
-  );
-
   return (
     <div className="flex flex-col h-full max-h-full border shadow-md bg-white">
       {/* Tabs Section (Icons Only) */}
