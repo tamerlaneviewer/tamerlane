@@ -84,15 +84,14 @@ const App: React.FC = () => {
       console.warn('No search service available in this manifest.');
       return;
     }
-
-    const { service, autocomplete } = currentManifest.manifestSearch;
+    const { service } = currentManifest.manifestSearch;
     const searchEndpoint = `${service}?q=${encodeURIComponent(query)}`;
-    console.log('🔗 Search Endpoint:', `${searchEndpoint}`);
+    console.log('🔗 Search Endpoint:', `${searchEndpoint}`);  
     const results = await searchAnnotations(searchEndpoint);
     console.log('🔍 Search Results:', results);
-
+    setSearchResults(results); 
   };
-
+  
 
   /**
    * Updates manifest-related state.
