@@ -10,6 +10,7 @@ interface AnnotationsPanelProps {
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
   activeTab: 'annotations' | 'searchResults';
   setActiveTab: (tab: 'annotations' | 'searchResults') => void;
+  onSearchResultClick: (canvasTarget: string, manifestId?: string) => void;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
@@ -18,6 +19,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   onAnnotationSelect,
   activeTab,
   setActiveTab,
+  onSearchResultClick,
 }) => {
   return (
     <div className="flex flex-col h-full max-h-full border shadow-md bg-white">
@@ -51,7 +53,9 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       <div className="flex-grow overflow-y-auto p-3 max-h-[calc(100vh-100px)]">
         {activeTab === 'annotations' ? (
           annotations.length === 0 ? (
-            <p className="text-gray-500 text-center">No annotations available.</p>
+            <p className="text-gray-500 text-center">
+              No annotations available.
+            </p>
           ) : (
             <AnnotationsList
               annotations={annotations}
@@ -61,7 +65,10 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         ) : searchResults.length === 0 ? (
           <p className="text-gray-500 text-center">No search results found.</p>
         ) : (
-          <SearchResults searchResults={searchResults} />
+          <SearchResults
+            searchResults={searchResults}
+            onResultClick={onSearchResultClick}
+          />
         )}
       </div>
     </div>

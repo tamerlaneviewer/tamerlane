@@ -12,7 +12,9 @@ import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
-  const [activePanelTab, setActivePanelTab] = useState<'annotations' | 'searchResults'>('annotations');
+  const [activePanelTab, setActivePanelTab] = useState<
+    'annotations' | 'searchResults'
+  >('annotations');
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
@@ -78,6 +80,64 @@ const App: React.FC = () => {
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
+  const handleSearchResultClick = async (
+    canvasTarget: string,
+    manifestId?: string,
+  ) => {
+    try {
+      // If the manifest ID matches the current one, just jump to the image
+      if (!manifestId || currentManifest?.id === manifestId) {
+        const index = currentManifest?.images.findIndex(
+          (img) => img.canvasTarget === canvasTarget,
+        );
+        if (index !== -1) {
+          setSelectedImageIndex(index);
+          setCanvasId(canvasTarget);
+          setActivePanelTab('annotations');
+        } else {
+          console.warn('Canvas not found in current manifest');
+        }
+        return;
+      }
+
+      // Try to match the manifest ID to one of the manifestUrls
+      const matchedIndex = manifestUrls.findIndex((url) =>
+        url.includes(manifestId),
+      );
+
+      if (matchedIndex === -1) {
+        console.warn('Manifest not found in manifestUrls:', manifestId);
+        return;
+      }
+
+      // Load the new manifest
+      const { firstManifest } = await parseResource(manifestUrls[matchedIndex]);
+      if (!firstManifest) {
+        console.warn('Failed to load new manifest');
+        return;
+      }
+
+      // Find the canvas in the new manifest
+      const newImageIndex = firstManifest.images.findIndex(
+        (img) => img.canvasTarget === canvasTarget,
+      );
+
+      if (newImageIndex === -1) {
+        console.warn('Canvas not found in new manifest');
+        return;
+      }
+
+      // Update state
+      setSelectedManifestIndex(matchedIndex);
+      setSelectedImageIndex(newImageIndex);
+      setCanvasId(canvasTarget);
+      setCurrentManifest(firstManifest);
+      setActivePanelTab('annotations');
+    } catch (err) {
+      console.error('Failed to jump to canvas from search result:', err);
+    }
+  };
+
   /** Handles search functionality */
   const handleSearch = async (query: string) => {
     console.log('📝 Received Search Term:', query);
@@ -87,13 +147,12 @@ const App: React.FC = () => {
     }
     const { service } = currentManifest.manifestSearch;
     const searchEndpoint = `${service}?q=${encodeURIComponent(query)}`;
-    console.log('🔗 Search Endpoint:', `${searchEndpoint}`);  
+    console.log('🔗 Search Endpoint:', `${searchEndpoint}`);
     const results = await searchAnnotations(searchEndpoint);
     console.log('🔍 Search Results:', results);
-    setSearchResults(results); 
+    setSearchResults(results);
     setActivePanelTab('searchResults');
   };
-  
 
   /**
    * Updates manifest-related state.
@@ -204,9 +263,9 @@ const App: React.FC = () => {
 
   const selectedImage = currentManifest.images[selectedImageIndex];
 
-  let canvasWidth : number | undefined;
-  let canvasHeight : number | undefined;
-    
+  let canvasWidth: number | undefined;
+  let canvasHeight: number | undefined;
+
   try {
     if (canvasId) {
       const canvas = getCanvasDimensions(currentManifest, canvasId);
@@ -303,6 +362,7 @@ const App: React.FC = () => {
             onAnnotationSelect={handleAnnotationSelect}
             activeTab={activePanelTab}
             setActiveTab={setActivePanelTab}
+            onSearchResultClick={handleSearchResultClick}
           />
         </div>
       </div>
