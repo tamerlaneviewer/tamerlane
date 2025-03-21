@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import DOMPurify from 'dompurify';
-import { AnnotationText } from '../types/index';
+import { IIIFAnnotation } from '../types/index';
 
 // Define the expected prop types explicitly
 interface AnnotationsListProps {
-  annotations: AnnotationText[];
-  onAnnotationSelect: (annotation: AnnotationText) => void;
+  annotations: IIIFAnnotation[];
+  onAnnotationSelect: (annotation: IIIFAnnotation) => void;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
@@ -13,7 +13,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   onAnnotationSelect,
 }) => {
   const [selectedAnnotation, setSelectedAnnotation] =
-    useState<AnnotationText | null>(null);
+    useState<IIIFAnnotation | null>(null);
 
   if (!annotations.length) {
     return <p className="text-gray-500 text-center">No annotations found.</p>;
@@ -27,7 +27,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
 
   return (
     <div className="flex flex-col flex-grow h-full overflow-auto p-2">
-      {annotations.map((annotation: AnnotationText, index) => {
+      {annotations.map((annotation: IIIFAnnotation, index) => {
         const isSelected = selectedAnnotation === annotation;
 
         return (
