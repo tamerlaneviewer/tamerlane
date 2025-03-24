@@ -111,13 +111,10 @@ const App: React.FC = () => {
     searchResultId?: string,
   ) => {
     try {
-      let targetManifest = currentManifest;
-      let newManifestIndex = selectedManifestIndex;
-
       if (searchResultId) {
         setSelectedSearchResultId(searchResultId);
       }
-
+      let targetManifest = currentManifest;
       if (manifestId && currentManifest?.id !== manifestId) {
         const matchedIndex = manifestUrls.findIndex((url) =>
           url.includes(manifestId),
@@ -126,7 +123,6 @@ const App: React.FC = () => {
           setError('Manifest not found.');
           return;
         }
-
         const { firstManifest } = await parseResource(
           manifestUrls[matchedIndex],
         );
@@ -134,17 +130,13 @@ const App: React.FC = () => {
           setError('Failed to load manifest.');
           return;
         }
-
-        targetManifest = firstManifest;
-        newManifestIndex = matchedIndex;
         setCurrentManifest(firstManifest);
         setSelectedManifestIndex(matchedIndex);
+        targetManifest = firstManifest;
       }
-
       const newImageIndex = targetManifest?.images.findIndex(
         (img) => img.canvasTarget === canvasTarget,
       );
-
       if (newImageIndex === -1 || newImageIndex === undefined) {
         setError('Canvas not found.');
         return;
@@ -358,7 +350,7 @@ const App: React.FC = () => {
             setActiveTab={setActivePanelTab}
             onSearchResultClick={handleSearchResultClick}
             selectedAnnotation={selectedAnnotation}
-            selectedSearchResultId={selectedSearchResultId} 
+            selectedSearchResultId={selectedSearchResultId}
           />
         </div>
       </div>
