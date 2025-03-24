@@ -12,6 +12,7 @@ interface IIIFViewerProps {
   imageWidth: number;
   imageHeight: number;
   selectedAnnotation: IIIFAnnotation | null;
+  onViewerReady?: () => void;
 }
 
 const IIIFViewer: React.FC<IIIFViewerProps> = ({
@@ -22,6 +23,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   imageWidth,
   imageHeight,
   selectedAnnotation,
+  onViewerReady,
 }) => {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
@@ -65,6 +67,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       success: () => {
         console.log('✅ Image loaded successfully!');
         setIsLoading(false);
+        if (onViewerReady) onViewerReady();
       },
       error: (error) => {
         console.error('❌ Error loading image:', error);

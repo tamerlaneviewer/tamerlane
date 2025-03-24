@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [selectedSearchResultId, setSelectedSearchResultId] = useState<
     string | null
   >(null);
+  const [viewerReady, setViewerReady] = useState(false);
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -71,14 +72,16 @@ const App: React.FC = () => {
   }, [currentManifest, canvasId, selectedManifestIndex]);
 
   useEffect(() => {
-    if (!pendingAnnotationId || annotations.length === 0) return;
+    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
+      return;
 
     const match = annotations.find((anno) => anno.id === pendingAnnotationId);
 
     if (match) {
       setSelectedAnnotation(match);
       console.log('Selected annotation by ID:', match.id);
-      setPendingAnnotationId(null); // only clear if match found
+      setPendingAnnotationId(null); // clear it only after use
+      setViewerReady(false); // reset viewer readiness
     } else {
       if (process.env.NODE_ENV === 'development') {
         console.warn(
@@ -87,7 +90,7 @@ const App: React.FC = () => {
         );
       }
     }
-  }, [annotations, pendingAnnotationId]);
+  }, [annotations, pendingAnnotationId, viewerReady]);
 
   useEffect(() => {
     if (!iiifContentUrl) return;
@@ -338,6 +341,7 @@ const App: React.FC = () => {
               imageWidth={imageWidth}
               imageHeight={imageHeight}
               selectedAnnotation={selectedAnnotation}
+              onViewerReady={() => setViewerReady(true)}
             />
           </div>
         </div>
