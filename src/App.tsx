@@ -9,8 +9,12 @@ import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
+import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
+  const [activePanelTab, setActivePanelTab] = useState<
+    'annotations' | 'searchResults'
+  >('annotations');
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
@@ -20,7 +24,6 @@ const App: React.FC = () => {
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
     null,
   );
-
   const [canvasId, setCanvasId] = useState<string>('');
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
@@ -34,51 +37,148 @@ const App: React.FC = () => {
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
   const [selectedAnnotation, setSelectedAnnotation] =
     useState<IIIFAnnotation | null>(null);
+  const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(
+    null,
+  );
+  const [selectedSearchResultId, setSelectedSearchResultId] = useState<
+    string | null
+  >(null);
+  const [viewerReady, setViewerReady] = useState(false);
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
-      setCanvasId(selectedImage?.canvasTarget || ''); // Update canvasId
+      setCanvasId(selectedImage?.canvasTarget || '');
     }
-  }, [currentManifest, selectedImageIndex]); // Runs when manifest or image index changes
+  }, [currentManifest, selectedImageIndex]);
 
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
 
-    // Ensure we fetch annotations for the current manifest
     const manifestUrl = manifestUrls[selectedManifestIndex];
 
     const fetchAnnotations = async () => {
       try {
         const results = await getAnnotationsForTarget(manifestUrl, canvasId);
         setAnnotations(results);
-      } catch (error) {
-        console.error('Error fetching annotations:', error);
-        setAnnotations([]); // Reset if error occurs
+      } catch (err: any) {
+        console.error('Error fetching annotations:', err);
+        setAnnotations([]);
+        setError('Unable to load annotations for this canvas.');
       }
     };
 
     fetchAnnotations();
-  }, [currentManifest, canvasId, selectedManifestIndex]); // Add selectedManifestIndex dependency
+  }, [currentManifest, canvasId, selectedManifestIndex]);
 
-  /**
-   * Fetches the first manifest when a new URL is provided.
-   */
+  useEffect(() => {
+    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
+      return;
+
+    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
+
+    if (match) {
+      setSelectedAnnotation(match);
+      console.log('Selected annotation by ID:', match.id);
+      setPendingAnnotationId(null); // clear it only after use
+      setViewerReady(false); // reset viewer readiness
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          '❌ Could not find annotation for ID:',
+          pendingAnnotationId,
+        );
+      }
+    }
+  }, [annotations, pendingAnnotationId, viewerReady]);
+
   useEffect(() => {
     if (!iiifContentUrl) return;
 
     const fetchInitialManifest = async () => {
-      const { firstManifest, manifestUrls, total } =
-        await parseResource(iiifContentUrl);
-      handleManifestUpdate(firstManifest, manifestUrls, total);
+      try {
+        const { firstManifest, manifestUrls, total } =
+          await parseResource(iiifContentUrl);
+        handleManifestUpdate(firstManifest, manifestUrls, total);
+      } catch (err) {
+        setError('Failed to load IIIF content. Please check the URL.');
+      }
     };
 
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
-  /**
-   * Updates manifest-related state.
-   */
+  const handleSearchResultClick = async (
+    canvasTarget: string,
+    manifestId?: string,
+    searchResultId?: string,
+  ) => {
+    try {
+      if (searchResultId) {
+        setSelectedSearchResultId(searchResultId);
+      }
+      let targetManifest = currentManifest;
+      if (manifestId && currentManifest?.id !== manifestId) {
+        const matchedIndex = manifestUrls.findIndex((url) =>
+          url.includes(manifestId),
+        );
+        if (matchedIndex === -1) {
+          setError('Manifest not found.');
+          return;
+        }
+        const { firstManifest } = await parseResource(
+          manifestUrls[matchedIndex],
+        );
+        if (!firstManifest) {
+          setError('Failed to load manifest.');
+          return;
+        }
+        setCurrentManifest(firstManifest);
+        setSelectedManifestIndex(matchedIndex);
+        targetManifest = firstManifest;
+      }
+      const baseCanvasTarget = canvasTarget.split('#')[0]; // Remove selector
+      const newImageIndex = targetManifest?.images.findIndex(
+        (img) => img.canvasTarget === baseCanvasTarget,
+      );
+      if (newImageIndex === -1 || newImageIndex === undefined) {
+        setError('Canvas not found.');
+        return;
+      }
+
+      setSelectedImageIndex(newImageIndex);
+      setCanvasId(canvasTarget);
+      setActivePanelTab('annotations');
+
+      if (searchResultId) {
+        setPendingAnnotationId(searchResultId);
+        console.log('🔍 Pending annotation ID:', searchResultId);
+      }
+    } catch (err) {
+      setError('Could not jump to search result.');
+    }
+  };
+
+  const handleSearch = async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    if (!currentManifest?.manifestSearch) {
+      setError('This manifest does not support content search.');
+      return;
+    }
+
+    try {
+      const { service } = currentManifest.manifestSearch;
+      const searchEndpoint = `${service}?q=${encodeURIComponent(trimmed)}`;
+      const results = await searchAnnotations(searchEndpoint);
+      setSearchResults(results);
+      setActivePanelTab('searchResults');
+    } catch (err) {
+      setError('Search failed. Please try again.');
+    }
+  };
+
   const handleManifestUpdate = (
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
@@ -87,8 +187,6 @@ const App: React.FC = () => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
     setTotalManifests(total);
-
-    // Ensure metadata updates correctly
     setManifestMetadata({
       label: firstManifest?.name || 'Untitled Manifest',
       metadata: firstManifest?.metadata || [],
@@ -96,29 +194,19 @@ const App: React.FC = () => {
     });
   };
 
-  /**
-   * Fetches a specific manifest when navigating between them.
-   */
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
-
     const manifestUrl = manifestUrls[index];
     const { firstManifest } = await parseResource(manifestUrl);
-
     setSelectedManifestIndex(index);
     setSelectedImageIndex(0);
-
     handleManifestUpdate(firstManifest, manifestUrls, totalManifests);
   };
 
-  /**
-   * Handles submission of a new IIIF content URL.
-   */
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const url = formData.get('iiifContentUrl') as string;
-
     if (url !== iiifContentUrl) {
       setIiifContentUrl(url);
       setSearchParams({ 'iiif-content': url });
@@ -126,8 +214,9 @@ const App: React.FC = () => {
     }
   };
 
-  /** Resets the image index when switching manifests. */
   const resetImageIndex = () => setSelectedImageIndex(0);
+  const handleAnnotationSelect = (annotation: IIIFAnnotation) =>
+    setSelectedAnnotation(annotation);
 
   if (showUrlDialog) {
     return (
@@ -157,9 +246,11 @@ const App: React.FC = () => {
   if (error) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-        <div className="bg-white p-6 rounded shadow-lg">
-          <h2 className="text-xl font-bold mb-4">An error occurred</h2>
-          <p className="mb-4">{error}</p>
+        <div className="bg-white p-6 rounded shadow-lg max-w-lg text-center">
+          <h2 className="text-xl font-bold mb-4 text-red-600">
+            An error occurred
+          </h2>
+          <p className="mb-4 text-gray-700">{error}</p>
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={() => setError(null)}
@@ -174,7 +265,6 @@ const App: React.FC = () => {
   if (!currentManifest) return <SplashScreen />;
 
   const totalImages = currentManifest.images.length;
-
   if (totalImages === 0) {
     return (
       <div className="text-center mt-10 text-gray-500">
@@ -184,10 +274,9 @@ const App: React.FC = () => {
   }
 
   const selectedImage = currentManifest.images[selectedImageIndex];
+  let canvasWidth: number | undefined;
+  let canvasHeight: number | undefined;
 
-  let canvasWidth : number | undefined;
-  let canvasHeight : number | undefined;
-    
   try {
     if (canvasId) {
       const canvas = getCanvasDimensions(currentManifest, canvasId);
@@ -203,55 +292,34 @@ const App: React.FC = () => {
   const imageWidth = selectedImage?.imageWidth ?? canvasWidth;
   const imageHeight = selectedImage?.imageHeight ?? canvasHeight;
 
-  const handlePreviousImage = () => {
-    setSelectedImageIndex((prevIndex) =>
-      prevIndex > 0 ? prevIndex - 1 : totalImages - 1,
-    );
-  };
-
-  const handleNextImage = () => {
-    setSelectedImageIndex((prevIndex) =>
-      prevIndex < totalImages - 1 ? prevIndex + 1 : 0,
-    );
-  };
-
-  const handlePreviousManifest = () => {
-    const newIndex =
-      selectedManifestIndex > 0
-        ? selectedManifestIndex - 1
-        : totalManifests - 1;
-    if (!isNaN(newIndex)) {
-      fetchManifestByIndex(newIndex);
-    }
-  };
-
-  const handleNextManifest = () => {
-    const newIndex =
-      selectedManifestIndex < totalManifests - 1
-        ? selectedManifestIndex + 1
-        : 0;
-    if (!isNaN(newIndex)) {
-      fetchManifestByIndex(newIndex);
-    }
-  };
-
-  // Function to handle annotation selection
-  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
-    setSelectedAnnotation(annotation);
-  };
-
   return (
     <div className="flex flex-col h-screen">
       <Header
-        onSearch={() => {}}
+        onSearch={handleSearch}
         currentIndex={selectedImageIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}
         selectedManifestIndex={selectedManifestIndex}
-        onPreviousImage={handlePreviousImage}
-        onNextImage={handleNextImage}
-        onPreviousManifest={handlePreviousManifest}
-        onNextManifest={handleNextManifest}
+        onPreviousImage={() =>
+          setSelectedImageIndex((i) => (i > 0 ? i - 1 : totalImages - 1))
+        }
+        onNextImage={() =>
+          setSelectedImageIndex((i) => (i < totalImages - 1 ? i + 1 : 0))
+        }
+        onPreviousManifest={() =>
+          fetchManifestByIndex(
+            selectedManifestIndex > 0
+              ? selectedManifestIndex - 1
+              : totalManifests - 1,
+          )
+        }
+        onNextManifest={() =>
+          fetchManifestByIndex(
+            selectedManifestIndex < totalManifests - 1
+              ? selectedManifestIndex + 1
+              : 0,
+          )
+        }
         resetImageIndex={resetImageIndex}
       />
 
@@ -273,6 +341,7 @@ const App: React.FC = () => {
               imageWidth={imageWidth}
               imageHeight={imageHeight}
               selectedAnnotation={selectedAnnotation}
+              onViewerReady={() => setViewerReady(true)}
             />
           </div>
         </div>
@@ -282,6 +351,11 @@ const App: React.FC = () => {
             annotations={annotations}
             searchResults={searchResults}
             onAnnotationSelect={handleAnnotationSelect}
+            activeTab={activePanelTab}
+            setActiveTab={setActivePanelTab}
+            onSearchResultClick={handleSearchResultClick}
+            selectedAnnotation={selectedAnnotation}
+            selectedSearchResultId={selectedSearchResultId}
           />
         </div>
       </div>

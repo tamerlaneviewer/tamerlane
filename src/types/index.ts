@@ -10,6 +10,17 @@ export interface IIIFAnnotation {
   body: { value?: string }[];
 }
 
+export interface IIIFSearchSnippet {
+  id: string;
+  annotationId: string;
+  motivation: string;
+  prefix?: string;
+  exact: string;
+  suffix?: string;
+  canvasTarget: string;
+  partOf?: string;
+}
+
 export interface IIIFCanvas {
   id: string;
   canvasWidth?: number;
@@ -36,10 +47,12 @@ export interface IIIFManifest {
   }>;
   canvases: IIIFCanvas[];
   images: IIIFImage[];
+  manifestSearch?: { service: string; autocomplete?: string };
 }
 
 export interface TamerlaneResource {
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
+  collectionSearch?: { service: string; autocomplete?: string };
 }

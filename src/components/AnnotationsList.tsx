@@ -1,25 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import DOMPurify from 'dompurify';
-import { AnnotationText } from '../types/index';
+import { IIIFAnnotation } from '../types/index';
 
-// Define the expected prop types explicitly
 interface AnnotationsListProps {
-  annotations: AnnotationText[];
-  onAnnotationSelect: (annotation: AnnotationText) => void;
+  annotations: IIIFAnnotation[];
+  onAnnotationSelect: (annotation: IIIFAnnotation) => void;
+  selectedAnnotation: IIIFAnnotation | null;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
   annotations = [],
   onAnnotationSelect,
+  selectedAnnotation,
 }) => {
-  const [selectedAnnotation, setSelectedAnnotation] =
-    useState<AnnotationText | null>(null);
+  // Create a stable ref map only once per render cycle
+  const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
-  if (!annotations.length) {
-    return <p className="text-gray-500 text-center">No annotations found.</p>;
-  }
+  // Scroll to selected annotation
+  useEffect(() => {
+    if (selectedAnnotation?.id) {
+      const ref = itemRefs.current[selectedAnnotation.id];
+      if (ref) {
+        ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedAnnotation]);
 
-  // Function to sanitize annotation text
   const renderHTML = (text: string) => {
     const safeString = text.replace(/\n/g, '<br />');
     return { __html: DOMPurify.sanitize(safeString) };
@@ -27,21 +33,23 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
 
   return (
     <div className="flex flex-col flex-grow h-full overflow-auto p-2">
-      {annotations.map((annotation: AnnotationText, index) => {
-        const isSelected = selectedAnnotation === annotation;
+      {annotations.map((annotation: IIIFAnnotation, index) => {
+        const isSelected = selectedAnnotation?.id === annotation.id;
 
         return (
           <div
-            key={index}
+            key={annotation.id || index}
+            ref={(el) => {
+              if (annotation.id && el) {
+                itemRefs.current[annotation.id] = el;
+              }
+            }}
             className={`mb-1 p-1 cursor-pointer rounded transition-all ${
               isSelected
                 ? 'bg-blue-200 border-l-4 border-blue-500'
                 : 'hover:bg-gray-100'
             }`}
-            onClick={() => {
-              setSelectedAnnotation(annotation);
-              onAnnotationSelect(annotation);
-            }}
+            onClick={() => onAnnotationSelect(annotation)}
           >
             {Array.isArray(annotation.body) && annotation.body.length > 0 ? (
               annotation.body
