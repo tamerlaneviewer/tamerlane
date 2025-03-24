@@ -117,7 +117,9 @@ const App: React.FC = () => {
       if (searchResultId) {
         setSelectedSearchResultId(searchResultId);
       }
+
       let targetManifest = currentManifest;
+
       if (manifestId && currentManifest?.id !== manifestId) {
         const matchedIndex = manifestUrls.findIndex((url) =>
           url.includes(manifestId),
@@ -126,6 +128,7 @@ const App: React.FC = () => {
           setError('Manifest not found.');
           return;
         }
+
         const { firstManifest } = await parseResource(
           manifestUrls[matchedIndex],
         );
@@ -133,26 +136,29 @@ const App: React.FC = () => {
           setError('Failed to load manifest.');
           return;
         }
+
         setCurrentManifest(firstManifest);
         setSelectedManifestIndex(matchedIndex);
         targetManifest = firstManifest;
       }
-      const baseCanvasTarget = canvasTarget.split('#')[0]; // Remove selector
+
+      const baseCanvasTarget = canvasTarget.split('#')[0]; // strip #xywh if present
       const newImageIndex = targetManifest?.images.findIndex(
         (img) => img.canvasTarget === baseCanvasTarget,
       );
+
       if (newImageIndex === -1 || newImageIndex === undefined) {
         setError('Canvas not found.');
         return;
       }
 
+      setViewerReady(false);
       setSelectedImageIndex(newImageIndex);
       setCanvasId(canvasTarget);
       setActivePanelTab('annotations');
 
       if (searchResultId) {
         setPendingAnnotationId(searchResultId);
-        console.log('🔍 Pending annotation ID:', searchResultId);
       }
     } catch (err) {
       setError('Could not jump to search result.');
