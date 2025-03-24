@@ -134,8 +134,9 @@ const App: React.FC = () => {
         setSelectedManifestIndex(matchedIndex);
         targetManifest = firstManifest;
       }
+      const baseCanvasTarget = canvasTarget.split('#')[0]; // Remove selector
       const newImageIndex = targetManifest?.images.findIndex(
-        (img) => img.canvasTarget === canvasTarget,
+        (img) => img.canvasTarget === baseCanvasTarget,
       );
       if (newImageIndex === -1 || newImageIndex === undefined) {
         setError('Canvas not found.');
