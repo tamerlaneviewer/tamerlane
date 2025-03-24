@@ -10,7 +10,12 @@ interface AnnotationsPanelProps {
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
   activeTab: 'annotations' | 'searchResults';
   setActiveTab: (tab: 'annotations' | 'searchResults') => void;
-  onSearchResultClick: (canvasTarget: string, manifestId?: string) => void;
+  selectedAnnotation: IIIFAnnotation | null;
+  onSearchResultClick: (
+    canvasTarget: string,
+    manifestId?: string,
+    searchResultId?: string,
+  ) => void;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
@@ -20,6 +25,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   activeTab,
   setActiveTab,
   onSearchResultClick,
+  selectedAnnotation,
 }) => {
   return (
     <div className="flex flex-col h-full max-h-full border shadow-md bg-white">
@@ -60,6 +66,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
             <AnnotationsList
               annotations={annotations}
               onAnnotationSelect={onAnnotationSelect}
+              selectedAnnotation={selectedAnnotation}
             />
           )
         ) : searchResults.length === 0 ? (
@@ -67,7 +74,9 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         ) : (
           <SearchResults
             searchResults={searchResults}
-            onResultClick={onSearchResultClick}
+            onResultClick={(canvasTarget, manifestId, id) =>
+              onSearchResultClick(canvasTarget, manifestId, id)
+            }
           />
         )}
       </div>

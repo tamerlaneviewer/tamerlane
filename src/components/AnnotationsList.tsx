@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import DOMPurify from 'dompurify';
 import { IIIFAnnotation } from '../types/index';
 
-// Define the expected prop types explicitly
+// Updated prop types
 interface AnnotationsListProps {
   annotations: IIIFAnnotation[];
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
+  selectedAnnotation: IIIFAnnotation | null;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
   annotations = [],
   onAnnotationSelect,
+  selectedAnnotation,
 }) => {
-  const [selectedAnnotation, setSelectedAnnotation] =
-    useState<IIIFAnnotation | null>(null);
-
   if (!annotations.length) {
     return <p className="text-gray-500 text-center">No annotations found.</p>;
   }
@@ -28,7 +27,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   return (
     <div className="flex flex-col flex-grow h-full overflow-auto p-2">
       {annotations.map((annotation: IIIFAnnotation, index) => {
-        const isSelected = selectedAnnotation === annotation;
+        const isSelected = selectedAnnotation?.id === annotation.id;
 
         return (
           <div
@@ -38,10 +37,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                 ? 'bg-blue-200 border-l-4 border-blue-500'
                 : 'hover:bg-gray-100'
             }`}
-            onClick={() => {
-              setSelectedAnnotation(annotation);
-              onAnnotationSelect(annotation);
-            }}
+            onClick={() => onAnnotationSelect(annotation)}
           >
             {Array.isArray(annotation.body) && annotation.body.length > 0 ? (
               annotation.body

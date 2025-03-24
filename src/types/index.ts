@@ -12,6 +12,7 @@ export interface IIIFAnnotation {
 
 export interface IIIFSearchSnippet {
   id: string;
+  annotationId: string;
   motivation: string;
   prefix?: string;
   exact: string;

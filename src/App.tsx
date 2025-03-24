@@ -37,6 +37,9 @@ const App: React.FC = () => {
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
   const [selectedAnnotation, setSelectedAnnotation] =
     useState<IIIFAnnotation | null>(null);
+  const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -65,6 +68,25 @@ const App: React.FC = () => {
   }, [currentManifest, canvasId, selectedManifestIndex]);
 
   useEffect(() => {
+    if (!pendingAnnotationId || annotations.length === 0) return;
+
+    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
+
+    if (match) {
+      setSelectedAnnotation(match);
+      console.log('Selected annotation by ID:', match.id);
+      setPendingAnnotationId(null); // only clear if match found
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          '❌ Could not find annotation for ID:',
+          pendingAnnotationId,
+        );
+      }
+    }
+  }, [annotations, pendingAnnotationId]);
+
+  useEffect(() => {
     if (!iiifContentUrl) return;
 
     const fetchInitialManifest = async () => {
@@ -83,49 +105,52 @@ const App: React.FC = () => {
   const handleSearchResultClick = async (
     canvasTarget: string,
     manifestId?: string,
+    searchResultId?: string,
   ) => {
     try {
-      if (!manifestId || currentManifest?.id === manifestId) {
-        const index = currentManifest?.images.findIndex(
-          (img) => img.canvasTarget === canvasTarget,
+      let targetManifest = currentManifest;
+      let newManifestIndex = selectedManifestIndex;
+
+      if (manifestId && currentManifest?.id !== manifestId) {
+        const matchedIndex = manifestUrls.findIndex((url) =>
+          url.includes(manifestId),
         );
-        if (index !== -1) {
-          setSelectedImageIndex(index);
-          setCanvasId(canvasTarget);
-          setActivePanelTab('annotations');
-        } else {
-          setError('Canvas not found in current manifest.');
+        if (matchedIndex === -1) {
+          setError('Manifest not found.');
+          return;
         }
-        return;
+
+        const { firstManifest } = await parseResource(
+          manifestUrls[matchedIndex],
+        );
+        if (!firstManifest) {
+          setError('Failed to load manifest.');
+          return;
+        }
+
+        targetManifest = firstManifest;
+        newManifestIndex = matchedIndex;
+        setCurrentManifest(firstManifest);
+        setSelectedManifestIndex(matchedIndex);
       }
 
-      const matchedIndex = manifestUrls.findIndex((url) =>
-        url.includes(manifestId),
-      );
-      if (matchedIndex === -1) {
-        setError('Manifest not found.');
-        return;
-      }
-
-      const { firstManifest } = await parseResource(manifestUrls[matchedIndex]);
-      if (!firstManifest) {
-        setError('Failed to load manifest.');
-        return;
-      }
-
-      const newImageIndex = firstManifest.images.findIndex(
+      const newImageIndex = targetManifest?.images.findIndex(
         (img) => img.canvasTarget === canvasTarget,
       );
-      if (newImageIndex === -1) {
-        setError('Canvas not found in new manifest.');
+
+      if (newImageIndex === -1 || newImageIndex === undefined) {
+        setError('Canvas not found.');
         return;
       }
 
-      setCurrentManifest(firstManifest);
-      setSelectedManifestIndex(matchedIndex);
       setSelectedImageIndex(newImageIndex);
       setCanvasId(canvasTarget);
       setActivePanelTab('annotations');
+
+      if (searchResultId) {
+        setPendingAnnotationId(searchResultId);
+        console.log('🔍 Pending annotation ID:', searchResultId);
+      }
     } catch (err) {
       setError('Could not jump to search result.');
     }
@@ -133,10 +158,7 @@ const App: React.FC = () => {
 
   const handleSearch = async (query: string) => {
     const trimmed = query.trim();
-    if (!trimmed) {
-      // Don't search if the field is empty or just spaces
-      return;
-    }
+    if (!trimmed) return;
 
     if (!currentManifest?.manifestSearch) {
       setError('This manifest does not support content search.');
@@ -328,6 +350,7 @@ const App: React.FC = () => {
             activeTab={activePanelTab}
             setActiveTab={setActivePanelTab}
             onSearchResultClick={handleSearchResultClick}
+            selectedAnnotation={selectedAnnotation}
           />
         </div>
       </div>

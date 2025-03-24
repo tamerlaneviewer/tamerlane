@@ -89,6 +89,7 @@ function buildSnippetFromAnnotation(
 
   return {
     id: annotation.id,
+    annotationId: baseAnnotation.id,
     motivation: annotation.motivation || '',
     prefix,
     exact,
