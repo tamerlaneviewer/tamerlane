@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { IIIFAnnotation } from '../types/index';
 
-// Updated prop types
 interface AnnotationsListProps {
   annotations: IIIFAnnotation[];
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
@@ -14,11 +13,19 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   onAnnotationSelect,
   selectedAnnotation,
 }) => {
-  if (!annotations.length) {
-    return <p className="text-gray-500 text-center">No annotations found.</p>;
-  }
+  // Create a stable ref map only once per render cycle
+  const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
-  // Function to sanitize annotation text
+  // Scroll to selected annotation
+  useEffect(() => {
+    if (selectedAnnotation?.id) {
+      const ref = itemRefs.current[selectedAnnotation.id];
+      if (ref) {
+        ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedAnnotation]);
+
   const renderHTML = (text: string) => {
     const safeString = text.replace(/\n/g, '<br />');
     return { __html: DOMPurify.sanitize(safeString) };
@@ -31,7 +38,12 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
 
         return (
           <div
-            key={index}
+            key={annotation.id || index}
+            ref={(el) => {
+              if (annotation.id && el) {
+                itemRefs.current[annotation.id] = el;
+              }
+            }}
             className={`mb-1 p-1 cursor-pointer rounded transition-all ${
               isSelected
                 ? 'bg-blue-200 border-l-4 border-blue-500'
