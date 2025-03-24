@@ -43,10 +43,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                   result.annotationId,
                 )
               }
-              className={`text-sm text-gray-800 p-2 cursor-pointer rounded transition-all ${
+              className={`mb-1 p-1 cursor-pointer rounded transition-all ${
                 isSelected
-                  ? 'bg-yellow-100 border-l-4 border-yellow-500'
-                  : 'hover:bg-blue-50'
+                  ? 'bg-blue-200 border-l-4 border-blue-500'
+                  : 'hover:bg-gray-100'
               }`}
               dangerouslySetInnerHTML={renderHTML(combinedHTML)}
             />
