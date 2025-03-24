@@ -133,6 +133,8 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       element: overlayDiv,
       location: viewportRect,
     });
+    // Fit the viewport to the annotation bounding box
+    osdViewerRef.current.viewport.fitBounds(viewportRect, true);
 
     // Force OpenSeadragon to refresh & display the overlay
     osdViewerRef.current.forceRedraw();
