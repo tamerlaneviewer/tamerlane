@@ -40,6 +40,9 @@ const App: React.FC = () => {
   const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(
     null,
   );
+  const [selectedSearchResultId, setSelectedSearchResultId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -110,6 +113,10 @@ const App: React.FC = () => {
     try {
       let targetManifest = currentManifest;
       let newManifestIndex = selectedManifestIndex;
+
+      if (searchResultId) {
+        setSelectedSearchResultId(searchResultId);
+      }
 
       if (manifestId && currentManifest?.id !== manifestId) {
         const matchedIndex = manifestUrls.findIndex((url) =>
@@ -351,6 +358,7 @@ const App: React.FC = () => {
             setActiveTab={setActivePanelTab}
             onSearchResultClick={handleSearchResultClick}
             selectedAnnotation={selectedAnnotation}
+            selectedSearchResultId={selectedSearchResultId} 
           />
         </div>
       </div>
