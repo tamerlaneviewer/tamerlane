@@ -43,7 +43,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                   result.annotationId,
                 )
               }
-              className={`mb-1 p-1 cursor-pointer rounded transition-all ${
+              className={`mb-1 p-1 cursor-pointer rounded transition-all text-sm text-gray-700 leading-tight ${
                 isSelected
                   ? 'bg-blue-200 border-l-4 border-blue-500'
                   : 'hover:bg-gray-100'
