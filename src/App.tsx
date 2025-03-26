@@ -44,6 +44,7 @@ const App: React.FC = () => {
     string | null
   >(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -198,6 +199,11 @@ const App: React.FC = () => {
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
+    if (firstManifest?.manifestSearch?.autocomplete) {
+      setAutocompleteUrl(firstManifest.manifestSearch.autocomplete);
+    } else {
+      setAutocompleteUrl('');
+    }
   };
 
   const fetchManifestByIndex = async (index: number) => {
@@ -302,6 +308,7 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen">
       <Header
         onSearch={handleSearch}
+        autocompleteUrl={autocompleteUrl}
         currentIndex={selectedImageIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}
@@ -362,6 +369,7 @@ const App: React.FC = () => {
             onSearchResultClick={handleSearchResultClick}
             selectedAnnotation={selectedAnnotation}
             selectedSearchResultId={selectedSearchResultId}
+            autocompleteUrl={autocompleteUrl}
           />
         </div>
       </div>

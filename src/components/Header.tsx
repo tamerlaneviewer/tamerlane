@@ -5,6 +5,7 @@ import { ReactComponent as Logo } from "../logo.svg";
 
 interface HeaderProps {
   onSearch: (query: string) => void;
+  autocompleteUrl: string;
   currentIndex: number;
   totalImages: number;
   totalManifests: number;
@@ -27,6 +28,7 @@ const Header: React.FC<HeaderProps> = ({
   onPreviousManifest,
   onNextManifest,
   resetImageIndex,
+  autocompleteUrl,
 }) => {
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
@@ -48,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({
       />
 
       <div>
-        <SearchBar onSearch={onSearch} />
+      <SearchBar onSearch={onSearch} autocompleteService={autocompleteUrl} />
       </div>
     </header>
   );
