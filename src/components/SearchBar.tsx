@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 
+interface SearchBarProps {
+  onSearch: (query: string) => void;
+  autocompleteService: string;
+}
+
 const cleanAndSanitizeTerm = (value: string): string => {
   const stripped = value
     .replace(/<\/?[^>]+(>|$)/g, '') // remove HTML tags
@@ -9,7 +14,7 @@ const cleanAndSanitizeTerm = (value: string): string => {
   return DOMPurify.sanitize(stripped);
 };
 
-const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
+const SearchBar = ({ onSearch, autocompleteService }: SearchBarProps) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -17,18 +22,21 @@ const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (query.length < 3) {
+      const terms = query.split(',').map((t) => t.trim());
+      const lastTerm = terms[terms.length - 1];
+
+      if (!autocompleteService || lastTerm.length < 3) {
         setSuggestions([]);
         return;
       }
 
       try {
         const res = await fetch(
-          `http://localhost:3000/issue1041/autocomplete?q=${encodeURIComponent(query)}`,
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
         );
         const data = await res.json();
-        const terms = data.items.map((item: any) => item.value);
-        setSuggestions(terms.slice(0, 5));
+        const items = data.items.map((item: any) => item.value);
+        setSuggestions(items.slice(0, 5));
       } catch (err) {
         console.error('Autocomplete failed', err);
         setSuggestions([]);
@@ -37,7 +45,7 @@ const SearchBar = ({ onSearch }: { onSearch: (query: string) => void }) => {
 
     const delay = setTimeout(fetchSuggestions, 250); // debounce
     return () => clearTimeout(delay);
-  }, [query]);
+  }, [query, autocompleteService]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

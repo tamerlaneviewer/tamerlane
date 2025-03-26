@@ -31,7 +31,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
         searchResults.map((result: IIIFSearchSnippet) => {
           const combinedHTML = `${result.prefix ?? ''}<span class="text-blue-600 font-semibold">${result.exact}</span>${result.suffix ?? ''}`;
 
-          const isSelected = selectedSearchResultId === result.annotationId; // Highlight condition
+          const isSelected = selectedSearchResultId === result.annotationId;
 
           return (
             <div
