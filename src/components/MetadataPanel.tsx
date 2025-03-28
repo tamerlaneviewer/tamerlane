@@ -15,7 +15,7 @@ const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
             activeTab === "manifest" ? "bg-gray-300 font-bold text-black" : "bg-gray-200 text-gray-500"
           } hover:bg-gray-400`}
           onClick={() => setActiveTab("manifest")}
-          title="Manifest Metadata"
+          title="Manifest"
         >
           <FileText className="w-6 h-6 transition-colors" />
         </button>
@@ -24,7 +24,7 @@ const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
             activeTab === "item" ? "bg-gray-300 font-bold text-black" : "bg-gray-200 text-gray-500"
           } hover:bg-gray-400`}
           onClick={() => setActiveTab("item")}
-          title="Item Metadata"
+          title="Collection"
         >
           <Image className="w-6 h-6 transition-colors" />
         </button>
