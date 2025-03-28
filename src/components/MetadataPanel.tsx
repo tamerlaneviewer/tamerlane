@@ -3,7 +3,7 @@ import { FileText, Image } from "lucide-react";
 import CollectionMetadata from "./CollectionMetadata.tsx";
 import ManifestMetadata from "./ManifestMetadata.tsx";
 
-const MetadataPanel = ({ manifestMetadata, CollectionMetadata }) => {
+const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
   const [activeTab, setActiveTab] = useState<"manifest" | "item">("manifest");
 
   return (
@@ -35,7 +35,7 @@ const MetadataPanel = ({ manifestMetadata, CollectionMetadata }) => {
         {activeTab === "manifest" ? (
           <ManifestMetadata manifestMetadata={manifestMetadata} />
         ) : (
-          <CollectionMetadata CollectionMetadata={CollectionMetadata} />
+          <CollectionMetadata collectionMetadata={collectionMetadata} />
         )}
       </div>
     </div>

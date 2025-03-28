@@ -31,7 +31,7 @@ const App: React.FC = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [annotations, setAnnotations] = useState<IIIFAnnotation[]>([]);
   const [manifestMetadata, setManifestMetadata] = useState<any>({});
-  const [CollectionMetadata, setCollectionMetadata] = useState<any>({});
+  const [collectionMetadata, setCollectionMetadata] = useState<any>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
@@ -340,7 +340,7 @@ const App: React.FC = () => {
         <div className="w-1/4 border-r flex flex-col">
           <MetadataPanel
             manifestMetadata={manifestMetadata}
-            CollectionMetadata={CollectionMetadata}
+            collectionMetadata={collectionMetadata}
           />
         </div>
 

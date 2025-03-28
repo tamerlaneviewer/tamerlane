@@ -50,9 +50,24 @@ export interface IIIFManifest {
   manifestSearch?: { service: string; autocomplete?: string };
 }
 
+export interface IIIFCollection {
+  id: string;
+  label: string;
+  description?: string;
+  metadata?: Array<{ label: any; value: any }>;
+  provider?: Array<{
+    id?: string;
+    type?: string;
+    label?: any;
+    homepage?: any;
+    logo?: any;
+  }>;
+}
+
 export interface TamerlaneResource {
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
+  collection?: IIIFCollection | null;
   collectionSearch?: { service: string; autocomplete?: string };
 }
