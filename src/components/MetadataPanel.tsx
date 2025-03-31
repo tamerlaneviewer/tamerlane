@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FileText, Image } from "lucide-react";
+import { FileText, Layers } from "lucide-react";
 import CollectionMetadata from "./CollectionMetadata.tsx";
 import ManifestMetadata from "./ManifestMetadata.tsx";
 
@@ -26,7 +26,7 @@ const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
           onClick={() => setActiveTab("item")}
           title="Collection"
         >
-          <Image className="w-6 h-6 transition-colors" />
+          <Layers className="w-6 h-6 transition-colors" />
         </button>
       </div>
 
