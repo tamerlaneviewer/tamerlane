@@ -105,7 +105,7 @@ const App: React.FC = () => {
           firstManifest,
           manifestUrls,
           total,
-          collection || { name: '', metadata: [], provider: [] },
+          collection ?? collectionMetadata,
         );
       } catch (err) {
         setError('Failed to load IIIF content. Please check the URL.');
@@ -113,7 +113,7 @@ const App: React.FC = () => {
     };
 
     fetchInitialManifest();
-  }, [iiifContentUrl]);
+  }, [iiifContentUrl, collectionMetadata]);
 
 
   const handleViewerReady = useCallback(() => {
@@ -209,13 +209,13 @@ const App: React.FC = () => {
     setTotalManifests(total);
 
     setManifestMetadata({
-      label: firstManifest?.name || 'Untitled Manifest',
+      label: firstManifest?.name || '',
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
 
     setCollectionMetadata({
-      label: collection?.name || 'Untitled Collection',
+      label: collection?.name || '',
       metadata: collection?.metadata || [],
       provider: collection?.provider || [],
     });
@@ -242,7 +242,7 @@ const App: React.FC = () => {
       firstManifest,
       manifestUrls,
       totalManifests,
-      collection || { name: '', metadata: [], provider: [] }, // Provide a default value
+      collection ?? collectionMetadata,
     );
   };
 
