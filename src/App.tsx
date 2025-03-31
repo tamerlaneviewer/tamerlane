@@ -113,7 +113,7 @@ const App: React.FC = () => {
     };
 
     fetchInitialManifest();
-  }, [iiifContentUrl, collectionMetadata]);
+  }, [iiifContentUrl]);
 
 
   const handleViewerReady = useCallback(() => {
