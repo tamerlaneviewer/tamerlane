@@ -45,6 +45,7 @@ const App: React.FC = () => {
   >(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
+  const [searchUrl, setSearchUrl] = useState<string>('');
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -104,7 +105,7 @@ const App: React.FC = () => {
           firstManifest,
           manifestUrls,
           total,
-          collection || { name: '', metadata: [], provider: [] }
+          collection || { name: '', metadata: [], provider: [] },
         );
       } catch (err) {
         setError('Failed to load IIIF content. Please check the URL.');
@@ -175,14 +176,13 @@ const App: React.FC = () => {
     const trimmed = query.trim();
     if (!trimmed) return;
 
-    if (!currentManifest?.manifestSearch) {
-      setError('This manifest does not support content search.');
+    if (!searchUrl) {
+      setError('This resource does not support content search.');
       return;
     }
 
     try {
-      const { service } = currentManifest.manifestSearch;
-      const searchEndpoint = `${service}?q=${encodeURIComponent(trimmed)}`;
+      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
       setSearchResults(results);
       setActivePanelTab('searchResults');
@@ -196,30 +196,35 @@ const App: React.FC = () => {
     manifestUrls: string[],
     total: number,
     collection: IIIFCollection,
+    collectionSearch?: { service: string; autocomplete?: string },
   ) => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
     setTotalManifests(total);
+
     setManifestMetadata({
       label: firstManifest?.name || 'Untitled Manifest',
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
+
     setCollectionMetadata({
       label: collection?.name || 'Untitled Collection',
       metadata: collection?.metadata || [],
       provider: collection?.provider || [],
     });
-    if (collection?.collectionSearch?.autocomplete) {
-      setAutocompleteUrl(collection.collectionSearch.autocomplete);
-    } else if (firstManifest?.manifestSearch?.autocomplete) {
-      setAutocompleteUrl(firstManifest.manifestSearch.autocomplete);
-    } else {
-      setAutocompleteUrl('');
-    }
+
+    // Prefer collectionSearch endpoints
+    setAutocompleteUrl(
+      collectionSearch?.autocomplete ??
+        firstManifest?.manifestSearch?.autocomplete ??
+        '',
+    );
+
+    setSearchUrl(
+      collectionSearch?.service ?? firstManifest?.manifestSearch?.service ?? '',
+    );
   };
-
-
 
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
@@ -231,7 +236,7 @@ const App: React.FC = () => {
       firstManifest,
       manifestUrls,
       totalManifests,
-      collection || { name: '', metadata: [], provider: [] } // Provide a default value
+      collection || { name: '', metadata: [], provider: [] }, // Provide a default value
     );
   };
 
