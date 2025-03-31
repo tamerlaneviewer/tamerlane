@@ -9,9 +9,7 @@ const CollectionMetadata = ({ collectionMetadata }) => {
 
   if (!hasCollection) {
     return (
-      <div className="flex flex-col flex-grow h-full overflow-auto p-4 bg-white">
-        <p className="text-gray-500">Not part of a collection.</p>
-      </div>
+      <p className="text-gray-500 text-center">Not part of a collection.</p>
     );
   }
 
