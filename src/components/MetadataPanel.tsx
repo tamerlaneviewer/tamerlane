@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { FileText, Image } from "lucide-react";
-import ItemMetadata from "./ItemMetadata.tsx";
+import CollectionMetadata from "./CollectionMetadata.tsx";
 import ManifestMetadata from "./ManifestMetadata.tsx";
 
-const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
+const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
   const [activeTab, setActiveTab] = useState<"manifest" | "item">("manifest");
 
   return (
@@ -15,7 +15,7 @@ const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
             activeTab === "manifest" ? "bg-gray-300 font-bold text-black" : "bg-gray-200 text-gray-500"
           } hover:bg-gray-400`}
           onClick={() => setActiveTab("manifest")}
-          title="Manifest Metadata"
+          title="Manifest"
         >
           <FileText className="w-6 h-6 transition-colors" />
         </button>
@@ -24,7 +24,7 @@ const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
             activeTab === "item" ? "bg-gray-300 font-bold text-black" : "bg-gray-200 text-gray-500"
           } hover:bg-gray-400`}
           onClick={() => setActiveTab("item")}
-          title="Item Metadata"
+          title="Collection"
         >
           <Image className="w-6 h-6 transition-colors" />
         </button>
@@ -35,7 +35,7 @@ const MetadataPanel = ({ manifestMetadata, itemMetadata }) => {
         {activeTab === "manifest" ? (
           <ManifestMetadata manifestMetadata={manifestMetadata} />
         ) : (
-          <ItemMetadata itemMetadata={itemMetadata} />
+          <CollectionMetadata collectionMetadata={collectionMetadata} />
         )}
       </div>
     </div>

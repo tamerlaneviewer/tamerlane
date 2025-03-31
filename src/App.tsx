@@ -8,7 +8,7 @@ import SplashScreen from './components/SplashScreen.tsx';
 import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
-import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
+import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
@@ -31,7 +31,7 @@ const App: React.FC = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [annotations, setAnnotations] = useState<IIIFAnnotation[]>([]);
   const [manifestMetadata, setManifestMetadata] = useState<any>({});
-  const [itemMetadata, setItemMetadata] = useState<any>({});
+  const [collectionMetadata, setCollectionMetadata] = useState<any>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
@@ -45,6 +45,7 @@ const App: React.FC = () => {
   >(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
+  const [searchUrl, setSearchUrl] = useState<string>('');
 
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
@@ -98,9 +99,14 @@ const App: React.FC = () => {
 
     const fetchInitialManifest = async () => {
       try {
-        const { firstManifest, manifestUrls, total } =
+        const { firstManifest, manifestUrls, total, collection } =
           await parseResource(iiifContentUrl);
-        handleManifestUpdate(firstManifest, manifestUrls, total);
+        handleManifestUpdate(
+          firstManifest,
+          manifestUrls,
+          total,
+          collection || { name: '', metadata: [], provider: [] },
+        );
       } catch (err) {
         setError('Failed to load IIIF content. Please check the URL.');
       }
@@ -170,14 +176,13 @@ const App: React.FC = () => {
     const trimmed = query.trim();
     if (!trimmed) return;
 
-    if (!currentManifest?.manifestSearch) {
-      setError('This manifest does not support content search.');
+    if (!searchUrl) {
+      setError('This resource does not support content search.');
       return;
     }
 
     try {
-      const { service } = currentManifest.manifestSearch;
-      const searchEndpoint = `${service}?q=${encodeURIComponent(trimmed)}`;
+      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
       setSearchResults(results);
       setActivePanelTab('searchResults');
@@ -190,29 +195,49 @@ const App: React.FC = () => {
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
     total: number,
+    collection: IIIFCollection,
+    collectionSearch?: { service: string; autocomplete?: string },
   ) => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
     setTotalManifests(total);
+
     setManifestMetadata({
       label: firstManifest?.name || 'Untitled Manifest',
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
-    if (firstManifest?.manifestSearch?.autocomplete) {
-      setAutocompleteUrl(firstManifest.manifestSearch.autocomplete);
-    } else {
-      setAutocompleteUrl('');
-    }
+
+    setCollectionMetadata({
+      label: collection?.name || 'Untitled Collection',
+      metadata: collection?.metadata || [],
+      provider: collection?.provider || [],
+    });
+
+    // Prefer collectionSearch endpoints
+    setAutocompleteUrl(
+      collectionSearch?.autocomplete ??
+        firstManifest?.manifestSearch?.autocomplete ??
+        '',
+    );
+
+    setSearchUrl(
+      collectionSearch?.service ?? firstManifest?.manifestSearch?.service ?? '',
+    );
   };
 
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
     const manifestUrl = manifestUrls[index];
-    const { firstManifest } = await parseResource(manifestUrl);
+    const { firstManifest, collection } = await parseResource(manifestUrl);
     setSelectedManifestIndex(index);
     setSelectedImageIndex(0);
-    handleManifestUpdate(firstManifest, manifestUrls, totalManifests);
+    handleManifestUpdate(
+      firstManifest,
+      manifestUrls,
+      totalManifests,
+      collection || { name: '', metadata: [], provider: [] }, // Provide a default value
+    );
   };
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -340,7 +365,7 @@ const App: React.FC = () => {
         <div className="w-1/4 border-r flex flex-col">
           <MetadataPanel
             manifestMetadata={manifestMetadata}
-            itemMetadata={itemMetadata}
+            collectionMetadata={collectionMetadata}
           />
         </div>
 
