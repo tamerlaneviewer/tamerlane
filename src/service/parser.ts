@@ -50,22 +50,20 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
 
   let manifestSearch: { service: string; autocomplete?: string } | undefined;
 
-  const servicesArray = Array.from(
-    parser.iterateManifestService() as IterableIterator<any>,
-  );
+  const service = parser.getManifestService();
+  if (Array.isArray(service)) {
+    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
 
-  for (const service of servicesArray) {
-    if (service.type === 'SearchService2') {
+    if (searchService) {
       manifestSearch = {
-        service: service.id, // Assign main search service ID
-        autocomplete: Array.isArray(service.service)
-          ? service.service.find((s: any) => s.type === 'AutoCompleteService2')
-              ?.id
-          : undefined, // Extract nested autocomplete service if present
+        service: searchService.id,
+        autocomplete: Array.isArray(searchService.service)
+          ? searchService.service.find((s: any) => s.type === 'AutoCompleteService2')?.id
+          : undefined,
       };
-      break; // Stop after extracting the first valid service
     }
   }
+
   console.log('manifestSearch', manifestSearch);
   return {
     name: label,
@@ -87,6 +85,15 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   }
   const manifestUrls: string[] = [];
   let firstManifest: IIIFManifest | null = null;
+
+  const labelData: any = parser.getCollectionLabelByLanguage('en');
+  const label: string =
+    labelData?.en?.[0] ?? labelData?.none?.[0] ?? 'Untitled Collection';
+
+  // these will return the nested collections also so need to think how to best handle this 
+  const metadata = Array.from(parser.iterateCollectionMetadata());
+  const provider = Array.from(parser.iterateCollectionProvider());
+  const collection = { name: label, metadata, provider };
 
   async function process(parsedJson: any, processedCollections: Set<string>) {
     if (processedCollections.has(parsedJson.id)) return;
@@ -120,8 +127,32 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
       }
     }
   }
+
+  let collectionSearch: { service: string; autocomplete?: string } | undefined;
+
+  const service = parser.getCollectionService();
+  if (Array.isArray(service)) {
+    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
+
+    if (searchService) {
+      collectionSearch = {
+        service: searchService.id,
+        autocomplete: Array.isArray(searchService.service)
+          ? searchService.service.find((s: any) => s.type === 'AutoCompleteService2')?.id
+          : undefined,
+      };
+    }
+  }
+
   await process(jsonData, new Set());
-  return { firstManifest, manifestUrls, total: manifestUrls.length };
+
+  return {
+    firstManifest,
+    manifestUrls,
+    total: manifestUrls.length,
+    collection,
+    collectionSearch
+  };
 }
 
 export async function parseResource(url: string): Promise<TamerlaneResource> {

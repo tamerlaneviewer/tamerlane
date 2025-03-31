@@ -51,9 +51,7 @@ export interface IIIFManifest {
 }
 
 export interface IIIFCollection {
-  id: string;
-  label: string;
-  description?: string;
+  name: string;
   metadata?: Array<{ label: any; value: any }>;
   provider?: Array<{
     id?: string;
