@@ -93,7 +93,25 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   // these will return the nested collections also so need to think how to best handle this 
   const metadata = Array.from(parser.iterateCollectionMetadata());
   const provider = Array.from(parser.iterateCollectionProvider());
-  const collection = { name: label, metadata, provider };
+
+
+  let collectionSearch: { service: string; autocomplete?: string } | undefined;
+
+  const service = parser.getCollectionService();
+  if (Array.isArray(service)) {
+    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
+
+    if (searchService) {
+      collectionSearch = {
+        service: searchService.id,
+        autocomplete: Array.isArray(searchService.service)
+          ? searchService.service.find((s: any) => s.type === 'AutoCompleteService2')?.id
+          : undefined,
+      };
+    }
+  }
+
+  const collection = { name: label, metadata, provider, collectionSearch };
 
   async function process(parsedJson: any, processedCollections: Set<string>) {
     if (processedCollections.has(parsedJson.id)) return;
@@ -128,22 +146,6 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
     }
   }
 
-  let collectionSearch: { service: string; autocomplete?: string } | undefined;
-
-  const service = parser.getCollectionService();
-  if (Array.isArray(service)) {
-    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
-
-    if (searchService) {
-      collectionSearch = {
-        service: searchService.id,
-        autocomplete: Array.isArray(searchService.service)
-          ? searchService.service.find((s: any) => s.type === 'AutoCompleteService2')?.id
-          : undefined,
-      };
-    }
-  }
-
   await process(jsonData, new Set());
 
   return {
@@ -151,7 +153,6 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
     manifestUrls,
     total: manifestUrls.length,
     collection,
-    collectionSearch
   };
 }
 
@@ -163,7 +164,7 @@ export async function parseResource(url: string): Promise<TamerlaneResource> {
     const manifestUrls = [url]; // Add the single manifest URL to the array
     return { firstManifest: parsedManifest, manifestUrls, total: 1 };
   } else if (resource.type === 'Collection') {
-    const { firstManifest, manifestUrls, total } = await parseCollection(
+    const { firstManifest, manifestUrls, total, collection } = await parseCollection(
       resource.data,
     );
 
@@ -177,7 +178,7 @@ export async function parseResource(url: string): Promise<TamerlaneResource> {
       return { firstManifest: parsedManifest, manifestUrls, total };
     }
 
-    return { firstManifest, manifestUrls, total };
+    return { firstManifest, manifestUrls, total, collection };
   }
 
   throw new TamerlaneParseError('Unknown IIIF resource type');

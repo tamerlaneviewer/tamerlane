@@ -60,6 +60,7 @@ export interface IIIFCollection {
     homepage?: any;
     logo?: any;
   }>;
+  collectionSearch?: { service: string; autocomplete?: string };
 }
 
 export interface TamerlaneResource {
@@ -67,5 +68,4 @@ export interface TamerlaneResource {
   manifestUrls: string[];
   total: number;
   collection?: IIIFCollection | null;
-  collectionSearch?: { service: string; autocomplete?: string };
 }
