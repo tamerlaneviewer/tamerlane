@@ -115,11 +115,9 @@ const App: React.FC = () => {
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
-
   const handleViewerReady = useCallback(() => {
     setViewerReady(true);
   }, []);
-  
 
   const handleSearchResultClick = async (
     canvasTarget: string,
@@ -214,13 +212,15 @@ const App: React.FC = () => {
       provider: firstManifest?.provider || [],
     });
 
-    setCollectionMetadata({
-      label: collection?.name || '',
-      metadata: collection?.metadata || [],
-      provider: collection?.provider || [],
-    });
+    // Avoid resetting collection state unnecessarily
+    if (collection?.name && collection.name !== collectionMetadata?.label) {
+      setCollectionMetadata({
+        label: collection.name,
+        metadata: collection.metadata || [],
+        provider: collection.provider || [],
+      });
+    }
 
-    // Prefer collectionSearch endpoints
     setAutocompleteUrl(
       collectionSearch?.autocomplete ??
         firstManifest?.manifestSearch?.autocomplete ??
@@ -233,17 +233,40 @@ const App: React.FC = () => {
   };
 
   const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= totalManifests) return;
+    if (
+      index < 0 ||
+      index >= totalManifests ||
+      index === selectedManifestIndex // avoid redundant refetch
+    ) {
+      return;
+    }
+
     const manifestUrl = manifestUrls[index];
-    const { firstManifest, collection } = await parseResource(manifestUrl);
-    setSelectedManifestIndex(index);
-    setSelectedImageIndex(0);
-    handleManifestUpdate(
-      firstManifest,
-      manifestUrls,
-      totalManifests,
-      collection ?? collectionMetadata,
-    );
+
+    try {
+      const { firstManifest, collection } = await parseResource(manifestUrl);
+
+      // Clean up state when loading a new manifest
+      setSelectedAnnotation(null);
+      setAnnotations([]);
+      setSearchResults([]);
+      setSelectedSearchResultId(null);
+      setViewerReady(false);
+
+      setSelectedManifestIndex(index);
+      setSelectedImageIndex(0);
+
+      // Preserve collection metadata if not provided
+      handleManifestUpdate(
+        firstManifest,
+        manifestUrls,
+        totalManifests,
+        collection?.name ? collection : collectionMetadata,
+      );
+    } catch (err) {
+      console.error('Failed to fetch manifest by index:', err);
+      setError('Failed to load selected manifest.');
+    }
   };
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
