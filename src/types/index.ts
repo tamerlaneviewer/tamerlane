@@ -67,5 +67,5 @@ export interface TamerlaneResource {
   firstManifest: IIIFManifest | null;
   manifestUrls: string[];
   total: number;
-  collection?: IIIFCollection | null;
+  collection?: IIIFCollection;
 }

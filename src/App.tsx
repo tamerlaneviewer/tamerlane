@@ -8,7 +8,7 @@ import SplashScreen from './components/SplashScreen.tsx';
 import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
-import { IIIFManifest, IIIFAnnotation } from './types/index.ts';
+import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
 
 const App: React.FC = () => {
@@ -98,9 +98,14 @@ const App: React.FC = () => {
 
     const fetchInitialManifest = async () => {
       try {
-        const { firstManifest, manifestUrls, total } =
+        const { firstManifest, manifestUrls, total, collection } =
           await parseResource(iiifContentUrl);
-        handleManifestUpdate(firstManifest, manifestUrls, total);
+        handleManifestUpdate(
+          firstManifest,
+          manifestUrls,
+          total,
+          collection || { name: '', metadata: [], provider: [] }
+        );
       } catch (err) {
         setError('Failed to load IIIF content. Please check the URL.');
       }
@@ -190,6 +195,7 @@ const App: React.FC = () => {
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
     total: number,
+    collection: IIIFCollection,
   ) => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
@@ -199,20 +205,34 @@ const App: React.FC = () => {
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
     });
-    if (firstManifest?.manifestSearch?.autocomplete) {
+    setCollectionMetadata({
+      label: collection?.name || 'Untitled Collection',
+      metadata: collection?.metadata || [],
+      provider: collection?.provider || [],
+    });
+    if (collection?.collectionSearch?.autocomplete) {
+      setAutocompleteUrl(collection.collectionSearch.autocomplete);
+    } else if (firstManifest?.manifestSearch?.autocomplete) {
       setAutocompleteUrl(firstManifest.manifestSearch.autocomplete);
     } else {
       setAutocompleteUrl('');
     }
   };
 
+
+
   const fetchManifestByIndex = async (index: number) => {
     if (index < 0 || index >= totalManifests) return;
     const manifestUrl = manifestUrls[index];
-    const { firstManifest } = await parseResource(manifestUrl);
+    const { firstManifest, collection } = await parseResource(manifestUrl);
     setSelectedManifestIndex(index);
     setSelectedImageIndex(0);
-    handleManifestUpdate(firstManifest, manifestUrls, totalManifests);
+    handleManifestUpdate(
+      firstManifest,
+      manifestUrls,
+      totalManifests,
+      collection || { name: '', metadata: [], provider: [] } // Provide a default value
+    );
   };
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
