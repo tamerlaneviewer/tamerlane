@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import IIIFViewer from './components/IIIFViewer.tsx';
@@ -71,7 +71,7 @@ const App: React.FC = () => {
     };
 
     fetchAnnotations();
-  }, [currentManifest, canvasId, selectedManifestIndex]);
+  }, [currentManifest, canvasId, selectedManifestIndex, manifestUrls]);
 
   useEffect(() => {
     if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
@@ -114,6 +114,12 @@ const App: React.FC = () => {
 
     fetchInitialManifest();
   }, [iiifContentUrl]);
+
+
+  const handleViewerReady = useCallback(() => {
+    setViewerReady(true);
+  }, []);
+  
 
   const handleSearchResultClick = async (
     canvasTarget: string,
@@ -379,7 +385,7 @@ const App: React.FC = () => {
               imageWidth={imageWidth}
               imageHeight={imageHeight}
               selectedAnnotation={selectedAnnotation}
-              onViewerReady={() => setViewerReady(true)}
+              onViewerReady={handleViewerReady}
             />
           </div>
         </div>

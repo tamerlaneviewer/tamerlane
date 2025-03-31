@@ -81,7 +81,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
         osdViewerRef.current = null;
       }
     };
-  }, [imageUrl, imageType, canvasWidth, canvasHeight, imageWidth, imageHeight]);
+  }, [imageUrl, imageType, canvasWidth, canvasHeight, imageWidth, imageHeight, onViewerReady]);
 
   useEffect(() => {
     if (!selectedAnnotation || !osdViewerRef.current) return;
