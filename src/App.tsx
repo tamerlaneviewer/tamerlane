@@ -322,7 +322,15 @@ const App: React.FC = () => {
 
           {/* Dismiss Button */}
           <button
-            onClick={() => setError(null)}
+            onClick={() => {
+              setError(null);
+              if (!currentManifest) {
+                // Only reset to URL input if initial loading failed
+                setIiifContentUrl(null);
+                setCurrentManifest(null);
+                setShowUrlDialog(true);
+              }
+            }}
             className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
           >
             Dismiss
