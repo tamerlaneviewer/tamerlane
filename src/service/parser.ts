@@ -16,9 +16,8 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     throw new TamerlaneParseError('Invalid IIIF resource type: ' + type);
   }
 
-  const labelData: any = parser.getManifestLabelByLanguage('en');
-  const label: string =
-    labelData?.en?.[0] ?? labelData?.none?.[0] ?? 'Untitled Manifest';
+  const labelData: any = parser.getManifestLabel();
+  const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled manifest';
   const metadata = Array.from(parser.iterateManifestMetadata());
   const provider = Array.from(parser.iterateManifestProvider());
 
@@ -86,10 +85,8 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   const manifestUrls: string[] = [];
   let firstManifest: IIIFManifest | null = null;
 
-  const labelData: any = parser.getCollectionLabelByLanguage('en');
-  const label: string =
-    labelData?.en?.[0] ?? labelData?.none?.[0] ?? 'Untitled Collection';
-
+  const labelData: any = parser.getCollectionLabel();
+  const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled collection';
   // these will return the nested collections also so need to think how to best handle this 
   const metadata = Array.from(parser.iterateCollectionMetadata());
   const provider = Array.from(parser.iterateCollectionProvider());
