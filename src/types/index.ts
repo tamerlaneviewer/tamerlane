@@ -45,6 +45,7 @@ export interface IIIFManifest {
     homepage?: any;
     logo?: any;
   }>;
+  requiredStatement?: { label: any; value: any };
   canvases: IIIFCanvas[];
   images: IIIFImage[];
   manifestSearch?: { service: string; autocomplete?: string };

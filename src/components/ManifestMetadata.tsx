@@ -1,5 +1,5 @@
-import React from "react";
-import DOMPurify from "dompurify";
+import React from 'react';
+import DOMPurify from 'dompurify';
 
 const ManifestMetadata = ({ manifestMetadata }) => {
   if (!manifestMetadata) {
@@ -7,22 +7,27 @@ const ManifestMetadata = ({ manifestMetadata }) => {
   }
 
   const getValue = (data) => {
-    if (!data) return "Unknown";
+    if (!data) return 'Unknown';
     if (Array.isArray(data)) {
       return data
         .map((item) =>
-          typeof item === "object" ? item?.none || item?.en || JSON.stringify(item) : String(item)
+          typeof item === 'object'
+            ? item?.none || item?.en || JSON.stringify(item)
+            : String(item),
         )
-        .join(", ");
+        .join(', ');
     }
-    if (typeof data === "object" && data !== null) {
+    if (typeof data === 'object' && data !== null) {
       return data.none || data.en || JSON.stringify(data, null, 2);
     }
     return String(data);
   };
 
   const renderHTML = (value) => {
-    const safeString = typeof value === "string" ? value.replace(/\n/g, "<br />") : getValue(value);
+    const safeString =
+      typeof value === 'string'
+        ? value.replace(/\n/g, '<br />')
+        : getValue(value);
     return { __html: DOMPurify.sanitize(safeString) };
   };
 
@@ -34,7 +39,9 @@ const ManifestMetadata = ({ manifestMetadata }) => {
           <h2 className="text-xl font-bold text-gray-900">Manifest</h2>
           <p
             className="text-md text-blue-700 font-semibold"
-            dangerouslySetInnerHTML={renderHTML(getValue(manifestMetadata.label))}
+            dangerouslySetInnerHTML={renderHTML(
+              getValue(manifestMetadata.label),
+            )}
           />
         </div>
       )}
@@ -46,7 +53,9 @@ const ManifestMetadata = ({ manifestMetadata }) => {
           <div className="space-y-2">
             {manifestMetadata.metadata.map((entry, index) => (
               <div key={index} className="py-2 border-b border-gray-300">
-                <strong className="text-sm text-gray-800">{getValue(entry.label)}:</strong>
+                <strong className="text-sm text-gray-800">
+                  {getValue(entry.label)}:
+                </strong>
                 <p
                   className="text-sm text-gray-700 break-words whitespace-pre-wrap leading-relaxed"
                   dangerouslySetInnerHTML={renderHTML(getValue(entry.value))}
@@ -69,6 +78,19 @@ const ManifestMetadata = ({ manifestMetadata }) => {
               />
             </div>
           ))}
+        </div>
+      )}
+      {manifestMetadata.requiredStatement && (
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {getValue(manifestMetadata.requiredStatement.label)}
+          </h3>
+          <p
+            className="text-sm text-gray-700"
+            dangerouslySetInnerHTML={renderHTML(
+              getValue(manifestMetadata.requiredStatement.value),
+            )}
+          />
         </div>
       )}
     </div>

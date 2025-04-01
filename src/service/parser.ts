@@ -20,6 +20,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled manifest';
   const metadata = Array.from(parser.iterateManifestMetadata());
   const provider = Array.from(parser.iterateManifestProvider());
+  const requiredStatement: any = parser.getManifestRequiredStatement();
 
   const canvases: IIIFCanvas[] = [];
   for (const canvas of parser.iterateManifestCanvas()) {
@@ -68,6 +69,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     name: label,
     metadata,
     provider,
+    requiredStatement,
     canvases,
     images,
     manifestSearch,

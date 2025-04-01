@@ -210,6 +210,7 @@ const App: React.FC = () => {
       label: firstManifest?.name || '',
       metadata: firstManifest?.metadata || [],
       provider: firstManifest?.provider || [],
+      requiredStatement: firstManifest?.requiredStatement || null
     });
 
     // Avoid resetting collection state unnecessarily
