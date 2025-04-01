@@ -92,7 +92,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   // these will return the nested collections also so need to think how to best handle this 
   const metadata = Array.from(parser.iterateCollectionMetadata());
   const provider = Array.from(parser.iterateCollectionProvider());
-
+  const requiredStatement: any = parser.getCollectionRequiredStatement();
 
   let collectionSearch: { service: string; autocomplete?: string } | undefined;
 
@@ -110,7 +110,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
     }
   }
 
-  const collection = { name: label, metadata, provider, collectionSearch };
+  const collection = { name: label, metadata, provider, requiredStatement, collectionSearch };
 
   async function process(parsedJson: any, processedCollections: Set<string>) {
     if (processedCollections.has(parsedJson.id)) return;

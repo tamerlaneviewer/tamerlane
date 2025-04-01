@@ -61,6 +61,7 @@ export interface IIIFCollection {
     homepage?: any;
     logo?: any;
   }>;
+  requiredStatement?: { label: any; value: any };
   collectionSearch?: { service: string; autocomplete?: string };
 }
 

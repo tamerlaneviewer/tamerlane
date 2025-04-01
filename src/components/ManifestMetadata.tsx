@@ -80,6 +80,7 @@ const ManifestMetadata = ({ manifestMetadata }) => {
           ))}
         </div>
       )}
+      {/* Required Statement */}
       {manifestMetadata.requiredStatement && (
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-800">

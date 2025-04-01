@@ -89,6 +89,20 @@ const CollectionMetadata = ({ collectionMetadata }) => {
             ))}
           </div>
         )}
+      {/* Required Statement */}
+      {collectionMetadata.requiredStatement && (
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {getValue(collectionMetadata.requiredStatement.label)}
+          </h3>
+          <p
+            className="text-sm text-gray-700"
+            dangerouslySetInnerHTML={renderHTML(
+              getValue(collectionMetadata.requiredStatement.value),
+            )}
+          />
+        </div>
+      )}
     </div>
   );
 };

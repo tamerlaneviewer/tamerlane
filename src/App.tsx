@@ -219,6 +219,7 @@ const App: React.FC = () => {
         label: collection.name,
         metadata: collection.metadata || [],
         provider: collection.provider || [],
+        requiredStatement: collection.requiredStatement || null,
       });
     }
 
