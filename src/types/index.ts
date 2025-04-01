@@ -35,7 +35,7 @@ export interface IIIFImage {
   canvasTarget: string;
 }
 
-export interface IIIFManifest {
+export interface IIIFinfo {
   name: string;
   metadata?: Array<{ label: any; value: any }>;
   provider?: Array<{
@@ -46,22 +46,17 @@ export interface IIIFManifest {
     logo?: any;
   }>;
   requiredStatement?: { label: any; value: any };
+}
+
+export interface IIIFManifest {
+  info: IIIFinfo;
   canvases: IIIFCanvas[];
   images: IIIFImage[];
   manifestSearch?: { service: string; autocomplete?: string };
 }
 
 export interface IIIFCollection {
-  name: string;
-  metadata?: Array<{ label: any; value: any }>;
-  provider?: Array<{
-    id?: string;
-    type?: string;
-    label?: any;
-    homepage?: any;
-    logo?: any;
-  }>;
-  requiredStatement?: { label: any; value: any };
+  info: IIIFinfo;
   collectionSearch?: { service: string; autocomplete?: string };
 }
 

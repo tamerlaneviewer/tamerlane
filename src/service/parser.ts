@@ -64,16 +64,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     }
   }
 
-  console.log('manifestSearch', manifestSearch);
-  return {
-    name: label,
-    metadata,
-    provider,
-    requiredStatement,
-    canvases,
-    images,
-    manifestSearch,
-  };
+  return { info: { name: label, metadata, provider, requiredStatement }, canvases, images, manifestSearch };
 }
 
 async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
@@ -110,7 +101,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
     }
   }
 
-  const collection = { name: label, metadata, provider, requiredStatement, collectionSearch };
+  const collection = { info: { name: label, metadata, provider, requiredStatement }, collectionSearch };
 
   async function process(parsedJson: any, processedCollections: Set<string>) {
     if (processedCollections.has(parsedJson.id)) return;

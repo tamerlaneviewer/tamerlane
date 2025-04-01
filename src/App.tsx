@@ -199,7 +199,7 @@ const App: React.FC = () => {
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
     total: number,
-    collection: IIIFCollection,
+    collection: IIIFCollection | null = null,
     collectionSearch?: { service: string; autocomplete?: string },
   ) => {
     setCurrentManifest(firstManifest);
@@ -207,21 +207,18 @@ const App: React.FC = () => {
     setTotalManifests(total);
 
     setManifestMetadata({
-      label: firstManifest?.name || '',
-      metadata: firstManifest?.metadata || [],
-      provider: firstManifest?.provider || [],
-      requiredStatement: firstManifest?.requiredStatement || null
+      label: firstManifest?.info?.name || '',
+      metadata: firstManifest?.info?.metadata || [],
+      provider: firstManifest?.info?.provider || [],
+      requiredStatement: firstManifest?.info?.requiredStatement,
     });
 
-    // Avoid resetting collection state unnecessarily
-    if (collection?.name && collection.name !== collectionMetadata?.label) {
-      setCollectionMetadata({
-        label: collection.name,
-        metadata: collection.metadata || [],
-        provider: collection.provider || [],
-        requiredStatement: collection.requiredStatement || null,
-      });
-    }
+    setCollectionMetadata({
+      label: collection?.info?.name || '',
+      metadata: collection?.info?.metadata || [],
+      provider: collection?.info?.provider || [],
+      requiredStatement: collection?.info?.requiredStatement,
+    });
 
     setAutocompleteUrl(
       collectionSearch?.autocomplete ??
@@ -263,7 +260,7 @@ const App: React.FC = () => {
         firstManifest,
         manifestUrls,
         totalManifests,
-        collection?.name ? collection : collectionMetadata,
+        collection?.info.name ? collection : collectionMetadata,
       );
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
