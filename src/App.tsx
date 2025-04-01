@@ -310,17 +310,22 @@ const App: React.FC = () => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-        <div className="bg-white p-6 rounded shadow-lg max-w-lg text-center">
-          <h2 className="text-xl font-bold mb-4 text-red-600">
-            An error occurred
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 text-center">
+          {/* Title */}
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            Something went wrong
           </h2>
-          <p className="mb-4 text-gray-700">{error}</p>
+
+          {/* Error Message */}
+          <p className="text-sm text-gray-600 mb-5">{error}</p>
+
+          {/* Dismiss Button */}
           <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={() => setError(null)}
+            className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
           >
-            Close
+            Dismiss
           </button>
         </div>
       </div>
