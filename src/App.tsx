@@ -213,12 +213,15 @@ const App: React.FC = () => {
       requiredStatement: firstManifest?.info?.requiredStatement,
     });
 
-    setCollectionMetadata({
-      label: collection?.info?.name || '',
-      metadata: collection?.info?.metadata || [],
-      provider: collection?.info?.provider || [],
-      requiredStatement: collection?.info?.requiredStatement,
-    });
+    // Always update collection metadata if collection is passed
+    if (collection) {
+      setCollectionMetadata({
+        label: collection?.info?.name || '',
+        metadata: collection?.info?.metadata || [],
+        provider: collection?.info?.provider || [],
+        requiredStatement: collection?.info?.requiredStatement,
+      });
+    }
 
     setAutocompleteUrl(
       collectionSearch?.autocomplete ??
@@ -235,7 +238,7 @@ const App: React.FC = () => {
     if (
       index < 0 ||
       index >= totalManifests ||
-      index === selectedManifestIndex // avoid redundant refetch
+      index === selectedManifestIndex
     ) {
       return;
     }
@@ -255,12 +258,12 @@ const App: React.FC = () => {
       setSelectedManifestIndex(index);
       setSelectedImageIndex(0);
 
-      // Preserve collection metadata if not provided
+      // Always pass the new collection (can be null)
       handleManifestUpdate(
         firstManifest,
         manifestUrls,
         totalManifests,
-        collection?.info.name ? collection : collectionMetadata,
+        collection,
       );
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
