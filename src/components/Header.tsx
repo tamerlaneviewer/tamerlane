@@ -34,13 +34,17 @@ const Header: React.FC<HeaderProps> = ({
   onNextManifest,
   resetImageIndex,
   autocompleteUrl,
+  onLanguageChange
 }) => {
   const [languageIndex, setLanguageIndex] = useState(0);
   const selectedLanguage = availableLanguages[languageIndex];
 
   const toggleLanguage = () => {
-    setLanguageIndex((prev) => (prev + 1) % availableLanguages.length);
+    const nextIndex = (languageIndex + 1) % availableLanguages.length;
+    setLanguageIndex(nextIndex);
+    onLanguageChange(availableLanguages[nextIndex].code); // Ensure this calls the handler
   };
+  
 
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
