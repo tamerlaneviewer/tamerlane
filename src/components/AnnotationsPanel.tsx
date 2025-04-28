@@ -83,6 +83,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               onSearchResultClick(canvasTarget, manifestId, id)
             }
             selectedSearchResultId={selectedSearchResultId}
+            selectedLanguage={selectedLanguage}
           />
         )}
       </div>

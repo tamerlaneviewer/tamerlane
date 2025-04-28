@@ -86,7 +86,7 @@ function buildSnippetFromAnnotation(
 
   // Ensure a valid snippet
   if (!exact) return null;
-
+  
   return {
     id: annotation.id,
     annotationId: baseAnnotation.id,
@@ -96,5 +96,6 @@ function buildSnippetFromAnnotation(
     suffix,
     canvasTarget,
     partOf,
+    language: annotation.language || undefined,
   };
 }

@@ -28,6 +28,7 @@ export interface IIIFSearchSnippet {
   suffix?: string;
   canvasTarget: string;
   partOf?: string;
+  language?: string; 
 }
 
 export interface IIIFCanvas {
