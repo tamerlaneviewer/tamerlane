@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 interface SearchBarProps {
   onSearch: (query: string) => void;
   autocompleteService: string;
+  selectedLanguage?: string;
 }
 
 const cleanAndSanitizeTerm = (value: string): string => {
@@ -14,7 +15,7 @@ const cleanAndSanitizeTerm = (value: string): string => {
   return DOMPurify.sanitize(stripped);
 };
 
-const SearchBar = ({ onSearch, autocompleteService }: SearchBarProps) => {
+const SearchBar = ({ onSearch, autocompleteService, selectedLanguage }: SearchBarProps) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -24,24 +25,32 @@ const SearchBar = ({ onSearch, autocompleteService }: SearchBarProps) => {
     const fetchSuggestions = async () => {
       const terms = query.split(',').map((t) => t.trim());
       const lastTerm = terms[terms.length - 1];
-
+    
       if (!autocompleteService || lastTerm.length < 3) {
         setSuggestions([]);
         return;
       }
-
+    
       try {
         const res = await fetch(
-          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`
         );
         const data = await res.json();
-        const items = data.items.map((item: any) => item.value);
+    
+        const items = data.items
+          .filter((item: any) => {
+            if (!selectedLanguage) return true; // No filter if language not selected
+            return !item.language || item.language === selectedLanguage;
+          })
+          .map((item: any) => item.value);
+    
         setSuggestions(items.slice(0, 5));
       } catch (err) {
         console.error('Autocomplete failed', err);
         setSuggestions([]);
       }
     };
+    
 
     const delay = setTimeout(fetchSuggestions, 250); // debounce
     return () => clearTimeout(delay);

@@ -410,6 +410,7 @@ const App: React.FC = () => {
         }
         resetImageIndex={resetImageIndex}
         onLanguageChange={handleLanguageChange}
+        selectedLanguage={selectedLanguage}
       />
 
       <div className="flex flex-grow">

@@ -15,6 +15,8 @@ interface HeaderProps {
   onPreviousManifest: () => void;
   onNextManifest: () => void;
   resetImageIndex: () => void;
+  onLanguageChange: (lang: string) => void;
+  selectedLanguage: string | null;
 }
 
 const availableLanguages = [
@@ -34,17 +36,17 @@ const Header: React.FC<HeaderProps> = ({
   onNextManifest,
   resetImageIndex,
   autocompleteUrl,
-  onLanguageChange
+  onLanguageChange,
+  selectedLanguage,
 }) => {
   const [languageIndex, setLanguageIndex] = useState(0);
-  const selectedLanguage = availableLanguages[languageIndex];
+  const currentLanguage = availableLanguages[languageIndex];
 
   const toggleLanguage = () => {
     const nextIndex = (languageIndex + 1) % availableLanguages.length;
     setLanguageIndex(nextIndex);
     onLanguageChange(availableLanguages[nextIndex].code); // Ensure this calls the handler
   };
-  
 
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
@@ -69,11 +71,15 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={toggleLanguage}
           className="bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
-          title={selectedLanguage.name}
+          title={currentLanguage.name}
         >
-          {selectedLanguage.code.toUpperCase()}
+          {currentLanguage.code.toUpperCase()}
         </button>
-        <SearchBar onSearch={onSearch} autocompleteService={autocompleteUrl} />
+        <SearchBar
+          onSearch={onSearch}
+          autocompleteService={autocompleteUrl}
+          selectedLanguage={selectedLanguage}
+        />
       </div>
     </header>
   );
