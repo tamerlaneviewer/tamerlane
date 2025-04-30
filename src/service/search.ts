@@ -96,6 +96,6 @@ function buildSnippetFromAnnotation(
     suffix,
     canvasTarget,
     partOf,
-    language: annotation.language || undefined,
+    language: annotation.target.language || undefined,
   };
 }
