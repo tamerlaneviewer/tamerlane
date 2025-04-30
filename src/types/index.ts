@@ -3,11 +3,20 @@ export interface IIIFResource {
   data: any;
 }
 
+export interface AnnotationBody {
+  type: string;
+  language?: string;
+  motivation?: string;
+  format?: string;
+  value: string;
+  creator?: string;
+}
+
 export interface IIIFAnnotation {
   id: string;
   motivation: string | string[];
   target: string;
-  body: { value?: string }[];
+  body: AnnotationBody | AnnotationBody[]
 }
 
 export interface IIIFSearchSnippet {
@@ -19,6 +28,7 @@ export interface IIIFSearchSnippet {
   suffix?: string;
   canvasTarget: string;
   partOf?: string;
+  language?: string; 
 }
 
 export interface IIIFCanvas {

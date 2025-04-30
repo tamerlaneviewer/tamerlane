@@ -47,6 +47,12 @@ const App: React.FC = () => {
   const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
   const [searchUrl, setSearchUrl] = useState<string>('');
 
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
+    
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language); // Update the selected language
+  };
+
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
@@ -403,6 +409,8 @@ const App: React.FC = () => {
           )
         }
         resetImageIndex={resetImageIndex}
+        onLanguageChange={handleLanguageChange}
+        selectedLanguage={selectedLanguage}
       />
 
       <div className="flex flex-grow">
@@ -430,7 +438,7 @@ const App: React.FC = () => {
 
         <div className="w-1/4 border-l flex flex-col overflow-hidden">
           <AnnotationsPanel
-            annotations={annotations}
+            annotations={annotations} // pass language-filtered annotations
             searchResults={searchResults}
             onAnnotationSelect={handleAnnotationSelect}
             activeTab={activePanelTab}
@@ -439,6 +447,7 @@ const App: React.FC = () => {
             selectedAnnotation={selectedAnnotation}
             selectedSearchResultId={selectedSearchResultId}
             autocompleteUrl={autocompleteUrl}
+            selectedLanguage={selectedLanguage} // pass selected language
           />
         </div>
       </div>

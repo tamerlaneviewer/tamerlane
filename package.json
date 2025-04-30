@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
-    "maniiifest": "^1.4.5",
+    "maniiifest": "^1.4.6",
     "postcss": "^8.5.2",
     "postcss-cli": "^11.0.0",
     "postcss-flexbugs-fixes": "^5.0.2",

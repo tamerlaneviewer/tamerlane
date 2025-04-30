@@ -17,6 +17,7 @@ interface AnnotationsPanelProps {
     manifestId?: string,
     searchResultId?: string,
   ) => void;
+  selectedLanguage: string;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
@@ -28,6 +29,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   onSearchResultClick,
   selectedAnnotation,
   selectedSearchResultId,
+  selectedLanguage,
 }) => {
   return (
     <div className="flex flex-col h-full max-h-full border shadow-md bg-white">
@@ -69,6 +71,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               annotations={annotations}
               onAnnotationSelect={onAnnotationSelect}
               selectedAnnotation={selectedAnnotation}
+              selectedLanguage={selectedLanguage}
             />
           )
         ) : searchResults.length === 0 ? (
@@ -80,6 +83,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               onSearchResultClick(canvasTarget, manifestId, id)
             }
             selectedSearchResultId={selectedSearchResultId}
+            selectedLanguage={selectedLanguage}
           />
         )}
       </div>
