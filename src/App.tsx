@@ -10,6 +10,8 @@ import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
+import UrlDialog from './components/UrlDialog.tsx';
+import ErrorDialog from './components/ErrorDialog.tsx';
 
 const App: React.FC = () => {
   const [activePanelTab, setActivePanelTab] = useState<
@@ -48,7 +50,7 @@ const App: React.FC = () => {
   const [searchUrl, setSearchUrl] = useState<string>('');
 
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
-    
+
   const handleLanguageChange = (language: string) => {
     setSelectedLanguage(language); // Update the selected language
   };
@@ -293,59 +295,22 @@ const App: React.FC = () => {
     setSelectedAnnotation(annotation);
 
   if (showUrlDialog) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-        <div className="bg-white p-6 rounded shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Enter IIIF Content URL</h2>
-          <form onSubmit={handleUrlSubmit}>
-            <input
-              type="text"
-              name="iiifContentUrl"
-              placeholder="Enter IIIF Content URL"
-              className="border p-2 mb-4 w-full"
-              required
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded"
-            >
-              Submit
-            </button>
-          </form>
-        </div>
-      </div>
-    );
+    return <UrlDialog onSubmit={handleUrlSubmit} />;
   }
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 text-center">
-          {/* Title */}
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">
-            Something went wrong
-          </h2>
-
-          {/* Error Message */}
-          <p className="text-sm text-gray-600 mb-5">{error}</p>
-
-          {/* Dismiss Button */}
-          <button
-            onClick={() => {
-              setError(null);
-              if (!currentManifest) {
-                // Only reset to URL input if initial loading failed
-                setIiifContentUrl(null);
-                setCurrentManifest(null);
-                setShowUrlDialog(true);
-              }
-            }}
-            className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
+      <ErrorDialog
+        message={error}
+        onDismiss={() => {
+          setError(null);
+          if (!currentManifest) {
+            setIiifContentUrl(null);
+            setCurrentManifest(null);
+            setShowUrlDialog(true);
+          }
+        }}
+      />
     );
   }
 
