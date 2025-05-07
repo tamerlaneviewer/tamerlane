@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
-import IIIFViewer from './components/IIIFViewer.tsx';
-import AnnotationsPanel from './components/AnnotationsPanel.tsx';
-import MetadataPanel from './components/MetadataPanel.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
 import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
@@ -12,6 +9,9 @@ import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
 import UrlDialog from './components/UrlDialog.tsx';
 import ErrorDialog from './components/ErrorDialog.tsx';
+import LeftPanel from './components/LeftPanel.tsx';
+import MiddlePanel from './components/MiddlePanel.tsx';
+import RightPanel from './components/RightPanel.tsx';
 
 const App: React.FC = () => {
   const [activePanelTab, setActivePanelTab] = useState<
@@ -392,42 +392,32 @@ const App: React.FC = () => {
       />
 
       <div className="flex flex-grow">
-        <div className="w-1/4 border-r flex flex-col">
-          <MetadataPanel
-            manifestMetadata={manifestMetadata}
-            collectionMetadata={collectionMetadata}
-          />
-        </div>
-
-        <div className="w-1/2 flex flex-col">
-          <div className="flex-grow">
-            <IIIFViewer
-              imageUrl={imageUrl}
-              imageType={imageType}
-              canvasWidth={canvasWidth}
-              canvasHeight={canvasHeight}
-              imageWidth={imageWidth}
-              imageHeight={imageHeight}
-              selectedAnnotation={selectedAnnotation}
-              onViewerReady={handleViewerReady}
-            />
-          </div>
-        </div>
-
-        <div className="w-1/4 border-l flex flex-col overflow-hidden">
-          <AnnotationsPanel
-            annotations={annotations} // pass language-filtered annotations
-            searchResults={searchResults}
-            onAnnotationSelect={handleAnnotationSelect}
-            activeTab={activePanelTab}
-            setActiveTab={setActivePanelTab}
-            onSearchResultClick={handleSearchResultClick}
-            selectedAnnotation={selectedAnnotation}
-            selectedSearchResultId={selectedSearchResultId}
-            autocompleteUrl={autocompleteUrl}
-            selectedLanguage={selectedLanguage} // pass selected language
-          />
-        </div>
+        <LeftPanel
+          manifestMetadata={manifestMetadata}
+          collectionMetadata={collectionMetadata}
+        />
+        <MiddlePanel
+          imageUrl={imageUrl}
+          imageType={imageType}
+          canvasWidth={canvasWidth}
+          canvasHeight={canvasHeight}
+          imageWidth={imageWidth}
+          imageHeight={imageHeight}
+          selectedAnnotation={selectedAnnotation}
+          onViewerReady={handleViewerReady}
+        />
+        <RightPanel
+          annotations={annotations}
+          searchResults={searchResults}
+          activeTab={activePanelTab}
+          setActiveTab={setActivePanelTab}
+          onAnnotationSelect={handleAnnotationSelect}
+          onSearchResultClick={handleSearchResultClick}
+          selectedAnnotation={selectedAnnotation}
+          selectedSearchResultId={selectedSearchResultId}
+          autocompleteUrl={autocompleteUrl}
+          selectedLanguage={selectedLanguage}
+        />
       </div>
     </div>
   );
