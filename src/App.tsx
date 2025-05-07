@@ -10,6 +10,8 @@ import { getCanvasDimensions } from './service/canvas.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { searchAnnotations } from './service/search.ts';
+import UrlDialog from './components/UrlDialog.tsx';
+import ErrorDialog from './components/ErrorDialog.tsx';
 
 const App: React.FC = () => {
   const [activePanelTab, setActivePanelTab] = useState<
@@ -48,11 +50,13 @@ const App: React.FC = () => {
   const [searchUrl, setSearchUrl] = useState<string>('');
 
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
-    
+
+  // Handle UI language selection from the dropdown
   const handleLanguageChange = (language: string) => {
     setSelectedLanguage(language); // Update the selected language
   };
 
+  // Update canvasId when the current manifest or image index changes
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
@@ -60,6 +64,7 @@ const App: React.FC = () => {
     }
   }, [currentManifest, selectedImageIndex]);
 
+  // Fetch annotations when manifest, canvas, or index changes
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
 
@@ -79,6 +84,7 @@ const App: React.FC = () => {
     fetchAnnotations();
   }, [currentManifest, canvasId, selectedManifestIndex, manifestUrls]);
 
+  // Match a pending annotation ID to actual annotation after viewer is ready
   useEffect(() => {
     if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
       return;
@@ -100,6 +106,7 @@ const App: React.FC = () => {
     }
   }, [annotations, pendingAnnotationId, viewerReady]);
 
+  // Fetch the initial manifest when iiifContentUrl is set
   useEffect(() => {
     if (!iiifContentUrl) return;
 
@@ -121,10 +128,12 @@ const App: React.FC = () => {
     fetchInitialManifest();
   }, [iiifContentUrl]);
 
+  // Mark the viewer as ready after load
   const handleViewerReady = useCallback(() => {
     setViewerReady(true);
   }, []);
 
+  // Handle search result click by jumping to target canvas and manifest
   const handleSearchResultClick = async (
     canvasTarget: string,
     manifestId?: string,
@@ -182,6 +191,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Perform search query and set search results
   const handleSearch = async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) return;
@@ -201,6 +211,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Update state with new manifest and collection info
   const handleManifestUpdate = (
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
@@ -240,6 +251,7 @@ const App: React.FC = () => {
     );
   };
 
+  // Fetch a manifest by index and reset related state
   const fetchManifestByIndex = async (index: number) => {
     if (
       index < 0 ||
@@ -277,6 +289,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Handle submission of IIIF content URL form
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -288,64 +301,29 @@ const App: React.FC = () => {
     }
   };
 
+  // Reset the image index to 0
   const resetImageIndex = () => setSelectedImageIndex(0);
+  // Select an annotation and update state
   const handleAnnotationSelect = (annotation: IIIFAnnotation) =>
     setSelectedAnnotation(annotation);
 
   if (showUrlDialog) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-        <div className="bg-white p-6 rounded shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Enter IIIF Content URL</h2>
-          <form onSubmit={handleUrlSubmit}>
-            <input
-              type="text"
-              name="iiifContentUrl"
-              placeholder="Enter IIIF Content URL"
-              className="border p-2 mb-4 w-full"
-              required
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded"
-            >
-              Submit
-            </button>
-          </form>
-        </div>
-      </div>
-    );
+    return <UrlDialog onSubmit={handleUrlSubmit} />;
   }
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 text-center">
-          {/* Title */}
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">
-            Something went wrong
-          </h2>
-
-          {/* Error Message */}
-          <p className="text-sm text-gray-600 mb-5">{error}</p>
-
-          {/* Dismiss Button */}
-          <button
-            onClick={() => {
-              setError(null);
-              if (!currentManifest) {
-                // Only reset to URL input if initial loading failed
-                setIiifContentUrl(null);
-                setCurrentManifest(null);
-                setShowUrlDialog(true);
-              }
-            }}
-            className="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
+      <ErrorDialog
+        message={error}
+        onDismiss={() => {
+          setError(null);
+          if (!currentManifest) {
+            setIiifContentUrl(null);
+            setCurrentManifest(null);
+            setShowUrlDialog(true);
+          }
+        }}
+      />
     );
   }
 
