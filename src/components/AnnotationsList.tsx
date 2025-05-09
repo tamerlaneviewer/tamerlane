@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
+import { ClipboardCopy } from 'lucide-react';
 import { IIIFAnnotation } from '../types';
 
 interface AnnotationsListProps {
@@ -15,10 +16,9 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   selectedAnnotation,
   selectedLanguage,
 }) => {
-  // Create a stable ref map only once per render cycle
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
+  const [copied, setCopied] = useState(false);
 
-  // Scroll to selected annotation
   useEffect(() => {
     if (selectedAnnotation?.id) {
       const ref = itemRefs.current[selectedAnnotation.id];
@@ -28,34 +28,43 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     }
   }, [selectedAnnotation]);
 
+  useEffect(() => {
+    if (copied) {
+      const timeout = setTimeout(() => setCopied(false), 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [copied]);
+
   const renderHTML = (text: string) => {
     const safeString = text.replace(/\n/g, '<br />');
     return { __html: DOMPurify.sanitize(safeString) };
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => setCopied(true))
+      .catch((err) => console.error('Clipboard write failed:', err));
+  };
+
   return (
-    <div className="flex flex-col flex-grow h-full overflow-auto p-2">
+    <div className="relative flex flex-col flex-grow h-full overflow-auto p-2">
       {annotations
         .filter((annotation: IIIFAnnotation) => {
-          // If no language is selected, show all annotations
-          if (!selectedLanguage) {
-            return true;
-          }
+          if (!selectedLanguage) return true;
 
-          // If body is an array, check if any of the items match the selected language
           if (Array.isArray(annotation.body)) {
             return annotation.body.some(
               (item) => item.language === selectedLanguage || !item.language,
             );
-          } else {
-            // If body is a single object, check its language
-            return (
-              annotation.body.language === selectedLanguage ||
-              !annotation.body.language
-            );
           }
+
+          return (
+            annotation.body.language === selectedLanguage ||
+            !annotation.body.language
+          );
         })
-        .map((annotation: IIIFAnnotation, index) => {
+        .map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
 
           return (
@@ -66,35 +75,59 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                   itemRefs.current[annotation.id] = el;
                 }
               }}
+              onClick={() => onAnnotationSelect(annotation)}
               className={`mb-1 p-1 cursor-pointer rounded transition-all ${
                 isSelected
                   ? 'bg-blue-200 border-l-4 border-blue-500'
                   : 'hover:bg-gray-100'
-              }`}
-              onClick={() => onAnnotationSelect(annotation)}
+              } group`}
             >
               {Array.isArray(annotation.body) ? (
                 annotation.body
-                  .filter((item) => {
-                    return (
+                  .filter(
+                    (item) =>
                       typeof item.value === 'string' &&
                       item.value.trim() !== '' &&
-                      (item.language === selectedLanguage || !item.language)
-                    );
-                  })
+                      (item.language === selectedLanguage || !item.language),
+                  )
                   .map((item, itemIndex) => (
-                    <p
-                      key={itemIndex}
-                      className="text-sm text-gray-700 leading-tight"
-                      dangerouslySetInnerHTML={renderHTML(item.value)}
-                    />
+                    <div key={itemIndex} className="flex items-start gap-2">
+                      <p
+                        className="text-sm text-gray-700 leading-tight flex-1"
+                        dangerouslySetInnerHTML={renderHTML(item.value)}
+                      />
+                      {annotation.id && (
+                        <ClipboardCopy
+                          size={14}
+                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                          title="Copy ID"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(annotation.id!);
+                          }}
+                        />
+                      )}
+                    </div>
                   ))
               ) : annotation.body.language === selectedLanguage ||
                 !annotation.body.language ? (
-                <p
-                  className="text-sm text-gray-700 leading-tight"
-                  dangerouslySetInnerHTML={renderHTML(annotation.body.value)}
-                />
+                <div className="flex items-start gap-2">
+                  <p
+                    className="text-sm text-gray-700 leading-tight flex-1"
+                    dangerouslySetInnerHTML={renderHTML(annotation.body.value)}
+                  />
+                  {annotation.id && (
+                    <ClipboardCopy
+                      size={14}
+                      className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                      title="Copy ID"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(annotation.id!);
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-gray-700 leading-tight">
                   No text available
@@ -103,6 +136,12 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
             </div>
           );
         })}
+
+      {copied && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg text-sm">
+          Copied to clipboard
+        </div>
+      )}
     </div>
   );
 };
