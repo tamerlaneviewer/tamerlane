@@ -15,7 +15,11 @@ const cleanAndSanitizeTerm = (value: string): string => {
   return DOMPurify.sanitize(stripped);
 };
 
-const SearchBar = ({ onSearch, autocompleteService, selectedLanguage }: SearchBarProps) => {
+const SearchBar = ({
+  onSearch,
+  autocompleteService,
+  selectedLanguage,
+}: SearchBarProps) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -23,50 +27,57 @@ const SearchBar = ({ onSearch, autocompleteService, selectedLanguage }: SearchBa
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      const terms = query.split(',').map((t) => t.trim());
+      const terms = query.split(/\s+/);
       const lastTerm = terms[terms.length - 1];
-    
+
       if (!autocompleteService || lastTerm.length < 3) {
         setSuggestions([]);
         return;
       }
-    
+
       try {
         const res = await fetch(
-          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
         );
         const data = await res.json();
-    
+
         const items = data.items
           .filter((item: any) => {
-            if (!selectedLanguage) return true; // No filter if language not selected
+            if (!selectedLanguage) return true;
             return !item.language || item.language === selectedLanguage;
           })
           .map((item: any) => item.value);
-    
+
         setSuggestions(items.slice(0, 5));
       } catch (err) {
         console.error('Autocomplete failed', err);
         setSuggestions([]);
       }
     };
-    
 
-    const delay = setTimeout(fetchSuggestions, 250); // debounce
+    const delay = setTimeout(fetchSuggestions, 250);
     return () => clearTimeout(delay);
   }, [query, autocompleteService]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query) onSearch(query);
-    setShowSuggestions(false);
+    if (query.trim()) {
+      onSearch(query.trim());
+      setShowSuggestions(false);
+    }
   };
 
   const handleSelect = (term: string) => {
-    setQuery(term);
+    const terms = query.split(/\s+/);
+    terms[terms.length - 1] = term;
+    const updatedQuery = terms.join(' ').trim();
+
+    setQuery(updatedQuery);
     setSuggestions([]);
     setShowSuggestions(false);
-    onSearch(term);
+
+    // Do NOT search immediately; wait for user to press Search
+    inputRef.current?.focus();
   };
 
   return (
@@ -75,7 +86,7 @@ const SearchBar = ({ onSearch, autocompleteService, selectedLanguage }: SearchBa
         <input
           ref={inputRef}
           type="text"
-          className="border rounded p-0.5 w-32 text-sm text-black bg-white"
+          className="border rounded p-0.5 w-40 text-sm text-black bg-white"
           placeholder="Keywords..."
           value={query}
           onChange={(e) => {
@@ -93,7 +104,7 @@ const SearchBar = ({ onSearch, autocompleteService, selectedLanguage }: SearchBa
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-52 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10">
+        <ul className="absolute z-10 mt-1 w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10">
           {suggestions.map((term, idx) => (
             <li
               key={idx}
