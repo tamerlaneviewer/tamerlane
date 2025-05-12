@@ -58,6 +58,8 @@ const App: React.FC = () => {
   const handleLanguageChange = (language: string) =>
     setSelectedLanguage(language);
 
+  const [searching, setSearching] = useState(false);
+
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
@@ -156,18 +158,22 @@ const App: React.FC = () => {
   };
 
   const handleSearch = async (query: string) => {
+    if (searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
     if (!searchUrl)
       return setError('This resource does not support content search.');
 
     try {
+      setSearching(true); 
       const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
       setSearchResults(results);
       setActivePanelTab('searchResults');
     } catch {
       setError('Search failed. Please try again.');
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -302,6 +308,7 @@ const App: React.FC = () => {
       <Header
         onSearch={handleSearch}
         autocompleteUrl={autocompleteUrl}
+        searching={searching}
         currentIndex={selectedImageIndex}
         totalImages={totalImages}
         totalManifests={totalManifests}

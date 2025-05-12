@@ -5,6 +5,7 @@ interface SearchBarProps {
   onSearch: (query: string) => void;
   autocompleteService: string;
   selectedLanguage?: string;
+  searching?: boolean;
 }
 
 const cleanAndSanitizeTerm = (value: string): string => {
@@ -19,6 +20,7 @@ const SearchBar = ({
   onSearch,
   autocompleteService,
   selectedLanguage,
+  searching = false,
 }: SearchBarProps) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -97,7 +99,10 @@ const SearchBar = ({
         />
         <button
           type="submit"
-          className="bg-blue-500 text-white p-0.5 rounded text-sm"
+          className={`bg-blue-500 text-white p-0.5 rounded text-sm transition-opacity duration-200 ${
+            searching ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          disabled={searching}
         >
           Search
         </button>

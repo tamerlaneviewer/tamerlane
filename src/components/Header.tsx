@@ -17,6 +17,7 @@ interface HeaderProps {
   resetImageIndex: () => void;
   onLanguageChange: (lang: string) => void;
   selectedLanguage: string | null;
+  searching: boolean;
 }
 
 const availableLanguages = [
@@ -38,6 +39,7 @@ const Header: React.FC<HeaderProps> = ({
   autocompleteUrl,
   onLanguageChange,
   selectedLanguage,
+  searching = false,
 }) => {
   const [languageIndex, setLanguageIndex] = useState(0);
   const currentLanguage = availableLanguages[languageIndex];
@@ -78,6 +80,7 @@ const Header: React.FC<HeaderProps> = ({
         <SearchBar
           onSearch={onSearch}
           autocompleteService={autocompleteUrl}
+          searching={searching}
           selectedLanguage={selectedLanguage}
         />
       </div>
