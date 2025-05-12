@@ -217,7 +217,6 @@ const App: React.FC = () => {
     manifestUrls: string[],
     total: number,
     collection: IIIFCollection | null = null,
-    collectionSearch?: { service: string; autocomplete?: string },
   ) => {
     setCurrentManifest(firstManifest);
     setManifestUrls(manifestUrls);
@@ -241,13 +240,15 @@ const App: React.FC = () => {
     }
 
     setAutocompleteUrl(
-      collectionSearch?.autocomplete ??
+      collection?.collectionSearch?.autocomplete ??
         firstManifest?.manifestSearch?.autocomplete ??
         '',
     );
 
     setSearchUrl(
-      collectionSearch?.service ?? firstManifest?.manifestSearch?.service ?? '',
+      collection?.collectionSearch?.service ??
+        firstManifest?.manifestSearch?.service ??
+        '',
     );
   };
 
