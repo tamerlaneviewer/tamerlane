@@ -14,6 +14,9 @@ import MiddlePanel from './components/MiddlePanel.tsx';
 import RightPanel from './components/RightPanel.tsx';
 
 const App: React.FC = () => {
+  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
+    setSelectedAnnotation(annotation);
+  };
   const [activePanelTab, setActivePanelTab] = useState<
     'annotations' | 'searchResults'
   >('annotations');
@@ -26,6 +29,8 @@ const App: React.FC = () => {
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
     null,
   );
+  const [currentCollection, setCurrentCollection] =
+    useState<IIIFCollection | null>(null);
   const [canvasId, setCanvasId] = useState<string>('');
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
@@ -48,15 +53,11 @@ const App: React.FC = () => {
   const [viewerReady, setViewerReady] = useState(false);
   const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
   const [searchUrl, setSearchUrl] = useState<string>('');
-
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
 
-  // Handle UI language selection from the dropdown
-  const handleLanguageChange = (language: string) => {
-    setSelectedLanguage(language); // Update the selected language
-  };
+  const handleLanguageChange = (language: string) =>
+    setSelectedLanguage(language);
 
-  // Update canvasId when the current manifest or image index changes
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
@@ -64,154 +65,112 @@ const App: React.FC = () => {
     }
   }, [currentManifest, selectedImageIndex]);
 
-  // Fetch annotations when manifest, canvas, or index changes
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
-
     const manifestUrl = manifestUrls[selectedManifestIndex];
-
-    const fetchAnnotations = async () => {
-      try {
-        const results = await getAnnotationsForTarget(manifestUrl, canvasId);
-        setAnnotations(results);
-      } catch (err: any) {
+    getAnnotationsForTarget(manifestUrl, canvasId)
+      .then(setAnnotations)
+      .catch((err) => {
         console.error('Error fetching annotations:', err);
         setAnnotations([]);
         setError('Unable to load annotations for this canvas.');
-      }
-    };
-
-    fetchAnnotations();
+      });
   }, [currentManifest, canvasId, selectedManifestIndex, manifestUrls]);
 
-  // Match a pending annotation ID to actual annotation after viewer is ready
   useEffect(() => {
     if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
       return;
-
     const match = annotations.find((anno) => anno.id === pendingAnnotationId);
-
     if (match) {
       setSelectedAnnotation(match);
-      console.log('Selected annotation by ID:', match.id);
-      setPendingAnnotationId(null); // clear it only after use
-      setViewerReady(false); // reset viewer readiness
+      setPendingAnnotationId(null);
+      setViewerReady(false);
     } else {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(
-          '❌ Could not find annotation for ID:',
-          pendingAnnotationId,
-        );
-      }
+      console.warn('❌ Could not find annotation for ID:', pendingAnnotationId);
     }
   }, [annotations, pendingAnnotationId, viewerReady]);
 
-  // Fetch the initial manifest when iiifContentUrl is set
   useEffect(() => {
     if (!iiifContentUrl) return;
-
-    const fetchInitialManifest = async () => {
-      try {
-        const { firstManifest, manifestUrls, total, collection } =
-          await parseResource(iiifContentUrl);
-        handleManifestUpdate(
-          firstManifest,
-          manifestUrls,
-          total,
-          collection ?? collectionMetadata,
-        );
-      } catch (err) {
-        setError('Failed to load IIIF content. Please check the URL.');
-      }
-    };
-
-    fetchInitialManifest();
+    parseResource(iiifContentUrl)
+      .then(({ firstManifest, manifestUrls, total, collection }) => {
+        handleManifestUpdate(firstManifest, manifestUrls, total, collection);
+      })
+      .catch(() =>
+        setError('Failed to load IIIF content. Please check the URL.'),
+      );
   }, [iiifContentUrl]);
 
-  // Mark the viewer as ready after load
   const handleViewerReady = useCallback(() => {
     setViewerReady(true);
   }, []);
 
-  // Handle search result click by jumping to target canvas and manifest
   const handleSearchResultClick = async (
     canvasTarget: string,
     manifestId?: string,
     searchResultId?: string,
   ) => {
     try {
-      if (searchResultId) {
-        setSelectedSearchResultId(searchResultId);
-      }
-
+      if (searchResultId) setSelectedSearchResultId(searchResultId);
       let targetManifest = currentManifest;
 
       if (manifestId && currentManifest?.id !== manifestId) {
         const matchedIndex = manifestUrls.findIndex((url) =>
           url.includes(manifestId),
         );
-        if (matchedIndex === -1) {
-          setError('Manifest not found.');
-          return;
-        }
+        if (matchedIndex === -1) return setError('Manifest not found.');
 
-        const { firstManifest } = await parseResource(
+        const { firstManifest, collection } = await parseResource(
           manifestUrls[matchedIndex],
         );
-        if (!firstManifest) {
-          setError('Failed to load manifest.');
-          return;
-        }
+        if (!firstManifest) return setError('Failed to load manifest.');
 
-        setCurrentManifest(firstManifest);
         setSelectedManifestIndex(matchedIndex);
+        setSelectedImageIndex(0);
+        setCurrentManifest(firstManifest);
+        handleManifestUpdate(
+          firstManifest,
+          manifestUrls,
+          totalManifests,
+          collection,
+        );
         targetManifest = firstManifest;
       }
 
-      const baseCanvasTarget = canvasTarget.split('#')[0]; // strip #xywh if present
+      const baseCanvasTarget = canvasTarget.split('#')[0];
       const newImageIndex = targetManifest?.images.findIndex(
         (img) => img.canvasTarget === baseCanvasTarget,
       );
-
-      if (newImageIndex === -1 || newImageIndex === undefined) {
-        setError('Canvas not found.');
-        return;
-      }
+      if (newImageIndex === -1 || newImageIndex === undefined)
+        return setError('Canvas not found.');
 
       setViewerReady(false);
       setSelectedImageIndex(newImageIndex);
       setCanvasId(canvasTarget);
       setActivePanelTab('annotations');
-
-      if (searchResultId) {
-        setPendingAnnotationId(searchResultId);
-      }
+      if (searchResultId) setPendingAnnotationId(searchResultId);
     } catch (err) {
+      console.error('Failed to jump to search result:', err);
       setError('Could not jump to search result.');
     }
   };
 
-  // Perform search query and set search results
   const handleSearch = async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) return;
-
-    if (!searchUrl) {
-      setError('This resource does not support content search.');
-      return;
-    }
+    if (!searchUrl)
+      return setError('This resource does not support content search.');
 
     try {
       const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
       setSearchResults(results);
       setActivePanelTab('searchResults');
-    } catch (err) {
+    } catch {
       setError('Search failed. Please try again.');
     }
   };
 
-  // Update state with new manifest and collection info
   const handleManifestUpdate = (
     firstManifest: IIIFManifest | null,
     manifestUrls: string[],
@@ -229,55 +188,45 @@ const App: React.FC = () => {
       requiredStatement: firstManifest?.info?.requiredStatement,
     });
 
-    // Always update collection metadata if collection is passed
+    const effectiveCollection = collection ?? currentCollection;
+
     if (collection) {
+      setCurrentCollection(collection);
       setCollectionMetadata({
-        label: collection?.info?.name || '',
-        metadata: collection?.info?.metadata || [],
-        provider: collection?.info?.provider || [],
-        requiredStatement: collection?.info?.requiredStatement,
+        label: collection.info.name || '',
+        metadata: collection.info.metadata || [],
+        provider: collection.info.provider || [],
+        requiredStatement: collection.info.requiredStatement,
       });
     }
 
     setAutocompleteUrl(
-      collection?.collectionSearch?.autocomplete ??
+      effectiveCollection?.collectionSearch?.autocomplete ??
         firstManifest?.manifestSearch?.autocomplete ??
         '',
     );
 
     setSearchUrl(
-      collection?.collectionSearch?.service ??
+      effectiveCollection?.collectionSearch?.service ??
         firstManifest?.manifestSearch?.service ??
         '',
     );
   };
 
-  // Fetch a manifest by index and reset related state
   const fetchManifestByIndex = async (index: number) => {
-    if (
-      index < 0 ||
-      index >= totalManifests ||
-      index === selectedManifestIndex
-    ) {
+    if (index < 0 || index >= totalManifests || index === selectedManifestIndex)
       return;
-    }
-
     const manifestUrl = manifestUrls[index];
 
     try {
       const { firstManifest, collection } = await parseResource(manifestUrl);
-
-      // Clean up state when loading a new manifest
       setSelectedAnnotation(null);
       setAnnotations([]);
       setSearchResults([]);
       setSelectedSearchResultId(null);
       setViewerReady(false);
-
       setSelectedManifestIndex(index);
       setSelectedImageIndex(0);
-
-      // Always pass the new collection (can be null)
       handleManifestUpdate(
         firstManifest,
         manifestUrls,
@@ -290,7 +239,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Handle submission of IIIF content URL form
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -302,16 +250,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Reset the image index to 0
-  const resetImageIndex = () => setSelectedImageIndex(0);
-  // Select an annotation and update state
-  const handleAnnotationSelect = (annotation: IIIFAnnotation) =>
-    setSelectedAnnotation(annotation);
-
-  if (showUrlDialog) {
-    return <UrlDialog onSubmit={handleUrlSubmit} />;
-  }
-
+  if (showUrlDialog) return <UrlDialog onSubmit={handleUrlSubmit} />;
   if (error) {
     return (
       <ErrorDialog
@@ -387,7 +326,7 @@ const App: React.FC = () => {
               : 0,
           )
         }
-        resetImageIndex={resetImageIndex}
+        resetImageIndex={() => setSelectedImageIndex(0)}
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
       />
