@@ -11,8 +11,10 @@ export async function searchAnnotations(
 ): Promise<IIIFSearchSnippet[]> {
   let snippets: IIIFSearchSnippet[] = [];
   let nextPageUrl: string | null = targetUrl;
+  let pageCount = 0;
+  const MAX_PAGES = 10;
 
-  while (nextPageUrl) {
+  while (nextPageUrl && pageCount < MAX_PAGES) {
     const resource = await fetchResource(nextPageUrl);
     if (!resource.type || resource.type !== 'AnnotationPage') {
       throw new TamerlaneResourceError(
@@ -47,6 +49,7 @@ export async function searchAnnotations(
 
     // Get the next page (if applicable)
     nextPageUrl = topParser.getAnnotationPage()?.next ?? null;
+    pageCount++;
   }
 
   console.log(`Total IIIFSearchSnippet Retrieved: ${snippets.length}`);
