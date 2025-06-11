@@ -1,0 +1,8 @@
+
+services:
+  tamerlane:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
