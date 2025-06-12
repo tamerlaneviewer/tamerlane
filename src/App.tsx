@@ -13,6 +13,8 @@ import LeftPanel from './components/LeftPanel.tsx';
 import MiddlePanel from './components/MiddlePanel.tsx';
 import RightPanel from './components/RightPanel.tsx';
 
+const startUrl = process.env.REACT_APP_IIIF_CONTENT_URL;
+
 const App: React.FC = () => {
   const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
     setSelectedAnnotation(annotation);
@@ -24,7 +26,7 @@ const App: React.FC = () => {
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
   const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
-    iiifContentUrlFromParams,
+    startUrl || iiifContentUrlFromParams || null
   );
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
     null,
