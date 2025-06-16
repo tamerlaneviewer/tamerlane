@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "maniiifest": "^1.4.6",
     "@tailwindcss/postcss": "^4.0.6",
     "cra-template-typescript": "1.2.0",
     "dompurify": "^3.2.4",
@@ -43,7 +44,6 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
-    "maniiifest": "^1.4.6",
     "postcss": "^8.5.2",
     "postcss-cli": "^11.0.0",
     "postcss-flexbugs-fixes": "^5.0.2",
