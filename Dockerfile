@@ -20,6 +20,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# will remove this
+RUN npm config set strict-ssl false
+
 # Install only production deps (if needed)
 COPY package*.json ./
 COPY .env ./
