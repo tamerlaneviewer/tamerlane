@@ -15,7 +15,7 @@ export interface AnnotationBody {
 export interface IIIFAnnotation {
   id: string;
   motivation: string | string[];
-  target: string;
+  target: string[];
   body: AnnotationBody | AnnotationBody[]
 }
 

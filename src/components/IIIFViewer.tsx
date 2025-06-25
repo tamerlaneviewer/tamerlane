@@ -3,7 +3,6 @@ import OpenSeadragon from 'openseadragon';
 import SplashScreen from './SplashScreen.tsx';
 import { IIIFAnnotation } from '../types/index';
 
-// Define props type
 interface IIIFViewerProps {
   imageUrl: string;
   imageType: 'standard' | 'iiif';
@@ -27,23 +26,10 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
 }) => {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
-  const overlayRef = useRef<HTMLDivElement | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    console.log('🔄 Initializing IIIFViewer:', {
-      imageUrl,
-      imageType,
-      canvasWidth,
-      canvasHeight,
-      imageWidth,
-      imageHeight,
-    });
-
-    if (!viewerRef.current) {
-      console.warn('⚠️ viewerRef is not assigned.');
-      return;
-    }
+    if (!viewerRef.current) return;
 
     const tileSource: string | OpenSeadragon.TileSourceOptions =
       imageType === 'iiif' ? imageUrl : { type: 'image', url: imageUrl };
@@ -63,14 +49,13 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     });
 
     osdViewerRef.current.addTiledImage({
-      tileSource: tileSource,
+      tileSource,
       success: () => {
-        console.log('✅ Image loaded successfully!');
         setIsLoading(false);
         if (onViewerReady) onViewerReady();
       },
       error: (error) => {
-        console.error('❌ Error loading image:', error);
+        console.error('Error loading image:', error);
         setIsLoading(false);
       },
     });
@@ -81,73 +66,69 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
         osdViewerRef.current = null;
       }
     };
-  }, [imageUrl, imageType, canvasWidth, canvasHeight, imageWidth, imageHeight, onViewerReady]);
+  }, [
+    imageUrl,
+    imageType,
+    canvasWidth,
+    canvasHeight,
+    imageWidth,
+    imageHeight,
+    onViewerReady,
+  ]);
 
   useEffect(() => {
     if (!selectedAnnotation || !osdViewerRef.current) return;
 
-    console.log(
-      '🖼 Highlighting bounding box for annotation:',
-      selectedAnnotation,
-    );
-
-    const target = selectedAnnotation.target;
-    let bbox: number[] | null = null;
-
-    if (typeof target === 'string' && target.includes('#xywh=')) {
-      bbox = target.split('#xywh=')[1].split(',').map(Number);
-    } else if (
-      typeof target === 'object' &&
-      'id' in target &&
-      target.id.includes('#xywh=')
-    ) {
-      bbox = target.id.split('#xywh=')[1].split(',').map(Number);
-    }
-
-    if (!bbox || bbox.length !== 4) return;
-    const [x, y, width, height] = bbox;
-
-    // Convert annotation coordinates to viewport coordinates
-    const viewportRect = osdViewerRef.current.viewport.imageToViewportRectangle(
-      x,
-      y,
-      width,
-      height,
-    );
-    console.log('📏 Converted Bounding Box:', viewportRect);
-
-    // Ensure the overlay div exists or create a new one
-    let overlayDiv = overlayRef.current;
-    if (!overlayDiv) {
-      overlayDiv = document.createElement('div');
-      overlayDiv.style.position = 'absolute';
-      overlayDiv.style.pointerEvents = 'none';
-      overlayDiv.style.border = '2px solid red';
-      overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-      overlayDiv.id = 'annotation-overlay';
-      overlayRef.current = overlayDiv;
-    }
-
-    // Remove any previous overlays
     osdViewerRef.current.clearOverlays();
 
-    // Set new overlay position relative to OpenSeadragon’s viewport
-    osdViewerRef.current.addOverlay({
-      element: overlayDiv,
-      location: viewportRect,
-    });
-    // Fit the viewport to the annotation bounding box
-    osdViewerRef.current.viewport.fitBounds(viewportRect, true);
+    const viewer = osdViewerRef.current;
+    const overlayRects: OpenSeadragon.Rect[] = [];
 
-    // Force OpenSeadragon to refresh & display the overlay
-    osdViewerRef.current.forceRedraw();
+    for (const targetStr of selectedAnnotation.target) {
+      if (typeof targetStr === 'string' && targetStr.includes('#xywh=')) {
+        const bbox = targetStr.split('#xywh=')[1].split(',').map(Number);
+        if (bbox.length !== 4) continue;
+
+        const [x, y, width, height] = bbox;
+        const viewportRect = viewer.viewport.imageToViewportRectangle(
+          x,
+          y,
+          width,
+          height,
+        );
+        overlayRects.push(viewportRect);
+
+        const overlayDiv = document.createElement('div');
+        overlayDiv.style.position = 'absolute';
+        overlayDiv.style.pointerEvents = 'none';
+        overlayDiv.style.border = '2px solid red';
+        overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+
+        viewer.addOverlay({ element: overlayDiv, location: viewportRect });
+      }
+    }
+
+    if (overlayRects.length > 0) {
+      const unionRect = overlayRects.reduce((acc, rect) => acc.union(rect));
+      viewer.viewport.fitBounds(unionRect, {
+        immediate: true,
+        padding: 0,
+      });
+
+      // Optional: zoom in more if narrow
+      const aspectRatio = unionRect.width / unionRect.height;
+      if (unionRect.width < 0.05 && aspectRatio > 2) {
+        const zoom = viewer.viewport.getZoom(true);
+        viewer.viewport.zoomTo(zoom * 1.5, unionRect.getCenter(), true);
+      }
+    }
+
+    viewer.forceRedraw();
   }, [selectedAnnotation]);
 
   return (
     <div className="w-full h-full relative">
       {isLoading && <SplashScreen />}
-
-      {/* OpenSeadragon Viewer */}
       <div ref={viewerRef} className="w-full h-full"></div>
     </div>
   );

@@ -23,6 +23,7 @@ interface HeaderProps {
 const availableLanguages = [
   { code: 'en', name: 'English' },
   { code: 'la', name: 'Latin' },
+  { code: 'de', name: 'German' },
 ];
 
 const Header: React.FC<HeaderProps> = ({
