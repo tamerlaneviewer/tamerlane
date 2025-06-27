@@ -5,15 +5,18 @@ import { TamerlaneResourceError } from '../errors/index.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
+
 async function processAnnotationsWorker(
   manifest: Maniiifest,
   targetUrl: string,
-  iterateAnnotations: () => Iterable<any>,
 ): Promise<IIIFAnnotation[]> {
   const resultsMap: Map<string, IIIFAnnotation> = new Map();
 
-  for (const annotation of iterateAnnotations.call(manifest)) {
-    const { id, motivation } = annotation;
+  for (const annotation of manifest.iterateAnnotationPageAnnotation()) {
+    const id = annotation.id;
+    const rawMotivation = annotation.motivation;
+    const motivation = Array.isArray(rawMotivation) ? rawMotivation[0] : rawMotivation || '';
+
     const annotationParser = new Maniiifest(annotation, 'Annotation');
 
     for (const target of annotationParser.iterateAnnotationTarget()) {
@@ -23,7 +26,6 @@ async function processAnnotationsWorker(
         const cleanTargetId = targetId.split('#')[0];
         if (cleanTargetId !== targetUrl) continue;
 
-        // Get or create the annotation object
         if (!resultsMap.has(id)) {
           resultsMap.set(id, {
             id,
@@ -41,7 +43,6 @@ async function processAnnotationsWorker(
           });
         }
 
-        // Append this target to the annotation’s target array
         resultsMap.get(id)!.target.push(targetId);
       }
     }
@@ -49,7 +50,6 @@ async function processAnnotationsWorker(
 
   return Array.from(resultsMap.values());
 }
-
 
 
 async function processAnnotations(
@@ -63,7 +63,6 @@ async function processAnnotations(
     const result = await processAnnotationsWorker(
       currentParser,
       targetUrl,
-      currentParser.iterateAnnotationPageAnnotation,
     );
 
     allAnnotations = allAnnotations.concat(result);
@@ -82,6 +81,8 @@ async function processAnnotations(
 
   return allAnnotations;
 }
+
+
 
 async function processAnnotationPageRef(
   annotationPageUrl: string,
