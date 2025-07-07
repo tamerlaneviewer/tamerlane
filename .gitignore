@@ -12,3 +12,4 @@ yarn-error.log*
 .eslintcache
 .next/
 out/
+public/info.json

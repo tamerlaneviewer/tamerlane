@@ -18,6 +18,8 @@
     "zustand": "^5.0.3"
   },
   "scripts": {
+    "prestart": "node scripts/generate-info.js",
+    "prebuild": "node scripts/generate-info.js",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
