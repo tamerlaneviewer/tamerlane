@@ -11,7 +11,7 @@ interface SearchBarProps {
 const cleanAndSanitizeTerm = (value: string): string => {
   const stripped = value
     .replace(/<\/?[^>]+(>|$)/g, '') // remove HTML tags
-    .replace(/&[^;\s]+;/g, '') // remove HTML entities
+    .replace(/&[^;\s]+;/g, '')     // remove HTML entities
     .trim();
   return DOMPurify.sanitize(stripped);
 };
@@ -25,6 +25,8 @@ const SearchBar = ({
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [inputMethod, setInputMethod] = useState<'mouse' | 'keyboard'>('keyboard');
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -34,13 +36,12 @@ const SearchBar = ({
 
       if (!autocompleteService || lastTerm.length < 3) {
         setSuggestions([]);
+        setHighlightedIndex(-1);
         return;
       }
 
       try {
-        const res = await fetch(
-          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
-        );
+        const res = await fetch(`${autocompleteService}?q=${encodeURIComponent(lastTerm)}`);
         const data = await res.json();
 
         const items = data.items
@@ -51,9 +52,11 @@ const SearchBar = ({
           .map((item: any) => item.value);
 
         setSuggestions(items.slice(0, 5));
+        setHighlightedIndex(-1);
       } catch (err) {
         console.error('Autocomplete failed', err);
         setSuggestions([]);
+        setHighlightedIndex(-1);
       }
     };
 
@@ -76,10 +79,29 @@ const SearchBar = ({
 
     setQuery(updatedQuery);
     setSuggestions([]);
+    setHighlightedIndex(-1);
     setShowSuggestions(false);
-
-    // Do NOT search immediately; wait for user to press Search
     inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    setInputMethod('keyboard');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[highlightedIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+    }
   };
 
   return (
@@ -96,6 +118,8 @@ const SearchBar = ({
             setShowSuggestions(true);
           }}
           onFocus={() => setShowSuggestions(true)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setShowSuggestions(false)}
         />
         <button
           type="submit"
@@ -109,16 +133,44 @@ const SearchBar = ({
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10">
-          {suggestions.map((term, idx) => (
-            <li
-              key={idx}
-              className="px-3 py-2 hover:bg-blue-500 hover:text-white cursor-pointer transition-colors duration-100"
-              onMouseDown={() => handleSelect(term)}
-            >
-              {cleanAndSanitizeTerm(term)}
-            </li>
-          ))}
+        <ul
+          className="absolute z-10 mt-1 w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10"
+          role="listbox"
+          onMouseLeave={() => {
+            if (inputMethod === 'mouse') {
+              setHighlightedIndex(-1);
+            }
+          }}
+        >
+          {suggestions.map((term, idx) => {
+            const isHighlighted = highlightedIndex === idx;
+
+            return (
+              <li
+                key={idx}
+                id={`autocomplete-option-${idx}`}
+                role="option"
+                aria-selected={isHighlighted}
+                className={`px-3 py-2 cursor-pointer transition-colors duration-100 ${
+                  isHighlighted
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-800'
+                }`}
+                onMouseMove={() => {
+                  if (highlightedIndex !== idx) {
+                    setInputMethod('mouse');
+                    setHighlightedIndex(idx);
+                  }
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent input from losing focus
+                  handleSelect(term);
+                }}
+              >
+                {cleanAndSanitizeTerm(term)}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
