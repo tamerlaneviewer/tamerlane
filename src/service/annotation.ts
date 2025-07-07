@@ -176,24 +176,32 @@ export function normalizeAnnotationTargets(target: any): string[] {
     } else if (Array.isArray(t)) {
       t.forEach(flattenTarget);
     } else if (t && typeof t === 'object') {
+      // Priority 1: use `id` if present
       if (typeof t.id === 'string') {
         results.push(t.id);
-      } else if (typeof t.source === 'string') {
-        results.push(t.source);
-      } else if (t.source && typeof t.source === 'object') {
-        const source = typeof t.source === 'string' ? t.source : t.source.id || null;
+        return;
+      }
 
-        if (source && t.selector) {
-          const selectorStr = extractSelector(t.selector);
-          if (selectorStr) {
-            results.push(`${source}#${selectorStr}`);
-            return;
-          }
-        }
+      // Priority 2: handle `source` + optional `selector`
+      const source = typeof t.source === 'string'
+        ? t.source
+        : typeof t.source?.id === 'string'
+          ? t.source.id
+          : null;
 
-        if (source) {
+      if (source) {
+        const selectorStr = extractSelector(t.selector);
+        if (selectorStr) {
+          results.push(`${source}#${selectorStr}`);
+        } else {
           results.push(source);
         }
+        return;
+      }
+
+      // Fallback: if none of the above work, check `value`
+      if (typeof t.value === 'string') {
+        results.push(t.value);
       }
     }
   };
@@ -202,22 +210,47 @@ export function normalizeAnnotationTargets(target: any): string[] {
   return results;
 }
 
+
 function extractSelector(selector: any): string | null {
   if (!selector) return null;
 
-  if (typeof selector === 'string') return selector.replace(/^#/, '');
+  if (typeof selector === 'string') {
+    return selector.replace(/^#/, '');
+  }
 
   if (Array.isArray(selector)) {
     for (const sel of selector) {
       const extracted = extractSelector(sel);
       if (extracted) return extracted;
     }
+    return null;
   }
 
-  if (typeof selector === 'object' && selector.type) {
-    if (typeof selector.value === 'string') return selector.value;
-    if (selector.region) return `xywh=${selector.region}`;
+  if (typeof selector === 'object') {
+    if (typeof selector.value === 'string') {
+      return selector.value.replace(/^#/, '');
+    }
+
+    if (selector.type === 'FragmentSelector' && typeof selector.value === 'string') {
+      return selector.value;
+    }
+
+    if (selector.type === 'SvgSelector' && typeof selector.value === 'string') {
+      return `svg=${encodeURIComponent(selector.value)}`;
+    }
+
+    if (selector.type === 'TextQuoteSelector') {
+      const exact = selector.exact || '';
+      const prefix = selector.prefix || '';
+      const suffix = selector.suffix || '';
+      return `text=${encodeURIComponent(prefix)}${encodeURIComponent(exact)}${encodeURIComponent(suffix)}`;
+    }
+
+    if (selector.region) {
+      return `xywh=${selector.region}`;
+    }
   }
 
   return null;
 }
+
