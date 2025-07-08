@@ -1,13 +1,13 @@
 {
   "name": "tamerlane",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "dependencies": {
-    "maniiifest": "^1.4.6",
     "@tailwindcss/postcss": "^4.0.6",
     "cra-template-typescript": "1.2.0",
     "dompurify": "^3.2.4",
     "lucide-react": "^0.475.0",
+    "maniiifest": "^1.4.7",
     "openseadragon": "^5.0.1",
     "postcss-preset-env": "^10.1.4",
     "react": "^18.2.0",

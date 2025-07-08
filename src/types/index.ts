@@ -55,6 +55,13 @@ export interface IIIFinfo {
     homepage?: any;
     logo?: any;
   }>;
+  homepage?: Array<{
+    id?: string;
+    type?: string;
+    label?: any;
+    format?: any;
+    language?: any;
+  }>;
   requiredStatement?: { label: any; value: any };
 }
 

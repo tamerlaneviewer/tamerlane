@@ -20,6 +20,8 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled manifest';
   const metadata = Array.from(parser.iterateManifestMetadata());
   const provider = Array.from(parser.iterateManifestProvider());
+  const homepage = Array.from(parser.iterateManifestHomepage());
+  console.log("homepage:", homepage);
   const requiredStatement: any = parser.getManifestRequiredStatement();
 
   const canvases: IIIFCanvas[] = [];
@@ -64,7 +66,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     }
   }
 
-  return { info: { name: label, metadata, provider, requiredStatement }, canvases, images, manifestSearch };
+  return { info: { name: label, metadata, provider, homepage, requiredStatement }, canvases, images, manifestSearch };
 }
 
 async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
@@ -83,6 +85,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   // these will return the nested collections also so need to think how to best handle this 
   const metadata = Array.from(parser.iterateCollectionMetadata());
   const provider = Array.from(parser.iterateCollectionProvider());
+  const homepage = Array.from(parser.iterateCollectionHomepage());
   const requiredStatement: any = parser.getCollectionRequiredStatement();
 
   let collectionSearch: { service: string; autocomplete?: string } | undefined;
@@ -101,7 +104,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
     }
   }
 
-  const collection = { info: { name: label, metadata, provider, requiredStatement }, collectionSearch };
+  const collection = { info: { name: label, metadata, provider, homepage, requiredStatement }, collectionSearch };
 
   async function process(parsedJson: any, processedCollections: Set<string>) {
     if (processedCollections.has(parsedJson.id)) return;

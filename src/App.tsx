@@ -193,6 +193,7 @@ const App: React.FC = () => {
       label: firstManifest?.info?.name || '',
       metadata: firstManifest?.info?.metadata || [],
       provider: firstManifest?.info?.provider || [],
+      homepage: firstManifest?.info?.homepage || [],
       requiredStatement: firstManifest?.info?.requiredStatement,
     });
 
@@ -204,6 +205,7 @@ const App: React.FC = () => {
         label: collection.info.name || '',
         metadata: collection.info.metadata || [],
         provider: collection.info.provider || [],
+        homepage: collection.info.homepage || [],
         requiredStatement: collection.info.requiredStatement,
       });
     }
