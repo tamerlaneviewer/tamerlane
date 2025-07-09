@@ -1,35 +1,10 @@
 import React from 'react';
-import DOMPurify from 'dompurify';
+import { getValue, renderHTML, renderIIIFLinks } from '../utils/metadata.tsx';
 
 const ManifestMetadata = ({ manifestMetadata }) => {
   if (!manifestMetadata) {
     return <p className="text-gray-500 p-4">No metadata available.</p>;
   }
-
-  const getValue = (data) => {
-    if (!data) return 'Unknown';
-    if (Array.isArray(data)) {
-      return data
-        .map((item) =>
-          typeof item === 'object'
-            ? item?.none || item?.en || JSON.stringify(item)
-            : String(item),
-        )
-        .join(', ');
-    }
-    if (typeof data === 'object' && data !== null) {
-      return data.none || data.en || JSON.stringify(data, null, 2);
-    }
-    return String(data);
-  };
-
-  const renderHTML = (value) => {
-    const safeString =
-      typeof value === 'string'
-        ? value.replace(/\n/g, '<br />')
-        : getValue(value);
-    return { __html: DOMPurify.sanitize(safeString) };
-  };
 
   return (
     <div className="flex flex-col flex-grow h-full overflow-auto p-4 bg-white">
@@ -67,19 +42,11 @@ const ManifestMetadata = ({ manifestMetadata }) => {
       )}
 
       {/* Provider Information */}
-      {manifestMetadata.provider && manifestMetadata.provider.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Provider</h3>
-          {manifestMetadata.provider.map((provider, index) => (
-            <div key={index} className="py-2 border-b border-gray-300">
-              <p
-                className="text-sm text-gray-700"
-                dangerouslySetInnerHTML={renderHTML(getValue(provider.label))}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      {renderIIIFLinks(manifestMetadata.provider, 'Provider')}
+
+      {/* Homepage Information */}
+      {renderIIIFLinks(manifestMetadata.homepage, 'Homepage')}
+
       {/* Required Statement */}
       {manifestMetadata.requiredStatement && (
         <div className="mb-4">
