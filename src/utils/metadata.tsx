@@ -1,20 +1,45 @@
 import DOMPurify from 'dompurify';
 
-export const getValue = (data) => {
+export const getValue = (data: any): string => {
   if (!data) return 'Unknown';
+
   if (Array.isArray(data)) {
     return data
-      .map((item) =>
-        typeof item === 'object'
-          ? item?.none || item?.en || JSON.stringify(item)
-          : String(item),
-      )
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          return (
+            item.none?.[0] ||
+            item.en?.[0] ||
+            getFirstLangValue(item) ||
+            JSON.stringify(item)
+          );
+        }
+        return String(item);
+      })
       .join(', ');
   }
+
   if (typeof data === 'object' && data !== null) {
-    return data.none || data.en || JSON.stringify(data, null, 2);
+    return (
+      data.none?.[0] ||
+      data.en?.[0] ||
+      getFirstLangValue(data) ||
+      JSON.stringify(data)
+    );
   }
+
   return String(data);
+};
+
+const getFirstLangValue = (langMap: Record<string, any>): string | null => {
+  const keys = Object.keys(langMap);
+  if (keys.length === 0) return null;
+
+  const first = langMap[keys[0]];
+  if (Array.isArray(first)) return first[0];
+  if (typeof first === 'string') return first;
+  return null;
 };
 
 export const renderHTML = (value) => {
