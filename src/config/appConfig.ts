@@ -7,4 +7,8 @@ export const availableLanguages = [
 ];
 
 export const APP_NAME = 'Tamerlane';
+
 export const DEFAULT_LANGUAGE = 'en';
+
+export const SHOW_LOGO = true;
+

@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import SearchBar from './SearchBar.tsx';
 import IIIFControls from './IIIFControls.tsx';
-import { availableLanguages, APP_NAME } from '../config/appConfig.ts';
+import {
+  availableLanguages,
+  DEFAULT_LANGUAGE,
+  APP_NAME,
+  SHOW_LOGO,
+} from '../config/appConfig.ts';
 interface HeaderProps {
   onSearch: (query: string) => void;
   autocompleteUrl: string;
@@ -35,7 +40,13 @@ const Header: React.FC<HeaderProps> = ({
   selectedLanguage,
   searching = false,
 }) => {
-  const [languageIndex, setLanguageIndex] = useState(0);
+  const [languageIndex, setLanguageIndex] = useState(() => {
+    const index = availableLanguages.findIndex(
+      (lang) => lang.code === DEFAULT_LANGUAGE,
+    );
+    return index >= 0 ? index : 0;
+  });
+
   const currentLanguage = availableLanguages[languageIndex];
 
   const toggleLanguage = () => {
@@ -47,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       <div className="flex items-center">
-        <img src="/logo.svg" alt="Logo" className="h-12 w-12" />
+        {SHOW_LOGO && <img src="/logo.svg" alt="Logo" className="h-12 w-12" />}
         <span className="text-lg font-semibold ml-2">{APP_NAME}</span>
       </div>
 
