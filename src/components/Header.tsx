@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import SearchBar from './SearchBar.tsx';
 import IIIFControls from './IIIFControls.tsx';
-import { ReactComponent as Logo } from '../logo.svg';
-
+import {
+  availableLanguages,
+  DEFAULT_LANGUAGE,
+  APP_NAME,
+  SHOW_LOGO,
+} from '../config/appConfig.ts';
 interface HeaderProps {
   onSearch: (query: string) => void;
   autocompleteUrl: string;
@@ -20,12 +24,6 @@ interface HeaderProps {
   searching: boolean;
 }
 
-const availableLanguages = [
-  { code: 'en', name: 'English' },
-  { code: 'la', name: 'Latin' },
-  { code: 'de', name: 'German' },
-];
-
 const Header: React.FC<HeaderProps> = ({
   onSearch,
   currentIndex,
@@ -42,7 +40,13 @@ const Header: React.FC<HeaderProps> = ({
   selectedLanguage,
   searching = false,
 }) => {
-  const [languageIndex, setLanguageIndex] = useState(0);
+  const [languageIndex, setLanguageIndex] = useState(() => {
+    const index = availableLanguages.findIndex(
+      (lang) => lang.code === DEFAULT_LANGUAGE,
+    );
+    return index >= 0 ? index : 0;
+  });
+
   const currentLanguage = availableLanguages[languageIndex];
 
   const toggleLanguage = () => {
@@ -54,8 +58,14 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       <div className="flex items-center">
-        <Logo className="h-12 w-12 fill-slate-600" />
-        <span className="text-lg font-semibold ml-2">Tamerlane</span>
+        {SHOW_LOGO && (
+          <img
+            src={`${process.env.PUBLIC_URL}/logo.svg`}
+            alt="Logo"
+            className="h-12 w-12"
+          />
+        )}
+        <span className="text-lg font-semibold ml-2">{APP_NAME}</span>
       </div>
 
       <IIIFControls
