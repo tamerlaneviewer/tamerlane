@@ -58,7 +58,13 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
       <div className="flex items-center">
-        {SHOW_LOGO && <img src="/logo.svg" alt="Logo" className="h-12 w-12" />}
+        {SHOW_LOGO && (
+          <img
+            src={`${process.env.PUBLIC_URL}/logo.svg`}
+            alt="Logo"
+            className="h-12 w-12"
+          />
+        )}
         <span className="text-lg font-semibold ml-2">{APP_NAME}</span>
       </div>
 
