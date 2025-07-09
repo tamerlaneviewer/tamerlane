@@ -13,6 +13,7 @@ import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { useIIIFLoader } from './hooks/useIIIFLoader.ts';
 import { useSearchLogic } from './hooks/useSearchLogic.ts';
 import { useManifestController } from './lib/manifestController.ts';
+import { useManifestNavigator } from './hooks/useManifestNavigator.ts';
 
 const startUrl = process.env.REACT_APP_IIIF_CONTENT_URL;
 
@@ -75,6 +76,21 @@ const App: React.FC = () => {
     currentCollection,
   });
 
+  const { fetchManifestByIndex } = useManifestNavigator({
+    manifestUrls,
+    totalManifests,
+    selectedManifestIndex,
+    setSelectedManifestIndex,
+    setSelectedImageIndex,
+    setSelectedAnnotation,
+    setAnnotations,
+    setSearchResults,
+    setSelectedSearchResultId,
+    setViewerReady,
+    setError,
+    handleManifestUpdate,
+  });
+
   useIIIFLoader(iiifContentUrl, handleManifestUpdate, setError);
 
   const { handleSearch, handleSearchResultClick } = useSearchLogic({
@@ -128,33 +144,6 @@ const App: React.FC = () => {
       console.warn('❌ Could not find annotation for ID:', pendingAnnotationId);
     }
   }, [annotations, pendingAnnotationId, viewerReady]);
-
-  const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= totalManifests || index === selectedManifestIndex)
-      return;
-    const manifestUrl = manifestUrls[index];
-    try {
-      const { firstManifest, collection } = await import(
-        './service/parser.ts'
-      ).then((m) => m.parseResource(manifestUrl));
-      setSelectedAnnotation(null);
-      setAnnotations([]);
-      setSearchResults([]);
-      setSelectedSearchResultId(null);
-      setViewerReady(false);
-      setSelectedManifestIndex(index);
-      setSelectedImageIndex(0);
-      handleManifestUpdate(
-        firstManifest,
-        manifestUrls,
-        totalManifests,
-        collection ?? null,
-      );
-    } catch (err) {
-      console.error('Failed to fetch manifest by index:', err);
-      setError('Failed to load selected manifest.');
-    }
-  };
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
