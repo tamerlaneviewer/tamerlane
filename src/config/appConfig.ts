@@ -12,3 +12,5 @@ export const DEFAULT_LANGUAGE = 'en';
 
 export const SHOW_LOGO = true;
 
+export const maxSearchPages = 10;
+
