@@ -12,79 +12,68 @@ import { getAnnotationsForTarget } from './service/annotation.ts';
 import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
 import { useIIIFLoader } from './hooks/useIIIFLoader.ts';
 import { useSearchLogic } from './hooks/useSearchLogic.ts';
+import { useManifestController } from './lib/manifestController.ts';
 
 const startUrl = process.env.REACT_APP_IIIF_CONTENT_URL;
 
 const App: React.FC = () => {
-  const [activePanelTab, setActivePanelTab] = useState<'annotations' | 'searchResults'>('annotations');
+  const [activePanelTab, setActivePanelTab] = useState<
+    'annotations' | 'searchResults'
+  >('annotations');
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
-  const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(startUrl || iiifContentUrlFromParams || null);
-  const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(null);
-  const [currentCollection, setCurrentCollection] = useState<IIIFCollection | null>(null);
+  const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
+    startUrl || iiifContentUrlFromParams || null,
+  );
+
+  const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
+    null,
+  );
+  const [currentCollection, setCurrentCollection] =
+    useState<IIIFCollection | null>(null);
   const [canvasId, setCanvasId] = useState<string>('');
   const [manifestUrls, setManifestUrls] = useState<string[]>([]);
   const [totalManifests, setTotalManifests] = useState<number>(0);
   const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+
   const [annotations, setAnnotations] = useState<IIIFAnnotation[]>([]);
   const [manifestMetadata, setManifestMetadata] = useState<any>({});
   const [collectionMetadata, setCollectionMetadata] = useState<any>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
-  const [selectedAnnotation, setSelectedAnnotation] = useState<IIIFAnnotation | null>(null);
-  const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(null);
-  const [selectedSearchResultId, setSelectedSearchResultId] = useState<string | null>(null);
+  const [selectedAnnotation, setSelectedAnnotation] =
+    useState<IIIFAnnotation | null>(null);
+  const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(
+    null,
+  );
+  const [selectedSearchResultId, setSelectedSearchResultId] = useState<
+    string | null
+  >(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
   const [searchUrl, setSearchUrl] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
   const [searching, setSearching] = useState(false);
 
-  const handleAnnotationSelect = (annotation: IIIFAnnotation) => setSelectedAnnotation(annotation);
-  const handleLanguageChange = (language: string) => setSelectedLanguage(language);
+  const handleAnnotationSelect = (annotation: IIIFAnnotation) =>
+    setSelectedAnnotation(annotation);
+  const handleLanguageChange = (language: string) =>
+    setSelectedLanguage(language);
   const handleViewerReady = useCallback(() => setViewerReady(true), []);
 
-  const handleManifestUpdate = (
-    firstManifest: IIIFManifest | null,
-    urls: string[],
-    total: number,
-    collection: IIIFCollection | null = null,
-  ) => {
-    setCurrentManifest(firstManifest);
-    setManifestUrls(urls);
-    setTotalManifests(total);
-
-    setManifestMetadata({
-      label: firstManifest?.info?.name || '',
-      metadata: firstManifest?.info?.metadata || [],
-      provider: firstManifest?.info?.provider || [],
-      homepage: firstManifest?.info?.homepage || [],
-      requiredStatement: firstManifest?.info?.requiredStatement,
-    });
-
-    const effectiveCollection = collection ?? currentCollection;
-    if (collection) {
-      setCurrentCollection(collection);
-      setCollectionMetadata({
-        label: collection.info.name || '',
-        metadata: collection.info.metadata || [],
-        provider: collection.info.provider || [],
-        homepage: collection.info.homepage || [],
-        requiredStatement: collection.info.requiredStatement,
-      });
-    }
-
-    setAutocompleteUrl(
-      effectiveCollection?.collectionSearch?.autocomplete ??
-      firstManifest?.manifestSearch?.autocomplete ?? ''
-    );
-    setSearchUrl(
-      effectiveCollection?.collectionSearch?.service ??
-      firstManifest?.manifestSearch?.service ?? ''
-    );
-  };
+  const { handleManifestUpdate } = useManifestController({
+    setCurrentManifest,
+    setManifestUrls,
+    setTotalManifests,
+    setCurrentCollection,
+    setManifestMetadata,
+    setCollectionMetadata,
+    setAutocompleteUrl,
+    setSearchUrl,
+    currentCollection,
+  });
 
   useIIIFLoader(iiifContentUrl, handleManifestUpdate, setError);
 
@@ -128,7 +117,8 @@ const App: React.FC = () => {
   }, [currentManifest, canvasId, selectedManifestIndex, manifestUrls]);
 
   useEffect(() => {
-    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady) return;
+    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
+      return;
     const match = annotations.find((anno) => anno.id === pendingAnnotationId);
     if (match) {
       setSelectedAnnotation(match);
@@ -140,10 +130,13 @@ const App: React.FC = () => {
   }, [annotations, pendingAnnotationId, viewerReady]);
 
   const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= totalManifests || index === selectedManifestIndex) return;
+    if (index < 0 || index >= totalManifests || index === selectedManifestIndex)
+      return;
     const manifestUrl = manifestUrls[index];
     try {
-      const { firstManifest, collection } = await import('./service/parser.ts').then(m => m.parseResource(manifestUrl));
+      const { firstManifest, collection } = await import(
+        './service/parser.ts'
+      ).then((m) => m.parseResource(manifestUrl));
       setSelectedAnnotation(null);
       setAnnotations([]);
       setSearchResults([]);
@@ -151,7 +144,12 @@ const App: React.FC = () => {
       setViewerReady(false);
       setSelectedManifestIndex(index);
       setSelectedImageIndex(0);
-      handleManifestUpdate(firstManifest, manifestUrls, totalManifests, collection ?? null);
+      handleManifestUpdate(
+        firstManifest,
+        manifestUrls,
+        totalManifests,
+        collection ?? null,
+      );
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
       setError('Failed to load selected manifest.');
@@ -190,7 +188,11 @@ const App: React.FC = () => {
 
   const totalImages = currentManifest.images.length;
   if (totalImages === 0) {
-    return <div className="text-center mt-10 text-gray-500">No images available in this manifest.</div>;
+    return (
+      <div className="text-center mt-10 text-gray-500">
+        No images available in this manifest.
+      </div>
+    );
   }
 
   const selectedImage = currentManifest.images[selectedImageIndex];
@@ -221,20 +223,35 @@ const App: React.FC = () => {
         totalImages={totalImages}
         totalManifests={totalManifests}
         selectedManifestIndex={selectedManifestIndex}
-        onPreviousImage={() => setSelectedImageIndex((i) => (i > 0 ? i - 1 : totalImages - 1))}
-        onNextImage={() => setSelectedImageIndex((i) => (i < totalImages - 1 ? i + 1 : 0))}
+        onPreviousImage={() =>
+          setSelectedImageIndex((i) => (i > 0 ? i - 1 : totalImages - 1))
+        }
+        onNextImage={() =>
+          setSelectedImageIndex((i) => (i < totalImages - 1 ? i + 1 : 0))
+        }
         onPreviousManifest={() =>
-          fetchManifestByIndex(selectedManifestIndex > 0 ? selectedManifestIndex - 1 : totalManifests - 1)
+          fetchManifestByIndex(
+            selectedManifestIndex > 0
+              ? selectedManifestIndex - 1
+              : totalManifests - 1,
+          )
         }
         onNextManifest={() =>
-          fetchManifestByIndex(selectedManifestIndex < totalManifests - 1 ? selectedManifestIndex + 1 : 0)
+          fetchManifestByIndex(
+            selectedManifestIndex < totalManifests - 1
+              ? selectedManifestIndex + 1
+              : 0,
+          )
         }
         resetImageIndex={() => setSelectedImageIndex(0)}
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
       />
       <div className="flex flex-grow">
-        <LeftPanel manifestMetadata={manifestMetadata} collectionMetadata={collectionMetadata} />
+        <LeftPanel
+          manifestMetadata={manifestMetadata}
+          collectionMetadata={collectionMetadata}
+        />
         <MiddlePanel
           imageUrl={imageUrl}
           imageType={imageType}
