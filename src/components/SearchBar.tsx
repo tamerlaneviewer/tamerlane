@@ -11,7 +11,7 @@ interface SearchBarProps {
 const cleanAndSanitizeTerm = (value: string): string => {
   const stripped = value
     .replace(/<\/?[^>]+(>|$)/g, '') // remove HTML tags
-    .replace(/&[^;\s]+;/g, '')     // remove HTML entities
+    .replace(/&[^;\s]+;/g, '') // remove HTML entities
     .trim();
   return DOMPurify.sanitize(stripped);
 };
@@ -26,7 +26,9 @@ const SearchBar = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const [inputMethod, setInputMethod] = useState<'mouse' | 'keyboard'>('keyboard');
+  const [inputMethod, setInputMethod] = useState<'mouse' | 'keyboard'>(
+    'keyboard',
+  );
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -41,7 +43,9 @@ const SearchBar = ({
       }
 
       try {
-        const res = await fetch(`${autocompleteService}?q=${encodeURIComponent(lastTerm)}`);
+        const res = await fetch(
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
+        );
         const data = await res.json();
 
         const items = data.items
@@ -94,7 +98,9 @@ const SearchBar = ({
       setHighlightedIndex((prev) => (prev + 1) % suggestions.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+      setHighlightedIndex((prev) =>
+        prev <= 0 ? suggestions.length - 1 : prev - 1,
+      );
     } else if (e.key === 'Enter' && highlightedIndex >= 0) {
       e.preventDefault();
       handleSelect(suggestions[highlightedIndex]);
@@ -104,13 +110,14 @@ const SearchBar = ({
     }
   };
 
+  // ...existing code...
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <form onSubmit={handleSubmit} className="p-1 flex gap-1">
         <input
           ref={inputRef}
           type="text"
-          className="border rounded p-0.5 w-40 text-sm text-black bg-white"
+          className="border rounded p-0.5 w-full sm:w-40 text-sm text-black bg-white"
           placeholder="Keywords..."
           value={query}
           onChange={(e) => {
@@ -134,7 +141,7 @@ const SearchBar = ({
 
       {showSuggestions && suggestions.length > 0 && (
         <ul
-          className="absolute z-10 mt-1 w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10"
+          className="absolute z-10 mt-1 w-full sm:w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10"
           role="listbox"
           onMouseLeave={() => {
             if (inputMethod === 'mouse') {
