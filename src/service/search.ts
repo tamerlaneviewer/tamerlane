@@ -2,6 +2,7 @@ import { fetchResource } from './resource.ts';
 import { Maniiifest } from 'maniiifest';
 import { IIIFSearchSnippet } from '../types/index.ts'; // Adjust the import path
 import { TamerlaneResourceError } from '../errors/index.ts';
+import { maxSearchPages } from '../config/appConfig.ts'; // Import the max pages limit
 
 /**
  * Fetch annotations and extract snippets.
@@ -12,7 +13,7 @@ export async function searchAnnotations(
   let snippets: IIIFSearchSnippet[] = [];
   let nextPageUrl: string | null = targetUrl;
   let pageCount = 0;
-  const MAX_PAGES = 10;
+  const MAX_PAGES = maxSearchPages || 10; // Use the configured max pages or default to 10
 
   while (nextPageUrl && pageCount < MAX_PAGES) {
     const resource = await fetchResource(nextPageUrl);
