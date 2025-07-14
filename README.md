@@ -24,12 +24,6 @@ cd tamerlane
 npm install
 ```
 
-3. (Optional) Set up environment variables:
-```bash
-# Create .env file with default IIIF content URL
-REACT_APP_IIIF_CONTENT_URL=https://your-default-iiif-manifest.json
-```
-
 ### Running the Application
 
 #### Development Mode
