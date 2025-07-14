@@ -1,46 +1,78 @@
-# Getting Started with Create React App
+# Tamerlane
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A lightweight IIIF (International Image Interoperability Framework) viewer designed to make viewing, navigating, and searching annotated IIIF Presentation 3.0 resources simpler and more intuitive.
 
-## Available Scripts
+## ✨ Features
 
-In the project directory, you can run:
+- **Collection Navigation**: Browse through IIIF collections
+- **Annotation Management**: View and navigate annotations
+- **Search Functionality**: Full-text search across annotations
+- **Responsive Design**: Modern UI built with Tailwind CSS
 
-### `npm start`
+## 🚀 Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Installation
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd tamerlane
+```
 
-### `npm test`
+2. Install dependencies:
+```bash
+npm install
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+3. (Optional) Set up environment variables:
+```bash
+# Create .env file with default IIIF content URL
+REACT_APP_IIIF_CONTENT_URL=https://your-default-iiif-manifest.json
+```
 
-### `npm run build`
+### Running the Application
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+#### Development Mode
+```bash
+npm start
+```
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+#### Production Build
+```bash
+npm run build
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+#### Using Docker
+```bash
+# Build the Docker image
+docker build -t tamerlane .
 
-### `npm run eject`
+# Run with docker-compose
+docker-compose up
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## 🎯 Usage
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Loading IIIF Content
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1. **Via URL Parameter**: 
+   ```
+   http://localhost:3000?iiif-content=https://example.com/manifest.json
+   ```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+2. **Via Interface**: Use the URL input dialog to load a manifest or collection
 
-## Learn More
+3. **Environment Variable**: Set `REACT_APP_IIIF_CONTENT_URL` for a default manifest
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Navigation
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- **Collections**: Browse available manifests in the left panel
+- **Canvas Navigation**: Use controls to move between images in a manifest
+- **Annotations**: View and search annotations in the right panel
+- **Zoom & Pan**: Use mouse/touch controls for detailed viewing
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
