@@ -66,7 +66,7 @@ const SearchBar = ({
 
     const delay = setTimeout(fetchSuggestions, 250);
     return () => clearTimeout(delay);
-  }, [query, autocompleteService]);
+  }, [query, autocompleteService, selectedLanguage]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
