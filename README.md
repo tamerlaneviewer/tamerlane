@@ -59,12 +59,6 @@ docker-compose up
 
 3. **Environment Variable**: Set `REACT_APP_IIIF_CONTENT_URL` for a default manifest
 
-### Navigation
-
-- **Collections**: Browse available manifests in the left panel
-- **Canvas Navigation**: Use controls to move between images in a manifest
-- **Annotations**: View and search annotations in the right panel
-- **Zoom & Pan**: Use mouse/touch controls for detailed viewing
 
 ## 📄 License
 
