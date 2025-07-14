@@ -62,6 +62,41 @@ const App: React.FC = () => {
 
   const [searching, setSearching] = useState(false);
 
+  const handleManifestUpdate = useCallback(
+    (
+      firstManifest: IIIFManifest | null,
+      manifestUrls: string[],
+      total: number,
+      collection: IIIFCollection | null = null,
+    ) => {
+      setCurrentManifest(firstManifest);
+      setManifestUrls(manifestUrls);
+      setTotalManifests(total);
+
+      setManifestMetadata({
+        label: firstManifest?.info?.name || '',
+        metadata: firstManifest?.info?.metadata || [],
+        provider: firstManifest?.info?.provider || [],
+        homepage: firstManifest?.info?.homepage || [],
+        requiredStatement: firstManifest?.info?.requiredStatement,
+      });
+
+      // If a new collection is provided, update it.
+      // If not, the existing collection state is preserved until a new one is loaded.
+      if (collection) {
+        setCurrentCollection(collection);
+        setCollectionMetadata({
+          label: collection.info.name || '',
+          metadata: collection.info.metadata || [],
+          provider: collection.info.provider || [],
+          homepage: collection.info.homepage || [],
+          requiredStatement: collection.info.requiredStatement,
+        });
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (currentManifest && selectedImageIndex >= 0) {
       const selectedImage = currentManifest.images[selectedImageIndex];
@@ -103,7 +138,22 @@ const App: React.FC = () => {
       .catch(() =>
         setError('Failed to load IIIF content. Please check the URL.'),
       );
-  }, [iiifContentUrl]);
+  }, [iiifContentUrl, handleManifestUpdate]);
+
+  // Effect to update search/autocomplete URLs when manifest or collection changes
+  useEffect(() => {
+    setAutocompleteUrl(
+      currentCollection?.collectionSearch?.autocomplete ??
+        currentManifest?.manifestSearch?.autocomplete ??
+        '',
+    );
+
+    setSearchUrl(
+      currentCollection?.collectionSearch?.service ??
+        currentManifest?.manifestSearch?.service ??
+        '',
+    );
+  }, [currentManifest, currentCollection]);
 
   const handleViewerReady = useCallback(() => {
     setViewerReady(true);
@@ -175,50 +225,6 @@ const App: React.FC = () => {
     } finally {
       setSearching(false);
     }
-  };
-
-  const handleManifestUpdate = (
-    firstManifest: IIIFManifest | null,
-    manifestUrls: string[],
-    total: number,
-    collection: IIIFCollection | null = null,
-  ) => {
-    setCurrentManifest(firstManifest);
-    setManifestUrls(manifestUrls);
-    setTotalManifests(total);
-
-    setManifestMetadata({
-      label: firstManifest?.info?.name || '',
-      metadata: firstManifest?.info?.metadata || [],
-      provider: firstManifest?.info?.provider || [],
-      homepage: firstManifest?.info?.homepage || [],
-      requiredStatement: firstManifest?.info?.requiredStatement,
-    });
-
-    const effectiveCollection = collection ?? currentCollection;
-
-    if (collection) {
-      setCurrentCollection(collection);
-      setCollectionMetadata({
-        label: collection.info.name || '',
-        metadata: collection.info.metadata || [],
-        provider: collection.info.provider || [],
-        homepage: collection.info.homepage || [],
-        requiredStatement: collection.info.requiredStatement,
-      });
-    }
-
-    setAutocompleteUrl(
-      effectiveCollection?.collectionSearch?.autocomplete ??
-        firstManifest?.manifestSearch?.autocomplete ??
-        '',
-    );
-
-    setSearchUrl(
-      effectiveCollection?.collectionSearch?.service ??
-        firstManifest?.manifestSearch?.service ??
-        '',
-    );
   };
 
   const fetchManifestByIndex = async (index: number) => {
