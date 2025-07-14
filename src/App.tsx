@@ -26,7 +26,7 @@ const App: React.FC = () => {
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
   const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
-    startUrl || iiifContentUrlFromParams || null
+    startUrl || iiifContentUrlFromParams || null,
   );
   const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
     null,
@@ -118,28 +118,26 @@ const App: React.FC = () => {
       if (searchResultId) setSelectedSearchResultId(searchResultId);
       let targetManifest = currentManifest;
 
-      if (manifestId && currentManifest?.id !== manifestId) {
-        const matchedIndex = manifestUrls.findIndex((url) =>
-          url.includes(manifestId),
-        );
-        if (matchedIndex === -1) return setError('Manifest not found.');
+      const matchedIndex = manifestUrls.findIndex((url) =>
+        url.includes(manifestId),
+      );
+      if (matchedIndex === -1) return setError('Manifest not found.');
 
-        const { firstManifest, collection } = await parseResource(
-          manifestUrls[matchedIndex],
-        );
-        if (!firstManifest) return setError('Failed to load manifest.');
+      const { firstManifest, collection } = await parseResource(
+        manifestUrls[matchedIndex],
+      );
+      if (!firstManifest) return setError('Failed to load manifest.');
 
-        setSelectedManifestIndex(matchedIndex);
-        setSelectedImageIndex(0);
-        setCurrentManifest(firstManifest);
-        handleManifestUpdate(
-          firstManifest,
-          manifestUrls,
-          totalManifests,
-          collection,
-        );
-        targetManifest = firstManifest;
-      }
+      setSelectedManifestIndex(matchedIndex);
+      setSelectedImageIndex(0);
+      setCurrentManifest(firstManifest);
+      handleManifestUpdate(
+        firstManifest,
+        manifestUrls,
+        totalManifests,
+        collection,
+      );
+      targetManifest = firstManifest;
 
       const baseCanvasTarget = canvasTarget.split('#')[0];
       const newImageIndex = targetManifest?.images.findIndex(
@@ -167,7 +165,7 @@ const App: React.FC = () => {
       return setError('This resource does not support content search.');
 
     try {
-      setSearching(true); 
+      setSearching(true);
       const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
       setSearchResults(results);
