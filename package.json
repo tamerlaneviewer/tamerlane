@@ -1,6 +1,6 @@
 {
   "name": "tamerlane",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "dependencies": {
     "dompurify": "^3.2.4",
@@ -12,7 +12,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.1.5",
     "react-scripts": "5.0.1",
-    "web-vitals": "^4.2.4"
+    "web-vitals": "^4.2.4",
+    "zustand": "^5.0.6"
   },
   "scripts": {
     "prestart": "node scripts/generate-info.js",
