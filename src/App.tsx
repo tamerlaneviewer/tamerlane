@@ -1,257 +1,89 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
-import { parseResource } from './service/parser.ts';
 import { getCanvasDimensions } from './service/canvas.ts';
-import { getAnnotationsForTarget } from './service/annotation.ts';
-import { IIIFCollection, IIIFManifest, IIIFAnnotation } from './types/index.ts';
-import { searchAnnotations } from './service/search.ts';
+import { IIIFAnnotation } from './types/index.ts';
 import UrlDialog from './components/UrlDialog.tsx';
 import ErrorDialog from './components/ErrorDialog.tsx';
 import LeftPanel from './components/LeftPanel.tsx';
 import MiddlePanel from './components/MiddlePanel.tsx';
 import RightPanel from './components/RightPanel.tsx';
-
-const startUrl = process.env.REACT_APP_IIIF_CONTENT_URL;
+import { useIIIFStore } from './store/iiifStore.ts';
+import { getAnnotationsForTarget } from './service/annotation.ts';
+import { parseResource } from './service/parser.ts';
 
 const App: React.FC = () => {
-  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
-    setSelectedAnnotation(annotation);
-  };
-  const [activePanelTab, setActivePanelTab] = useState<
-    'annotations' | 'searchResults'
-  >('annotations');
+  const {
+    activePanelTab,
+    iiifContentUrl,
+    currentManifest,
+    currentCollection,
+    canvasId,
+    manifestUrls,
+    totalManifests,
+    selectedManifestIndex,
+    selectedImageIndex,
+    annotations,
+    manifestMetadata,
+    collectionMetadata,
+    searchResults,
+    error,
+    showUrlDialog,
+    selectedAnnotation,
+    pendingAnnotationId,
+    selectedSearchResultId,
+    viewerReady,
+    autocompleteUrl,
+    selectedLanguage,
+    searching,
+    setActivePanelTab,
+    setIiifContentUrl,
+    setCanvasId,
+    setSelectedImageIndex,
+    setAnnotations,
+    setError,
+    setShowUrlDialog,
+    setSelectedAnnotation,
+    setPendingAnnotationId,
+    setViewerReady,
+    setAutocompleteUrl,
+    setSearchUrl,
+    setSelectedLanguage,
+    handleManifestUpdate,
+    handleSearch,
+    handleSearchResultClick,
+    fetchManifestByIndex,
+  } = useIIIFStore((state) => state);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
 
-  const [iiifContentUrl, setIiifContentUrl] = useState<string | null>(
-    startUrl || iiifContentUrlFromParams || null,
-  );
-  const [currentManifest, setCurrentManifest] = useState<IIIFManifest | null>(
-    null,
-  );
-  const [currentCollection, setCurrentCollection] =
-    useState<IIIFCollection | null>(null);
-  const [canvasId, setCanvasId] = useState<string>('');
-  const [manifestUrls, setManifestUrls] = useState<string[]>([]);
-  const [totalManifests, setTotalManifests] = useState<number>(0);
-  const [selectedManifestIndex, setSelectedManifestIndex] = useState<number>(0);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  const [annotations, setAnnotations] = useState<IIIFAnnotation[]>([]);
-  const [manifestMetadata, setManifestMetadata] = useState<any>({});
-  const [collectionMetadata, setCollectionMetadata] = useState<any>({});
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [showUrlDialog, setShowUrlDialog] = useState<boolean>(!iiifContentUrl);
-  const [selectedAnnotation, setSelectedAnnotation] =
-    useState<IIIFAnnotation | null>(null);
-  const [pendingAnnotationId, setPendingAnnotationId] = useState<string | null>(
-    null,
-  );
-  const [selectedSearchResultId, setSelectedSearchResultId] = useState<
-    string | null
-  >(null);
-  const [viewerReady, setViewerReady] = useState(false);
-  const [autocompleteUrl, setAutocompleteUrl] = useState<string>('');
-  const [searchUrl, setSearchUrl] = useState<string>('');
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>('en');
-
-  const handleLanguageChange = (language: string) =>
-    setSelectedLanguage(language);
-
-  const [searching, setSearching] = useState(false);
-
-  const handleManifestUpdate = useCallback(
-    (
-      firstManifest: IIIFManifest | null,
-      manifestUrls: string[],
-      total: number,
-      collection: IIIFCollection | null = null,
-    ) => {
-      setCurrentManifest(firstManifest);
-      setManifestUrls(manifestUrls);
-      setTotalManifests(total);
-
-      setManifestMetadata({
-        label: firstManifest?.info?.name || '',
-        metadata: firstManifest?.info?.metadata || [],
-        provider: firstManifest?.info?.provider || [],
-        homepage: firstManifest?.info?.homepage || [],
-        requiredStatement: firstManifest?.info?.requiredStatement,
-      });
-
-      // If a new collection is provided, update it.
-      // If not, the existing collection state is preserved until a new one is loaded.
-      if (collection) {
-        setCurrentCollection(collection);
-        setCollectionMetadata({
-          label: collection.info.name || '',
-          metadata: collection.info.metadata || [],
-          provider: collection.info.provider || [],
-          homepage: collection.info.homepage || [],
-          requiredStatement: collection.info.requiredStatement,
-        });
-      }
-    },
-    [],
-  );
+  useEffect(() => {
+    if (iiifContentUrlFromParams) {
+      setIiifContentUrl(iiifContentUrlFromParams);
+    }
+  }, [iiifContentUrlFromParams, setIiifContentUrl]);
 
   useEffect(() => {
-    if (currentManifest && selectedImageIndex >= 0) {
-      const selectedImage = currentManifest.images[selectedImageIndex];
-      setCanvasId(selectedImage?.canvasTarget || '');
+    if (iiifContentUrl && manifestUrls.length === 0) {
+      parseResource(iiifContentUrl)
+        .then(({ firstManifest, manifestUrls: urls, total, collection }) => {
+          const manifestUrlsFinal =
+            urls && urls.length > 0 ? urls : [iiifContentUrl];
+          const totalFinal = typeof total === 'number' ? total : 1;
+          handleManifestUpdate(
+            firstManifest,
+            manifestUrlsFinal,
+            totalFinal,
+            collection ?? null,
+          );
+        })
+        .catch(() =>
+          setError('Failed to load IIIF content. Please check the URL.'),
+        );
     }
-  }, [currentManifest, selectedImageIndex]);
-
-  useEffect(() => {
-    if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
-    const manifestUrl = manifestUrls[selectedManifestIndex];
-    getAnnotationsForTarget(manifestUrl, canvasId)
-      .then(setAnnotations)
-      .catch((err) => {
-        console.error('Error fetching annotations:', err);
-        setAnnotations([]);
-        setError('Unable to load annotations for this canvas.');
-      });
-  }, [currentManifest, canvasId, selectedManifestIndex, manifestUrls]);
-
-  useEffect(() => {
-    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
-      return;
-    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
-    if (match) {
-      setSelectedAnnotation(match);
-      setPendingAnnotationId(null);
-      setViewerReady(false);
-    } else {
-      console.warn('❌ Could not find annotation for ID:', pendingAnnotationId);
-    }
-  }, [annotations, pendingAnnotationId, viewerReady]);
-
-  useEffect(() => {
-    if (!iiifContentUrl) return;
-    parseResource(iiifContentUrl)
-      .then(({ firstManifest, manifestUrls, total, collection }) => {
-        handleManifestUpdate(firstManifest, manifestUrls, total, collection);
-      })
-      .catch(() =>
-        setError('Failed to load IIIF content. Please check the URL.'),
-      );
-  }, [iiifContentUrl, handleManifestUpdate]);
-
-  // Effect to update search/autocomplete URLs when manifest or collection changes
-  useEffect(() => {
-    setAutocompleteUrl(
-      currentCollection?.collectionSearch?.autocomplete ??
-        currentManifest?.manifestSearch?.autocomplete ??
-        '',
-    );
-
-    setSearchUrl(
-      currentCollection?.collectionSearch?.service ??
-        currentManifest?.manifestSearch?.service ??
-        '',
-    );
-  }, [currentManifest, currentCollection]);
-
-  const handleViewerReady = useCallback(() => {
-    setViewerReady(true);
-  }, []);
-
-  const handleSearchResultClick = async (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => {
-    try {
-      if (searchResultId) setSelectedSearchResultId(searchResultId);
-      let targetManifest = currentManifest;
-
-      const matchedIndex = manifestUrls.findIndex((url) =>
-        url.includes(manifestId),
-      );
-      if (matchedIndex === -1) return setError('Manifest not found.');
-
-      const { firstManifest, collection } = await parseResource(
-        manifestUrls[matchedIndex],
-      );
-      if (!firstManifest) return setError('Failed to load manifest.');
-
-      setSelectedManifestIndex(matchedIndex);
-      setSelectedImageIndex(0);
-      setCurrentManifest(firstManifest);
-      handleManifestUpdate(
-        firstManifest,
-        manifestUrls,
-        totalManifests,
-        collection,
-      );
-      targetManifest = firstManifest;
-
-      const baseCanvasTarget = canvasTarget.split('#')[0];
-      const newImageIndex = targetManifest?.images.findIndex(
-        (img) => img.canvasTarget === baseCanvasTarget,
-      );
-      if (newImageIndex === -1 || newImageIndex === undefined)
-        return setError('Canvas not found.');
-
-      setViewerReady(false);
-      setSelectedImageIndex(newImageIndex);
-      setCanvasId(canvasTarget);
-      setActivePanelTab('annotations');
-      if (searchResultId) setPendingAnnotationId(searchResultId);
-    } catch (err) {
-      console.error('Failed to jump to search result:', err);
-      setError('Could not jump to search result.');
-    }
-  };
-
-  const handleSearch = async (query: string) => {
-    if (searching) return;
-    const trimmed = query.trim();
-    if (!trimmed) return;
-    if (!searchUrl)
-      return setError('This resource does not support content search.');
-
-    try {
-      setSearching(true);
-      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
-      const results = await searchAnnotations(searchEndpoint);
-      setSearchResults(results);
-      setActivePanelTab('searchResults');
-    } catch {
-      setError('Search failed. Please try again.');
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const fetchManifestByIndex = async (index: number) => {
-    if (index < 0 || index >= totalManifests || index === selectedManifestIndex)
-      return;
-    const manifestUrl = manifestUrls[index];
-
-    try {
-      const { firstManifest, collection } = await parseResource(manifestUrl);
-      setSelectedAnnotation(null);
-      setAnnotations([]);
-      setSearchResults([]);
-      setSelectedSearchResultId(null);
-      setViewerReady(false);
-      setSelectedManifestIndex(index);
-      setSelectedImageIndex(0);
-      handleManifestUpdate(
-        firstManifest,
-        manifestUrls,
-        totalManifests,
-        collection,
-      );
-    } catch (err) {
-      console.error('Failed to fetch manifest by index:', err);
-      setError('Failed to load selected manifest.');
-    }
-  };
+  }, [iiifContentUrl, manifestUrls.length, handleManifestUpdate, setError]);
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -264,6 +96,85 @@ const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (currentManifest && selectedImageIndex >= 0) {
+      const selectedImage = currentManifest.images[selectedImageIndex];
+      setCanvasId(selectedImage?.canvasTarget || '');
+    }
+  }, [currentManifest, selectedImageIndex, setCanvasId]);
+
+  useEffect(() => {
+    if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
+    const manifestUrl = manifestUrls[selectedManifestIndex];
+    getAnnotationsForTarget(manifestUrl, canvasId)
+      .then(setAnnotations)
+      .catch((err) => {
+        console.error('Error fetching annotations:', err);
+        setAnnotations([]);
+        setError('Unable to load annotations for this canvas.');
+      });
+  }, [
+    currentManifest,
+    canvasId,
+    selectedManifestIndex,
+    manifestUrls,
+    setAnnotations,
+    setError,
+  ]);
+
+  useEffect(() => {
+    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
+      return;
+    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
+    if (match) {
+      setSelectedAnnotation(match);
+      setPendingAnnotationId(null);
+      setViewerReady(false);
+    } else {
+      console.warn('❌ Could not find annotation for ID:', pendingAnnotationId);
+    }
+  }, [
+    annotations,
+    pendingAnnotationId,
+    viewerReady,
+    setSelectedAnnotation,
+    setPendingAnnotationId,
+    setViewerReady,
+  ]);
+
+  useEffect(() => {
+    setAutocompleteUrl(
+      currentCollection?.collectionSearch?.autocomplete ??
+        currentManifest?.manifestSearch?.autocomplete ??
+        '',
+    );
+    setSearchUrl(
+      currentCollection?.collectionSearch?.service ??
+        currentManifest?.manifestSearch?.service ??
+        '',
+    );
+  }, [currentManifest, currentCollection, setAutocompleteUrl, setSearchUrl]);
+
+  useEffect(() => {
+    if (!iiifContentUrl && !iiifContentUrlFromParams) {
+      setShowUrlDialog(true);
+    }
+  }, [iiifContentUrl, iiifContentUrlFromParams, setShowUrlDialog]);
+
+  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
+    setSelectedAnnotation(annotation);
+  };
+
+  const handleLanguageChange = (language: string) =>
+    setSelectedLanguage(language);
+
+  const handleViewerReady = useCallback(() => {
+    setViewerReady(true);
+  }, [setViewerReady]);
+
+  // Use the store's handleSearch, which uses searchUrl internally
+  const onSearch = (query: string) => handleSearch(query);
+
   if (showUrlDialog) return <UrlDialog onSubmit={handleUrlSubmit} />;
   if (error) {
     return (
@@ -273,7 +184,6 @@ const App: React.FC = () => {
           setError(null);
           if (!currentManifest) {
             setIiifContentUrl(null);
-            setCurrentManifest(null);
             setShowUrlDialog(true);
           }
         }}
@@ -314,7 +224,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen">
       <Header
-        onSearch={handleSearch}
+        onSearch={onSearch}
         autocompleteUrl={autocompleteUrl}
         searching={searching}
         currentIndex={selectedImageIndex}
@@ -322,10 +232,14 @@ const App: React.FC = () => {
         totalManifests={totalManifests}
         selectedManifestIndex={selectedManifestIndex}
         onPreviousImage={() =>
-          setSelectedImageIndex((i) => (i > 0 ? i - 1 : totalImages - 1))
+          setSelectedImageIndex(
+            selectedImageIndex > 0 ? selectedImageIndex - 1 : totalImages - 1,
+          )
         }
         onNextImage={() =>
-          setSelectedImageIndex((i) => (i < totalImages - 1 ? i + 1 : 0))
+          setSelectedImageIndex(
+            selectedImageIndex < totalImages - 1 ? selectedImageIndex + 1 : 0,
+          )
         }
         onPreviousManifest={() =>
           fetchManifestByIndex(

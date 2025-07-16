@@ -1,7 +1,6 @@
-
 # State and Logic Reference for App.tsx
 
-## 📦 State Variables
+## 📦 State Variables (Managed by Zustand Store)
 
 | State Variable                | Purpose/Usage                                                                                 | Component(s)         |
 |-------------------------------|----------------------------------------------------------------------------------------------|----------------------|
@@ -28,114 +27,65 @@
 | viewerReady                   | Whether the image viewer is ready for annotation selection                                   | MiddlePanel, App     |
 | searching                     | Whether a search is currently in progress                                                    | Header, RightPanel   |
 
-## 🔁 Side Effects (useEffect)
+> **All state is accessed and updated via the `useIIIFStore` hook.**
 
-### Effect 1 — Dependencies: `[ currentManifest, selectedImageIndex ]`
-Sets the current canvasId when the manifest or image index changes.
+---
 
-### Effect 2 — Dependencies: `[ currentManifest, canvasId, selectedManifestIndex, manifestUrls ]`
-Fetches annotations for the current canvas and manifest.
+## 🔁 Side Effects (useEffect in App.tsx)
 
-### Effect 3 — Dependencies: `[ annotations, pendingAnnotationId, viewerReady ]`
-Selects an annotation by ID after the viewer is ready.
+Zustand actions and state are used inside effects to coordinate data fetching and UI updates.
 
-### Effect 4 — Dependencies: `[ iiifContentUrl ]`
-Loads the initial manifest/collection when the IIIF content URL changes.
+### Effect 1 — `[ currentManifest, selectedImageIndex ]`
+Sets the current canvasId in the store when the manifest or image index changes.
 
-## 🧭 Core Logic Functions
+### Effect 2 — `[ currentManifest, canvasId, selectedManifestIndex, manifestUrls ]`
+Fetches annotations for the current canvas and manifest using a store action.
 
-- `handleManifestUpdate(firstManifest, manifestUrls, total, collection)` — Updates manifest, collection, and related metadata state after loading a resource.
-- `fetchManifestByIndex(index)` — Loads a manifest by its index in the collection.
-- `handleSearch(query)` — Performs a content search and updates search results.
-- `handleSearchResultClick(canvasTarget, manifestId?, searchResultId?)` — Navigates to a search result and selects the relevant annotation.
-- `handleViewerReady()` — Sets viewerReady to true when the image viewer is ready for annotation selection.
-- `handleUrlSubmit(event)` — Handles submission of a new IIIF content URL.
+### Effect 3 — `[ annotations, pendingAnnotationId, viewerReady ]`
+Selects an annotation by ID after the viewer is ready, updating store state.
+
+### Effect 4 — `[ iiifContentUrl ]`
+Loads the initial manifest/collection when the IIIF content URL changes, using a store action.
+
+### Effect 5 — `[ currentManifest, currentCollection ]`
+Updates autocomplete and search URLs in the store when manifest or collection changes.
+
+### Effect 6 — `[ iiifContentUrl, iiifContentUrlFromParams ]`
+Shows the URL dialog if no IIIF content URL is set.
+
+---
+
+## 🧭 Core Logic Functions (Now Store Actions)
+
+- `handleManifestUpdate(firstManifest, manifestUrls, total, collection)` — Updates manifest, collection, and related metadata state in the store.
+- `fetchManifestByIndex(index)` — Loads a manifest by its index using a store action.
+- `handleSearch(query)` — Performs a content search and updates search results in the store.
+- `handleSearchResultClick(canvasTarget, manifestId?, searchResultId?)` — Navigates to a search result and selects the relevant annotation via the store.
+- `handleViewerReady()` — Sets viewerReady to true in the store when the image viewer is ready.
+- `handleUrlSubmit(event)` — Handles submission of a new IIIF content URL, updating store state.
+
+---
 
 ## 🧩 Component Interaction
 
-- **Header**: Receives navigation, search, and language state/handlers.
-- **LeftPanel**: Receives manifest and collection metadata.
-- **MiddlePanel**: Receives image/canvas data and selected annotation.
-- **RightPanel**: Receives annotations, search results, and active tab state.
-- **UrlDialog**: Shown when no IIIF content URL is set.
-- **ErrorDialog**: Shown when an error occurs.
+- **Header**: Receives navigation, search, and language state/handlers from the store.
+- **LeftPanel**: Receives manifest and collection metadata from the store.
+- **MiddlePanel**: Receives image/canvas data and selected annotation from the store.
+- **RightPanel**: Receives annotations, search results, and active tab state from the store.
+- **UrlDialog**: Shown when no IIIF content URL is set (store-driven).
+- **ErrorDialog**: Shown when an error occurs (store-driven).
+
+---
 
 ## ⚠️ Error Handling & User Flow
 
-- If an error occurs (e.g., failed manifest load), the app displays an error dialog and may prompt for a new IIIF URL.
-- If no IIIF content URL is set, the app shows the URL input dialog.
+- If an error occurs (e.g., failed manifest load), the app displays an error dialog and may prompt for a new IIIF URL (store-driven).
+- If no IIIF content URL is set, the app shows the URL input dialog (store-driven).
+
+---
 
 ## 📚 Further Reading
 
 - [IIIF Presentation API](https://iiif.io/api/presentation/)
 - [App.tsx source code](../src/App.tsx)
-
-
-## 🔁 Side Effects (useEffect)
-
-### Effect 1 — Dependencies: `[ currentManifest, selectedImageIndex ]`
-
-```ts
-if (currentManifest && selectedImageIndex >= 0) {
-      const selectedImage = currentManifest.images[selectedImageIndex];
-      setCanvasId(selectedImage?.canvasTarget || '');
-    }...
-```
-
-### Effect 2 — Dependencies: `[ currentManifest, canvasId, selectedManifestIndex, manifestUrls ]`
-
-```ts
-if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
-
-    const manifestUrl = manifestUrls[selectedManifestIndex];
-
-    const fetchAnnotations = async () => {
-      try {
-        const results = await getAnnotationsForTarget(manifestUrl, canvasId);
-        setAnnotations(results);...
-```
-
-### Effect 3 — Dependencies: `[ annotations, pendingAnnotationId, viewerReady ]`
-
-```ts
-if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
-      return;
-
-    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
-
-    if (match) {
-      setSelectedAnnotation(match);
-      console.log('Selected annotation by ID:', match.id);
-      setPendingAnnotat...
-```
-
-### Effect 4 — Dependencies: `[ iiifContentUrl ]`
-
-```ts
-if (!iiifContentUrl) return;
-
-    const fetchInitialManifest = async () => {
-      try {
-        const { firstManifest, manifestUrls, total, collection } =
-          await parseResource(iiifContentUrl);
-        handleManifestUpdate(
-          firstManifest,
-          manifestUrls,
-          total,
- ...
-```
-
-
-## 🧭 Core Logic Functions
-
-- `handleManifestUpdate()` — custom logic function used in the app
-
-- `fetchManifestByIndex()` — custom logic function used in the app
-
-- `handleSearch()` — custom logic function used in the app
-
-- `handleSearchResultClick()` — custom logic function used in the app
-
-- `handleViewerReady()` — custom logic function used in the app
-
-- `handleUrlSubmit()` — custom logic function used in the app
+- [Zustand documentation](https://zustand-demo.pmnd.rs/)
