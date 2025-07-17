@@ -14,47 +14,48 @@ import { getAnnotationsForTarget } from './service/annotation.ts';
 import { parseResource } from './service/parser.ts';
 
 const App: React.FC = () => {
-  const {
-    activePanelTab,
-    iiifContentUrl,
-    currentManifest,
-    currentCollection,
-    canvasId,
-    manifestUrls,
-    totalManifests,
-    selectedManifestIndex,
-    selectedImageIndex,
-    annotations,
-    manifestMetadata,
-    collectionMetadata,
-    searchResults,
-    error,
-    showUrlDialog,
-    selectedAnnotation,
-    pendingAnnotationId,
-    selectedSearchResultId,
-    viewerReady,
-    autocompleteUrl,
-    selectedLanguage,
-    searching,
-    setActivePanelTab,
-    setIiifContentUrl,
-    setCanvasId,
-    setSelectedImageIndex,
-    setAnnotations,
-    setError,
-    setShowUrlDialog,
-    setSelectedAnnotation,
-    setPendingAnnotationId,
-    setViewerReady,
-    setAutocompleteUrl,
-    setSearchUrl,
-    setSelectedLanguage,
-    handleManifestUpdate,
-    handleSearch,
-    handleSearchResultClick,
-    fetchManifestByIndex,
-  } = useIIIFStore((state) => state);
+  // Granular selectors for state
+  const activePanelTab = useIIIFStore((state) => state.activePanelTab);
+  const iiifContentUrl = useIIIFStore((state) => state.iiifContentUrl);
+  const currentManifest = useIIIFStore((state) => state.currentManifest);
+  const currentCollection = useIIIFStore((state) => state.currentCollection);
+  const canvasId = useIIIFStore((state) => state.canvasId);
+  const manifestUrls = useIIIFStore((state) => state.manifestUrls);
+  const totalManifests = useIIIFStore((state) => state.totalManifests);
+  const selectedManifestIndex = useIIIFStore((state) => state.selectedManifestIndex);
+  const selectedImageIndex = useIIIFStore((state) => state.selectedImageIndex);
+  const annotations = useIIIFStore((state) => state.annotations);
+  const manifestMetadata = useIIIFStore((state) => state.manifestMetadata);
+  const collectionMetadata = useIIIFStore((state) => state.collectionMetadata);
+  const searchResults = useIIIFStore((state) => state.searchResults);
+  const error = useIIIFStore((state) => state.error);
+  const showUrlDialog = useIIIFStore((state) => state.showUrlDialog);
+  const selectedAnnotation = useIIIFStore((state) => state.selectedAnnotation);
+  const pendingAnnotationId = useIIIFStore((state) => state.pendingAnnotationId);
+  const selectedSearchResultId = useIIIFStore((state) => state.selectedSearchResultId);
+  const viewerReady = useIIIFStore((state) => state.viewerReady);
+  const autocompleteUrl = useIIIFStore((state) => state.autocompleteUrl);
+  const selectedLanguage = useIIIFStore((state) => state.selectedLanguage);
+  const searching = useIIIFStore((state) => state.searching);
+
+  // Granular selectors for actions
+  const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
+  const setIiifContentUrl = useIIIFStore((state) => state.setIiifContentUrl);
+  const setCanvasId = useIIIFStore((state) => state.setCanvasId);
+  const setSelectedImageIndex = useIIIFStore((state) => state.setSelectedImageIndex);
+  const setAnnotations = useIIIFStore((state) => state.setAnnotations);
+  const setError = useIIIFStore((state) => state.setError);
+  const setShowUrlDialog = useIIIFStore((state) => state.setShowUrlDialog);
+  const setSelectedAnnotation = useIIIFStore((state) => state.setSelectedAnnotation);
+  const setPendingAnnotationId = useIIIFStore((state) => state.setPendingAnnotationId);
+  const setViewerReady = useIIIFStore((state) => state.setViewerReady);
+  const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
+  const setSearchUrl = useIIIFStore((state) => state.setSearchUrl);
+  const setSelectedLanguage = useIIIFStore((state) => state.setSelectedLanguage);
+  const handleManifestUpdate = useIIIFStore((state) => state.handleManifestUpdate);
+  const handleSearch = useIIIFStore((state) => state.handleSearch);
+  const handleSearchResultClick = useIIIFStore((state) => state.handleSearchResultClick);
+  const fetchManifestByIndex = useIIIFStore((state) => state.fetchManifestByIndex);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
