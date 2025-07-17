@@ -187,24 +187,40 @@ const App: React.FC = () => {
   // --- Language extraction and selection logic ---
   const DEFAULT_LANGUAGE = configLanguages[0]?.code || 'en';
   const availableLanguages = React.useMemo(() => {
-    const langs = extractLanguagesFromAnnotations(annotations);
-    if (langs.length === 0) {
-      return [
-        { code: DEFAULT_LANGUAGE, name: configLanguages[0]?.name || 'English' },
-      ];
-    }
-    return langs;
-  }, [annotations, DEFAULT_LANGUAGE]);
+    // This correctly returns [] if no languages are found, which drives our logic.
+    return extractLanguagesFromAnnotations(annotations);
+  }, [annotations]);
 
   useEffect(() => {
-    if (
-      availableLanguages.length > 0 &&
-      (!selectedLanguage ||
-        !availableLanguages.some((lang) => lang.code === selectedLanguage))
-    ) {
-      setSelectedLanguage(availableLanguages[0].code);
+    // This logic correctly sets the selected language state based on what's available.
+    if (availableLanguages.length > 0) {
+      if (!availableLanguages.some((lang) => lang.code === selectedLanguage)) {
+        setSelectedLanguage(availableLanguages[0].code);
+      }
+    } else if (annotations.length > 0) {
+      if (selectedLanguage !== DEFAULT_LANGUAGE) {
+        setSelectedLanguage(DEFAULT_LANGUAGE);
+      }
     }
-  }, [availableLanguages, selectedLanguage, setSelectedLanguage]);
+    // If annotations is an empty array (e.g., during loading), we do nothing and wait.
+  }, [
+    annotations.length, // Use length to avoid re-running on every annotation change
+    availableLanguages,
+    selectedLanguage,
+    setSelectedLanguage,
+    DEFAULT_LANGUAGE,
+  ]);
+
+  // Create a safe list to pass to the Header component. It will never be empty.
+  const languagesForHeader =
+    availableLanguages.length > 0
+      ? availableLanguages
+      : [
+          {
+            code: DEFAULT_LANGUAGE,
+            name: configLanguages[0]?.name || 'English',
+          },
+        ];
   // --- End language logic ---
 
   const handleAnnotationSelect = useCallback(
@@ -309,7 +325,7 @@ const App: React.FC = () => {
         resetImageIndex={() => setSelectedImageIndex(0)}
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
-        availableLanguages={availableLanguages}
+        availableLanguages={languagesForHeader}
       />
 
       <div className="flex flex-grow">
