@@ -194,7 +194,7 @@ const App: React.FC = () => {
       ];
     }
     return langs;
-  }, [annotations]);
+  }, [annotations, DEFAULT_LANGUAGE]);
 
   useEffect(() => {
     if (
