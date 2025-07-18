@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from './SearchBar.tsx';
 import IIIFControls from './IIIFControls.tsx';
-import {
-  availableLanguages,
-  DEFAULT_LANGUAGE,
-  APP_NAME,
-  SHOW_LOGO,
-} from '../config/appConfig.ts';
+import { APP_NAME, SHOW_LOGO } from '../config/appConfig.ts';
+
 interface HeaderProps {
   onSearch: (query: string) => void;
   autocompleteUrl: string;
@@ -22,6 +18,7 @@ interface HeaderProps {
   onLanguageChange: (lang: string) => void;
   selectedLanguage: string | null;
   searching: boolean;
+  availableLanguages: Array<{ code: string; name: string }>;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -39,20 +36,32 @@ const Header: React.FC<HeaderProps> = ({
   onLanguageChange,
   selectedLanguage,
   searching = false,
+  availableLanguages,
 }) => {
-  const [languageIndex, setLanguageIndex] = useState(() => {
-    const index = availableLanguages.findIndex(
-      (lang) => lang.code === DEFAULT_LANGUAGE,
+  // Initialize languageIndex to selectedLanguage or first available
+  const initialIndex = availableLanguages.findIndex(
+    (lang) => lang.code === selectedLanguage,
+  );
+  const [languageIndex, setLanguageIndex] = useState(
+    initialIndex >= 0 ? initialIndex : 0,
+  );
+
+  useEffect(() => {
+    // Update index if selectedLanguage changes
+    const idx = availableLanguages.findIndex(
+      (lang) => lang.code === selectedLanguage,
     );
-    return index >= 0 ? index : 0;
-  });
+    if (idx !== languageIndex && idx >= 0) {
+      setLanguageIndex(idx);
+    }
+  }, [selectedLanguage, availableLanguages, languageIndex]);
 
   const currentLanguage = availableLanguages[languageIndex];
 
   const toggleLanguage = () => {
     const nextIndex = (languageIndex + 1) % availableLanguages.length;
     setLanguageIndex(nextIndex);
-    onLanguageChange(availableLanguages[nextIndex].code); // Ensure this calls the handler
+    onLanguageChange(availableLanguages[nextIndex].code);
   };
 
   return (
@@ -84,9 +93,9 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={toggleLanguage}
           className="bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
-          title={currentLanguage.name}
+          title={currentLanguage?.name}
         >
-          {currentLanguage.code.toUpperCase()}
+          {currentLanguage?.code?.toUpperCase()}
         </button>
         <SearchBar
           onSearch={onSearch}

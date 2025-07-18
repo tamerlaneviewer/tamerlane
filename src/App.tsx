@@ -12,6 +12,8 @@ import RightPanel from './components/RightPanel.tsx';
 import { useIIIFStore } from './store/iiifStore.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { parseResource } from './service/parser.ts';
+import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
+import { availableLanguages as configLanguages } from './config/appConfig.ts';
 
 const App: React.FC = () => {
   // Granular selectors for state
@@ -22,7 +24,9 @@ const App: React.FC = () => {
   const canvasId = useIIIFStore((state) => state.canvasId);
   const manifestUrls = useIIIFStore((state) => state.manifestUrls);
   const totalManifests = useIIIFStore((state) => state.totalManifests);
-  const selectedManifestIndex = useIIIFStore((state) => state.selectedManifestIndex);
+  const selectedManifestIndex = useIIIFStore(
+    (state) => state.selectedManifestIndex,
+  );
   const selectedImageIndex = useIIIFStore((state) => state.selectedImageIndex);
   const annotations = useIIIFStore((state) => state.annotations);
   const manifestMetadata = useIIIFStore((state) => state.manifestMetadata);
@@ -31,8 +35,12 @@ const App: React.FC = () => {
   const error = useIIIFStore((state) => state.error);
   const showUrlDialog = useIIIFStore((state) => state.showUrlDialog);
   const selectedAnnotation = useIIIFStore((state) => state.selectedAnnotation);
-  const pendingAnnotationId = useIIIFStore((state) => state.pendingAnnotationId);
-  const selectedSearchResultId = useIIIFStore((state) => state.selectedSearchResultId);
+  const pendingAnnotationId = useIIIFStore(
+    (state) => state.pendingAnnotationId,
+  );
+  const selectedSearchResultId = useIIIFStore(
+    (state) => state.selectedSearchResultId,
+  );
   const viewerReady = useIIIFStore((state) => state.viewerReady);
   const autocompleteUrl = useIIIFStore((state) => state.autocompleteUrl);
   const selectedLanguage = useIIIFStore((state) => state.selectedLanguage);
@@ -42,20 +50,34 @@ const App: React.FC = () => {
   const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
   const setIiifContentUrl = useIIIFStore((state) => state.setIiifContentUrl);
   const setCanvasId = useIIIFStore((state) => state.setCanvasId);
-  const setSelectedImageIndex = useIIIFStore((state) => state.setSelectedImageIndex);
+  const setSelectedImageIndex = useIIIFStore(
+    (state) => state.setSelectedImageIndex,
+  );
   const setAnnotations = useIIIFStore((state) => state.setAnnotations);
   const setError = useIIIFStore((state) => state.setError);
   const setShowUrlDialog = useIIIFStore((state) => state.setShowUrlDialog);
-  const setSelectedAnnotation = useIIIFStore((state) => state.setSelectedAnnotation);
-  const setPendingAnnotationId = useIIIFStore((state) => state.setPendingAnnotationId);
+  const setSelectedAnnotation = useIIIFStore(
+    (state) => state.setSelectedAnnotation,
+  );
+  const setPendingAnnotationId = useIIIFStore(
+    (state) => state.setPendingAnnotationId,
+  );
   const setViewerReady = useIIIFStore((state) => state.setViewerReady);
   const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
   const setSearchUrl = useIIIFStore((state) => state.setSearchUrl);
-  const setSelectedLanguage = useIIIFStore((state) => state.setSelectedLanguage);
-  const handleManifestUpdate = useIIIFStore((state) => state.handleManifestUpdate);
+  const setSelectedLanguage = useIIIFStore(
+    (state) => state.setSelectedLanguage,
+  );
+  const handleManifestUpdate = useIIIFStore(
+    (state) => state.handleManifestUpdate,
+  );
   const handleSearch = useIIIFStore((state) => state.handleSearch);
-  const handleSearchResultClick = useIIIFStore((state) => state.handleSearchResultClick);
-  const fetchManifestByIndex = useIIIFStore((state) => state.fetchManifestByIndex);
+  const handleSearchResultClick = useIIIFStore(
+    (state) => state.handleSearchResultClick,
+  );
+  const fetchManifestByIndex = useIIIFStore(
+    (state) => state.fetchManifestByIndex,
+  );
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
@@ -162,12 +184,56 @@ const App: React.FC = () => {
     }
   }, [iiifContentUrl, iiifContentUrlFromParams, setShowUrlDialog]);
 
-  const handleAnnotationSelect = (annotation: IIIFAnnotation) => {
-    setSelectedAnnotation(annotation);
-  };
+  // --- Language extraction and selection logic ---
+  const DEFAULT_LANGUAGE = configLanguages[0]?.code || 'en';
+  const availableLanguages = React.useMemo(() => {
+    // This correctly returns [] if no languages are found, which drives our logic.
+    return extractLanguagesFromAnnotations(annotations);
+  }, [annotations]);
 
-  const handleLanguageChange = (language: string) =>
-    setSelectedLanguage(language);
+  useEffect(() => {
+    // This logic correctly sets the selected language state based on what's available.
+    if (availableLanguages.length > 0) {
+      if (!availableLanguages.some((lang) => lang.code === selectedLanguage)) {
+        setSelectedLanguage(availableLanguages[0].code);
+      }
+    } else if (annotations.length > 0) {
+      if (selectedLanguage !== DEFAULT_LANGUAGE) {
+        setSelectedLanguage(DEFAULT_LANGUAGE);
+      }
+    }
+    // If annotations is an empty array (e.g., during loading), we do nothing and wait.
+  }, [
+    annotations.length, // Use length to avoid re-running on every annotation change
+    availableLanguages,
+    selectedLanguage,
+    setSelectedLanguage,
+    DEFAULT_LANGUAGE,
+  ]);
+
+  // Create a safe list to pass to the Header component. It will never be empty.
+  const languagesForHeader =
+    availableLanguages.length > 0
+      ? availableLanguages
+      : [
+          {
+            code: DEFAULT_LANGUAGE,
+            name: configLanguages[0]?.name || 'English',
+          },
+        ];
+  // --- End language logic ---
+
+  const handleAnnotationSelect = useCallback(
+    (annotation: IIIFAnnotation) => {
+      setSelectedAnnotation(annotation);
+    },
+    [setSelectedAnnotation],
+  );
+
+  const handleLanguageChange = useCallback(
+    (language: string) => setSelectedLanguage(language),
+    [setSelectedLanguage],
+  );
 
   const handleViewerReady = useCallback(() => {
     setViewerReady(true);
@@ -259,6 +325,7 @@ const App: React.FC = () => {
         resetImageIndex={() => setSelectedImageIndex(0)}
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
+        availableLanguages={languagesForHeader}
       />
 
       <div className="flex flex-grow">

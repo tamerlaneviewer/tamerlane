@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { parseResource } from '../service/parser.ts';
-import { IIIFCollection, IIIFManifest, IIIFAnnotation } from '../types/index.ts';
+import {
+  IIIFCollection,
+  IIIFManifest,
+  IIIFAnnotation,
+} from '../types/index.ts';
 import { searchAnnotations } from '../service/search.ts';
 
 interface IIIFState {
@@ -107,7 +111,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSearchResults: (results) => set({ searchResults: results }),
   setError: (error) => set({ error: error }),
   setShowUrlDialog: (show) => set({ showUrlDialog: show }),
-  setSelectedAnnotation: (annotation) => set({ selectedAnnotation: annotation }),
+  setSelectedAnnotation: (annotation) =>
+    set({ selectedAnnotation: annotation }),
   setPendingAnnotationId: (id) => set({ pendingAnnotationId: id }),
   setSelectedSearchResultId: (id) => set({ selectedSearchResultId: id }),
   setViewerReady: (ready) => set({ viewerReady: ready }),
@@ -248,6 +253,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     }
   },
 
+  // ...existing code...
   fetchManifestByIndex: async (index) => {
     if (
       index < 0 ||
@@ -258,12 +264,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     const manifestUrl = get().manifestUrls[index];
 
     try {
-      const { firstManifest, collection } = await parseResource(manifestUrl);
+      // The `collection` variable will be null here, which is the source of the issue.
+      const { firstManifest } = await parseResource(manifestUrl);
       if (!firstManifest) {
         set({ error: 'Failed to load selected manifest.' });
         return;
       }
-      set({
+      set((state) => ({
         selectedAnnotation: null,
         annotations: [],
         searchResults: [],
@@ -279,25 +286,20 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           homepage: firstManifest?.info?.homepage || [],
           requiredStatement: firstManifest?.info?.requiredStatement,
         },
-        currentCollection: collection ?? null,
-        collectionMetadata: collection
-          ? {
-              label: collection.info.name || '',
-              metadata: collection.info.metadata || [],
-              provider: collection.info.provider || [],
-              homepage: collection.info.homepage || [],
-              requiredStatement: collection.info.requiredStatement,
-            }
-          : {},
+        // --- FIX: Preserve existing collection context ---
+        // Do not update the collection or its metadata. Keep the existing state.
+        currentCollection: state.currentCollection,
+        collectionMetadata: state.collectionMetadata,
+        // Update search URLs, prioritizing the existing collection's search service
         autocompleteUrl:
-          collection?.collectionSearch?.autocomplete ??
+          state.currentCollection?.collectionSearch?.autocomplete ??
           firstManifest?.manifestSearch?.autocomplete ??
           '',
         searchUrl:
-          collection?.collectionSearch?.service ??
+          state.currentCollection?.collectionSearch?.service ??
           firstManifest?.manifestSearch?.service ??
           '',
-      });
+      }));
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
       set({ error: 'Failed to load selected manifest.' });
