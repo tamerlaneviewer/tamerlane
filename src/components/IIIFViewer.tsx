@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import OpenSeadragon from 'openseadragon';
 import SplashScreen from './SplashScreen.tsx';
 import { IIIFAnnotation } from '../types/index';
+import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
 
 interface IIIFViewerProps {
   imageUrl: string;
@@ -106,53 +107,64 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
           overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
           viewer.addOverlay({ element: overlayDiv, location: viewportRect });
         } else if (target.includes('#svg=')) {
-          const svgData = decodeURIComponent(target.split('#svg=')[1]);
-          // Create a div to hold the SVG
-          const overlayDiv = document.createElement('div');
-          overlayDiv.style.position = 'absolute';
-          overlayDiv.style.width = '100%';
-          overlayDiv.style.height = '100%';
+          const rawSvgData = decodeURIComponent(target.split('#svg=')[1]);
 
-          // Parse and prepare the SVG
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = svgData.trim();
-          const svgElem = tempDiv.querySelector('svg');
-          if (svgElem) {
-            svgElem.setAttribute('width', '100%');
-            svgElem.setAttribute('height', '100%');
-            // Ensure viewBox matches image dimensions
-            if (!svgElem.hasAttribute('viewBox')) {
-              svgElem.setAttribute(
-                'viewBox',
-                `0 0 ${imageWidth} ${imageHeight}`,
-              );
-            }
-            // Ensure stroke/fill are visible for polygons and paths
-            const shape = svgElem.querySelector('polygon, path');
-            if (shape) {
-              if (!shape.getAttribute('stroke'))
-                shape.setAttribute('stroke', 'red');
-              if (!shape.getAttribute('stroke-width'))
-                shape.setAttribute('stroke-width', '2');
-              if (!shape.getAttribute('fill'))
-                shape.setAttribute('fill', 'rgba(255, 0, 0, 0.2)');
-            }
-
-            // Add the SVG to the overlay div
-            overlayDiv.appendChild(svgElem);
-
-            // Add the overlay using standard OpenSeadragon overlay system
-            // Create a viewport rectangle for the full image
-            const viewportRect = viewer.viewport.imageToViewportRectangle(
-              0,
-              0,
-              imageWidth,
-              imageHeight,
-            );
-            viewer.addOverlay({
-              element: overlayDiv,
-              location: viewportRect,
+          try {
+            const svgData = sanitizeSvg(rawSvgData, {
+              maxLength: 200_000,
+              disallowedTags: ['script', 'iframe', 'foreignObject'],
             });
+
+            // Create a div to hold the SVG
+            const overlayDiv = document.createElement('div');
+            overlayDiv.style.position = 'absolute';
+            overlayDiv.style.width = '100%';
+            overlayDiv.style.height = '100%';
+
+            // Parse and prepare the SVG
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = svgData.trim();
+            const svgElem = tempDiv.querySelector('svg');
+            if (svgElem) {
+              svgElem.setAttribute('width', '100%');
+              svgElem.setAttribute('height', '100%');
+
+              // Ensure viewBox matches image dimensions if missing
+              if (!svgElem.hasAttribute('viewBox')) {
+                svgElem.setAttribute(
+                  'viewBox',
+                  `0 0 ${imageWidth} ${imageHeight}`,
+                );
+              }
+
+              // Apply fallback styling to *all* polygons and paths
+              const shapes = svgElem.querySelectorAll('polygon, path');
+              shapes.forEach((shape) => {
+                if (!shape.getAttribute('stroke'))
+                  shape.setAttribute('stroke', 'red');
+                if (!shape.getAttribute('stroke-width'))
+                  shape.setAttribute('stroke-width', '2');
+                if (!shape.getAttribute('fill'))
+                  shape.setAttribute('fill', 'rgba(255, 0, 0, 0.2)');
+              });
+
+              // Add the SVG to the overlay div
+              overlayDiv.appendChild(svgElem);
+
+              // Map overlay to full image coordinates
+              const viewportRect = viewer.viewport.imageToViewportRectangle(
+                0,
+                0,
+                imageWidth,
+                imageHeight,
+              );
+              viewer.addOverlay({
+                element: overlayDiv,
+                location: viewportRect,
+              });
+            }
+          } catch (err) {
+            console.warn('Skipped unsafe SVG annotation:', err);
           }
         }
       }
