@@ -1,16 +1,16 @@
 {
   "name": "tamerlane",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "dependencies": {
     "dompurify": "^3.2.4",
-    "lucide-react": "^0.475.0",
+    "lucide-react": "^0.395.0",
     "maniiifest": "^1.4.7",
     "openseadragon": "^5.0.1",
     "postcss-preset-env": "^10.2.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.1.5",
+    "react-router-dom": "^6.25.1",
     "react-scripts": "5.0.1",
     "web-vitals": "^4.2.4",
     "zustand": "^5.0.6"
@@ -43,8 +43,9 @@
     ]
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^14.0.0",
+    "@types/jest": "^29.5.12",
     "autoprefixer": "^10.4.20",
     "eslint-config-react-app": "^7.0.1",
     "postcss": "^8.5.2",
