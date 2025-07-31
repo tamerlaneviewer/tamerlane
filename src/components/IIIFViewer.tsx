@@ -79,32 +79,82 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   useEffect(() => {
     if (!selectedAnnotation || !osdViewerRef.current) return;
 
-    osdViewerRef.current.clearOverlays();
-
     const viewer = osdViewerRef.current;
+    viewer.clearOverlays();
+
     const overlayRects: OpenSeadragon.Rect[] = [];
 
-    for (const targetStr of selectedAnnotation.target) {
-      if (typeof targetStr === 'string' && targetStr.includes('#xywh=')) {
-        const bbox = targetStr.split('#xywh=')[1].split(',').map(Number);
-        if (bbox.length !== 4) continue;
+    const targets = selectedAnnotation.target;
 
-        const [x, y, width, height] = bbox;
-        const viewportRect = viewer.viewport.imageToViewportRectangle(
-          x,
-          y,
-          width,
-          height,
-        );
-        overlayRects.push(viewportRect);
+    for (const target of targets) {
+      if (typeof target === 'string') {
+        if (target.includes('#xywh=')) {
+          const bbox = target.split('#xywh=')[1].split(',').map(Number);
+          if (bbox.length !== 4) continue;
+          const [x, y, width, height] = bbox;
+          const viewportRect = viewer.viewport.imageToViewportRectangle(
+            x,
+            y,
+            width,
+            height,
+          );
+          overlayRects.push(viewportRect);
+          const overlayDiv = document.createElement('div');
+          overlayDiv.style.position = 'absolute';
+          overlayDiv.style.pointerEvents = 'none';
+          overlayDiv.style.border = '2px solid red';
+          overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+          viewer.addOverlay({ element: overlayDiv, location: viewportRect });
+        } else if (target.includes('#svg=')) {
+          const svgData = decodeURIComponent(target.split('#svg=')[1]);
+          // Create a div to hold the SVG
+          const overlayDiv = document.createElement('div');
+          overlayDiv.style.position = 'absolute';
+          overlayDiv.style.width = '100%';
+          overlayDiv.style.height = '100%';
 
-        const overlayDiv = document.createElement('div');
-        overlayDiv.style.position = 'absolute';
-        overlayDiv.style.pointerEvents = 'none';
-        overlayDiv.style.border = '2px solid red';
-        overlayDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+          // Parse and prepare the SVG
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = svgData.trim();
+          const svgElem = tempDiv.querySelector('svg');
+          if (svgElem) {
+            svgElem.setAttribute('width', '100%');
+            svgElem.setAttribute('height', '100%');
+            // Ensure viewBox matches image dimensions
+            if (!svgElem.hasAttribute('viewBox')) {
+              svgElem.setAttribute(
+                'viewBox',
+                `0 0 ${imageWidth} ${imageHeight}`,
+              );
+            }
+            // Ensure stroke/fill are visible for polygons and paths
+            const shape = svgElem.querySelector('polygon, path');
+            if (shape) {
+              if (!shape.getAttribute('stroke'))
+                shape.setAttribute('stroke', 'blue');
+              if (!shape.getAttribute('stroke-width'))
+                shape.setAttribute('stroke-width', '3');
+              if (!shape.getAttribute('fill'))
+                shape.setAttribute('fill', 'rgba(0,0,255,0.2)');
+            }
 
-        viewer.addOverlay({ element: overlayDiv, location: viewportRect });
+            // Add the SVG to the overlay div
+            overlayDiv.appendChild(svgElem);
+
+            // Add the overlay using standard OpenSeadragon overlay system
+            // Create a viewport rectangle for the full image
+            const viewportRect = viewer.viewport.imageToViewportRectangle(
+              0,
+              0,
+              imageWidth,
+              imageHeight,
+            );
+            viewer.addOverlay({
+              element: overlayDiv,
+              location: viewportRect,
+            });
+          }
+        }
       }
     }
 
@@ -124,7 +174,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     }
 
     viewer.forceRedraw();
-  }, [selectedAnnotation]);
+  }, [selectedAnnotation, imageWidth, imageHeight]);
 
   return (
     <div className="w-full h-full relative">

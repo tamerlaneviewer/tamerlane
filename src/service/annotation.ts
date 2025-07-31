@@ -227,16 +227,16 @@ function extractSelector(selector: any): string | null {
   }
 
   if (typeof selector === 'object') {
+    if (selector.type === 'SvgSelector' && typeof selector.value === 'string') {
+      return `svg=${encodeURIComponent(selector.value)}`;
+    }
+
     if (typeof selector.value === 'string') {
       return selector.value.replace(/^#/, '');
     }
 
     if (selector.type === 'FragmentSelector' && typeof selector.value === 'string') {
       return selector.value;
-    }
-
-    if (selector.type === 'SvgSelector' && typeof selector.value === 'string') {
-      return `svg=${encodeURIComponent(selector.value)}`;
     }
 
     if (selector.type === 'TextQuoteSelector') {
