@@ -66,6 +66,17 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
         })
         .map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
+          const isTagging =
+            isSelected &&
+            (annotation.motivation === 'tagging' ||
+              (Array.isArray(annotation.motivation) &&
+                annotation.motivation.includes('tagging')));
+
+          const selectionClass = isSelected
+            ? isTagging
+              ? 'bg-red-200 border-l-4 border-red-500'
+              : 'bg-blue-200 border-l-4 border-blue-500'
+            : 'hover:bg-gray-100';
 
           return (
             <div
@@ -76,11 +87,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                 }
               }}
               onClick={() => onAnnotationSelect(annotation)}
-              className={`mb-1 p-1 cursor-pointer rounded transition-all ${
-                isSelected
-                  ? 'bg-blue-200 border-l-4 border-blue-500'
-                  : 'hover:bg-gray-100'
-              } group`}
+              className={`mb-1 p-1 cursor-pointer rounded transition-all ${selectionClass} group`}
             >
               {Array.isArray(annotation.body) ? (
                 annotation.body
