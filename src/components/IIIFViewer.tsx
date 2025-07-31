@@ -131,11 +131,11 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
             const shape = svgElem.querySelector('polygon, path');
             if (shape) {
               if (!shape.getAttribute('stroke'))
-                shape.setAttribute('stroke', 'blue');
+                shape.setAttribute('stroke', 'red');
               if (!shape.getAttribute('stroke-width'))
-                shape.setAttribute('stroke-width', '3');
+                shape.setAttribute('stroke-width', '2');
               if (!shape.getAttribute('fill'))
-                shape.setAttribute('fill', 'rgba(0,0,255,0.2)');
+                shape.setAttribute('fill', 'rgba(255, 0, 0, 0.2)');
             }
 
             // Add the SVG to the overlay div
