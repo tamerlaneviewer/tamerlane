@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/tamerlane/static/css/main.1219f153.css",
+    "main.js": "/tamerlane/static/js/main.200fe9b6.js",
+    "index.html": "/tamerlane/index.html",
+    "main.1219f153.css.map": "/tamerlane/static/css/main.1219f153.css.map",
+    "main.200fe9b6.js.map": "/tamerlane/static/js/main.200fe9b6.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1219f153.css",
+    "static/js/main.200fe9b6.js"
+  ]
+}
