@@ -1,6 +1,9 @@
 # Tamerlane
 
-A lightweight IIIF (International Image Interoperability Framework) viewer designed to make viewing, navigating, and searching annotated IIIF Presentation 3.0 resources simpler and more intuitive.
+A lightweight IIIF (International Image Interoperability Framework) viewer designed to make viewing, navigating, and searching annotated IIIF Presentation 3.0 resources simple and intuitive.
+
+![Screenshot of Tamerlane](assets/screenshot.png)
+
 
 ## ✨ Features
 
