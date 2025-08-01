@@ -4,12 +4,13 @@ A lightweight IIIF (International Image Interoperability Framework) viewer desig
 
 ![Screenshot of Tamerlane](assets/screenshot.png)
 
+The goal of Tamerlane is not to be a feature-rich viewer but rather to focus on providing a good user experience for annotated resources. 
 
 ## ✨ Features
 
 - **Collection Navigation**: Browse through IIIF collections
 - **Annotation Management**: View and navigate annotations
-- **Search Functionality**: Full-text search across annotations
+- **Search Functionality**: Full-text search across collections
 - **Responsive Design**: Modern UI built with Tailwind CSS
 
 ## 🚀 Getting Started
