@@ -2,6 +2,7 @@
   "name": "tamerlane",
   "version": "0.2.1",
   "private": true,
+  "homepage": "https://jptmoore.github.io/tamerlane",
   "dependencies": {
     "dompurify": "^3.2.4",
     "lucide-react": "^0.395.0",
@@ -21,6 +22,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "eject": "react-scripts eject",
     "build:css": "postcss src/index.css -o src/tailwind.css"
   },
@@ -48,6 +51,7 @@
     "@types/jest": "^29.5.12",
     "autoprefixer": "^10.4.20",
     "eslint-config-react-app": "^7.0.1",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.5.2",
     "postcss-cli": "^11.0.0",
     "postcss-flexbugs-fixes": "^5.0.2",
