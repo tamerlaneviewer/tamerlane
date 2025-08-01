@@ -68,6 +68,38 @@ docker-compose up
 
 3. **Environment Variable**: Set `REACT_APP_IIIF_CONTENT_URL` for a default manifest
 
+## 📦 Embedding
+
+The simplest way to embed Tamerlane into any static HTML page is by using an `iframe`.
+
+### Basic Iframe Embedding
+
+Create an HTML file with the following content, and the viewer will be embedded directly into the page.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tamerlane Embedded Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+  <iframe 
+    src="https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760"
+    allowfullscreen
+    allow="clipboard-write"
+  ></iframe>
+</body>
+</html>
+```
+
+You can replace the `iiif-content` URL with any IIIF manifest you wish to display.
+
 ## 📄 License
 
 This project is licensed under the MIT License.
