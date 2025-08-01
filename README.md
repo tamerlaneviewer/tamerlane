@@ -6,6 +6,11 @@ A lightweight IIIF (International Image Interoperability Framework) viewer desig
 
 The goal of Tamerlane is not to be a feature-rich viewer but rather to focus on providing a good user experience for annotated resources. 
 
+## 🎬 Demo
+
+A live demo of the viewer is available, loaded with a content from the Wellcome Collection. Please note, search is only available for Content Search 2.0 endpoints: 
+[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760)
+
 ## ✨ Features
 
 - **Collection Navigation**: Browse through IIIF collections
@@ -62,7 +67,6 @@ docker-compose up
 2. **Via Interface**: Use the URL input dialog to load a manifest or collection
 
 3. **Environment Variable**: Set `REACT_APP_IIIF_CONTENT_URL` for a default manifest
-
 
 ## 📄 License
 
