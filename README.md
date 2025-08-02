@@ -7,9 +7,10 @@ Tamerlane is a lightweight IIIF (International Image Interoperability Framework)
 ## 🎬 Demo
 
 A demo of the viewer is available with content from the Wellcome Collection: 
-[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760). Please note, search is only available for Content Search 2.0 endpoints. 
+[**The chemist and the druggist**](https://tamerlaneviewer.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760). Please note, search is only available for Content Search 2.0 endpoints. 
 
-The following example demonstrates searching a collection that has been indexed using the [Annosearch](https://github.com/nationalarchives/annosearch) search service: ![Tamerlane IIIF Viewer Demo](/assets/demo.gif)
+The following example demonstrates searching a collection that has been indexed using the [Annosearch](https://github.com/nationalarchives/annosearch) search service: 
+![Tamerlane IIIF Viewer Demo](/assets/demo.gif)
 
 ## 🚀 Getting Started
 
@@ -17,7 +18,7 @@ The following example demonstrates searching a collection that has been indexed 
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/tamerlaneviewer/tamerlane.git
 cd tamerlane
 ```
 
@@ -83,7 +84,7 @@ Create an HTML file with the following content, and the viewer will be embedded 
 </head>
 <body>
   <iframe 
-    src="https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760"
+    src="https://tamerlaneviewer.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760"
     allowfullscreen
     allow="clipboard-write"
   ></iframe>
@@ -95,7 +96,7 @@ You can replace the `iiif-content` URL with any IIIF manifest you wish to displa
 
 ## 💬 Feedback
 
-Encountered a bug or have a feature request? Please [raise an issue](https://github.com/jptmoore/tamerlane/issues) on the GitHub repository.
+Encountered a bug or have a feature request? Please [raise an issue](https://github.com/tamerlaneviewer/tamerlane/issues) on the GitHub repository.
 
 ## 📄 License
 
