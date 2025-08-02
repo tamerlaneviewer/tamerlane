@@ -1,22 +1,13 @@
 # Tamerlane
 
-A lightweight IIIF (International Image Interoperability Framework) viewer designed to make viewing, navigating, and searching annotated IIIF Presentation 3.0 resources simple and intuitive.
+Tamerlane is a lightweight IIIF (International Image Interoperability Framework) viewer built to make exploring, navigating, and searching annotated IIIF Presentation 3.0 resources simple and intuitive. Rather than aiming to be feature‑heavy, it focuses on delivering a clear, user‑friendly experience for working with annotated resources.
 
 ![Screenshot of Tamerlane](assets/screenshot.png)
 
-The goal of Tamerlane is not to be a feature-rich viewer but rather to focus on providing a good user experience for annotated resources. 
-
 ## 🎬 Demo
 
-A live demo of the viewer is available, loaded with a content from the Wellcome Collection. Please note, search is only available for Content Search 2.0 endpoints: 
-[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760)
-
-## ✨ Features
-
-- **Collection Navigation**: Browse through IIIF collections
-- **Annotation Management**: View and navigate annotations
-- **Search Functionality**: Full-text search across collections
-- **Responsive Design**: Modern UI built with Tailwind CSS
+A demo of the viewer is available with content from the Wellcome Collection: 
+[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760). Please note, search is only available for Content Search 2.0 endpoints. The following example demonstrates searching a collection that has been indexed using the [Annosearch](https://github.com/nationalarchives/annosearch)) search service: ![Tamerlane IIIF Viewer Demo](/assets/demo.gif)
 
 ## 🚀 Getting Started
 
@@ -99,6 +90,10 @@ Create an HTML file with the following content, and the viewer will be embedded 
 ```
 
 You can replace the `iiif-content` URL with any IIIF manifest you wish to display.
+
+## 💬 Feedback
+
+Encountered a bug or have a feature request? Please [raise an issue](https://github.com/jptmoore/tamerlane/issues) on the GitHub repository.
 
 ## 📄 License
 
