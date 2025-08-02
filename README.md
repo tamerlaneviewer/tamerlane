@@ -7,7 +7,9 @@ Tamerlane is a lightweight IIIF (International Image Interoperability Framework)
 ## 🎬 Demo
 
 A demo of the viewer is available with content from the Wellcome Collection: 
-[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760). Please note, search is only available for Content Search 2.0 endpoints. The following example demonstrates searching a collection that has been indexed using the [Annosearch](https://github.com/nationalarchives/annosearch)) search service: ![Tamerlane IIIF Viewer Demo](/assets/demo.gif)
+[**The chemist and the druggist**](https://jptmoore.github.io/tamerlane/?iiif-content=https://iiif.wellcomecollection.org/presentation/b19974760). Please note, search is only available for Content Search 2.0 endpoints. 
+
+The following example demonstrates searching a collection that has been indexed using the [Annosearch](https://github.com/nationalarchives/annosearch) search service: ![Tamerlane IIIF Viewer Demo](/assets/demo.gif)
 
 ## 🚀 Getting Started
 
