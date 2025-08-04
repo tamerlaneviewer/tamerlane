@@ -10,6 +10,7 @@ describe('getImage', () => {
       service: [
         {
           id: 'https://example.com/iiif/image',
+          profile: 'http://iiif.io/api/image/2/level2.json',
           width: 1024,
           height: 768,
         },
@@ -19,7 +20,7 @@ describe('getImage', () => {
     };
 
     const expected: IIIFImage = {
-      imageUrl: 'https://example.com/iiif/image',
+      imageUrl: 'https://example.com/iiif/image/',
       imageType: 'iiif',
       imageWidth: 1024,
       imageHeight: 768,
@@ -34,6 +35,7 @@ describe('getImage', () => {
       service: [
         {
           '@id': 'https://example.com/iiif/image_at_id',
+          '@type': 'ImageService2',
           width: 800,
           height: 600,
         },
@@ -41,7 +43,7 @@ describe('getImage', () => {
     };
 
     const expected: IIIFImage = {
-      imageUrl: 'https://example.com/iiif/image_at_id',
+      imageUrl: 'https://example.com/iiif/image_at_id/',
       imageType: 'iiif',
       imageWidth: 800,
       imageHeight: 600,
@@ -56,6 +58,7 @@ describe('getImage', () => {
       service: [
         {
           id: 'https://example.com/iiif/image',
+          profile: 'http://iiif.io/api/image/2/level2.json',
         },
       ],
       width: 1200,
@@ -68,8 +71,10 @@ describe('getImage', () => {
   });
 
   it('should extract a standard image when no service is present', () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
     const resource = {
-      id: 'https://example.com/standard/image.jpg',
+      id: 'http://example.com/standard/image.jpg',
       width: 640,
       height: 480,
     };
@@ -83,9 +88,11 @@ describe('getImage', () => {
     };
 
     expect(getImage(resource, CANVAS_TARGET)).toEqual(expected);
+    consoleWarnSpy.mockRestore();
   });
 
   it('should handle a standard image without dimensions', () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const resource = {
       id: 'https://example.com/standard/image.jpg',
     };
@@ -95,6 +102,7 @@ describe('getImage', () => {
     expect(result.imageType).toBe('standard');
     expect(result.imageWidth).toBeUndefined();
     expect(result.imageHeight).toBeUndefined();
+    consoleWarnSpy.mockRestore();
   });
 
   it('should throw TamerlaneParseError if no URL can be found', () => {
@@ -109,6 +117,7 @@ describe('getImage', () => {
   });
 
   it('should handle an empty service array gracefully', () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const resource = {
       id: 'https://example.com/standard/image.jpg',
       width: 640,
@@ -119,5 +128,28 @@ describe('getImage', () => {
     const result = getImage(resource, CANVAS_TARGET);
     expect(result.imageType).toBe('standard');
     expect(result.imageUrl).toBe('https://example.com/standard/image.jpg');
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should fallback to resource.body.id if available', () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const resource = {
+      body: {
+        id: 'https://example.com/body/image.jpg',
+        width: 300,
+        height: 200,
+      },
+    };
+
+    const expected: IIIFImage = {
+      imageUrl: 'https://example.com/body/image.jpg',
+      imageType: 'standard',
+      imageWidth: 300,
+      imageHeight: 200,
+      canvasTarget: CANVAS_TARGET,
+    };
+
+    expect(getImage(resource, CANVAS_TARGET)).toEqual(expected);
+    consoleWarnSpy.mockRestore();
   });
 });

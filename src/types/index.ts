@@ -1,3 +1,16 @@
+export type IIIFImageResource = {
+  id?: string;
+  width?: number;
+  height?: number;
+  service?: any | any[];
+  body?: {
+    id?: string;
+    width?: number;
+    height?: number;
+    service?: any | any[];
+  };
+};
+
 export interface IIIFResource {
   type: string;
   data: any;
