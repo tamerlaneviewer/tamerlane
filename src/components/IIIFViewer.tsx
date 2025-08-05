@@ -3,6 +3,7 @@ import OpenSeadragon from 'openseadragon';
 import SplashScreen from './SplashScreen.tsx';
 import { IIIFAnnotation } from '../types/index';
 import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
+import { ensureHttps } from '../utils/ensureHttps.ts';
 
 interface IIIFViewerProps {
   imageUrl: string;
@@ -32,8 +33,14 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   useEffect(() => {
     if (!viewerRef.current) return;
 
+    // Safely upgrade imageUrl to HTTPS if needed
+    const safeImageUrl =
+      window.location.protocol === 'https:' ? ensureHttps(imageUrl) : imageUrl;
+
     const tileSource: string | OpenSeadragon.TileSourceOptions =
-      imageType === 'iiif' ? imageUrl : { type: 'image', url: imageUrl };
+      imageType === 'iiif'
+        ? safeImageUrl
+        : { type: 'image', url: safeImageUrl };
 
     if (osdViewerRef.current) {
       osdViewerRef.current.destroy();

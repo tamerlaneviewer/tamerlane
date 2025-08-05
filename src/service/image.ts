@@ -1,6 +1,7 @@
 import { IIIFImage } from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
 import { IIIFImageResource } from '../types/index.ts';
+import { ensureHttps } from '../utils/ensureHttps.ts';
 
 // --- Constants for IIIF types and profiles ---
 const IIIF_IMAGE_SERVICE_3 = 'ImageService3';
@@ -79,7 +80,7 @@ export function getImage(resource: IIIFImageResource, canvasTarget: string): III
   }
 
   // Force HTTPS to prevent mixed content errors
-  url = url.replace(/^http:\/\//i, 'https://');
+  url = ensureHttps(url);
 
   return {
     imageUrl: url,
