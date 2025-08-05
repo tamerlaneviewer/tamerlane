@@ -4,6 +4,8 @@ Tamerlane is a lightweight IIIF (International Image Interoperability Framework)
 
 ![Screenshot of Tamerlane](assets/screenshot.png)
 
+[https://tamerlaneviewer.github.io/tamerlane/?iiif-content=https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_title-collection.json](https://tamerlaneviewer.github.io/tamerlane/?iiif-content=https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_title-collection.json)
+
 ## 🎬 Demo
 
 A demo of the viewer is available with content from the Wellcome Collection: 
