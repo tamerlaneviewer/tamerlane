@@ -239,6 +239,13 @@ const App: React.FC = () => {
     setViewerReady(true);
   }, [setViewerReady]);
 
+  const handleImageLoadError = useCallback(
+    (message: string) => {
+      setError(message);
+    },
+    [setError],
+  );
+
   // Use the store's handleSearch, which uses searchUrl internally
   const onSearch = (query: string) => handleSearch(query);
 
@@ -249,10 +256,10 @@ const App: React.FC = () => {
         message={error}
         onDismiss={() => {
           setError(null);
-          if (!currentManifest) {
-            setIiifContentUrl(null);
-            setShowUrlDialog(true);
-          }
+          // Reset state to go back to the URL dialog
+          setIiifContentUrl(null);
+          handleManifestUpdate(null, [], 0, null);
+          setShowUrlDialog(true);
         }}
       />
     );
@@ -342,6 +349,7 @@ const App: React.FC = () => {
           imageHeight={imageHeight}
           selectedAnnotation={selectedAnnotation}
           onViewerReady={handleViewerReady}
+          onImageLoadError={handleImageLoadError}
         />
         <RightPanel
           annotations={annotations}
