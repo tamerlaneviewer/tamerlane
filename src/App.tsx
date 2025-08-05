@@ -357,11 +357,10 @@ const App: React.FC = () => {
           activeTab={activePanelTab}
           setActiveTab={setActivePanelTab}
           onAnnotationSelect={handleAnnotationSelect}
-          onSearchResultClick={handleSearchResultClick}
-          selectedAnnotation={selectedAnnotation}
-          selectedSearchResultId={selectedSearchResultId}
-          autocompleteUrl={autocompleteUrl}
-          selectedLanguage={selectedLanguage}
+          onResultClick={handleSearchResultClick}
+          selectedAnnotation={selectedAnnotation || undefined}
+          selectedSearchResultId={selectedSearchResultId || undefined}
+          selectedLanguage={selectedLanguage || undefined}
         />
       </div>
     </div>

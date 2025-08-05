@@ -1,14 +1,10 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
 import { IIIFSearchSnippet } from '../types/index.ts';
 
 interface SearchResultsProps {
   searchResults: IIIFSearchSnippet[];
-  onResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => void;
+  onResultClick: (result: IIIFSearchSnippet) => void;
   selectedSearchResultId?: string | null;
   selectedLanguage?: string | null;
 }
@@ -25,6 +21,28 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   selectedSearchResultId,
   selectedLanguage,
 }) => {
+  const selectedResultRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (selectedResultRef.current) {
+      selectedResultRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [selectedSearchResultId]);
+
+  // Pre-calculate first occurrence of each annotationId for performance
+  const firstOccurrenceMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+    searchResults.forEach((result, index) => {
+      if (!map.has(result.annotationId)) {
+        map.set(result.annotationId, index);
+      }
+    });
+    return map;
+  }, [searchResults]);
+
   return (
     <div>
       {searchResults.length === 0 ? (
@@ -36,21 +54,17 @@ const SearchResults: React.FC<SearchResultsProps> = ({
             if (!result.language) return true; // No language on the result? Show it
             return result.language === selectedLanguage; // Only match if explicitly matches
           })
-          .map((result: IIIFSearchSnippet) => {
+          .map((result: IIIFSearchSnippet, index: number) => {
             const combinedHTML = `${result.prefix ?? ''}<span class="text-blue-600 font-semibold">${result.exact}</span>${result.suffix ?? ''}`;
 
             const isSelected = selectedSearchResultId === result.annotationId;
+            const isFirstOfGroup = isSelected && firstOccurrenceMap.get(result.annotationId) === searchResults.indexOf(result);
 
             return (
               <div
                 key={result.id}
-                onClick={() =>
-                  onResultClick(
-                    result.canvasTarget,
-                    result.partOf,
-                    result.annotationId,
-                  )
-                }
+                ref={isFirstOfGroup ? selectedResultRef : null}
+                onClick={() => onResultClick(result)}
                 className={`mb-1 p-1 cursor-pointer rounded transition-all text-sm text-gray-700 leading-tight ${
                   isSelected
                     ? 'bg-blue-200 border-l-4 border-blue-500'

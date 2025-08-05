@@ -8,16 +8,12 @@ interface AnnotationsPanelProps {
   annotations: IIIFAnnotation[];
   searchResults: IIIFSearchSnippet[];
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
-  activeTab: 'annotations' | 'searchResults';
-  setActiveTab: (tab: 'annotations' | 'searchResults') => void;
-  selectedAnnotation: IIIFAnnotation | null;
-  selectedSearchResultId: string | null;
-  onSearchResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => void;
-  selectedLanguage: string;
+  activeTab: 'annotations' | 'search';
+  setActiveTab: (tab: 'annotations' | 'search') => void;
+  selectedAnnotation?: IIIFAnnotation;
+  selectedSearchResultId?: string;
+  onResultClick: (result: IIIFSearchSnippet) => void;
+  selectedLanguage?: string;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
@@ -26,7 +22,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   onAnnotationSelect,
   activeTab,
   setActiveTab,
-  onSearchResultClick,
+  onResultClick,
   selectedAnnotation,
   selectedSearchResultId,
   selectedLanguage,
@@ -48,11 +44,11 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         </button>
         <button
           className={`flex-1 py-2 flex items-center justify-center transition-all ${
-            activeTab === 'searchResults'
+            activeTab === 'search'
               ? 'bg-gray-300 text-black'
               : 'bg-gray-200 text-gray-500'
           } hover:bg-gray-400`}
-          onClick={() => setActiveTab('searchResults')}
+          onClick={() => setActiveTab('search')}
           title="Search Results"
         >
           <Search className="w-6 h-6 transition-colors" />
@@ -71,7 +67,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               annotations={annotations}
               onAnnotationSelect={onAnnotationSelect}
               selectedAnnotation={selectedAnnotation}
-              selectedLanguage={selectedLanguage}
+              selectedLanguage={selectedLanguage || undefined}
             />
           )
         ) : searchResults.length === 0 ? (
@@ -79,9 +75,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         ) : (
           <SearchResults
             searchResults={searchResults}
-            onResultClick={(canvasTarget, manifestId, id) =>
-              onSearchResultClick(canvasTarget, manifestId, id)
-            }
+            onResultClick={onResultClick}
             selectedSearchResultId={selectedSearchResultId}
             selectedLanguage={selectedLanguage}
           />

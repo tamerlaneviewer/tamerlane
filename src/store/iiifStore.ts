@@ -8,7 +8,7 @@ import {
 import { searchAnnotations } from '../service/search.ts';
 
 interface IIIFState {
-  activePanelTab: 'annotations' | 'searchResults';
+  activePanelTab: 'annotations' | 'search';
   iiifContentUrl: string | null;
   currentManifest: IIIFManifest | null;
   currentCollection: IIIFCollection | null;
@@ -32,7 +32,7 @@ interface IIIFState {
   selectedLanguage: string | null;
   searching: boolean;
 
-  setActivePanelTab: (tab: 'annotations' | 'searchResults') => void;
+  setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
   setCurrentManifest: (manifest: IIIFManifest | null) => void;
   setCurrentCollection: (collection: IIIFCollection | null) => void;
@@ -63,11 +63,7 @@ interface IIIFState {
     collection: IIIFCollection | null,
   ) => void;
   handleSearch: (query: string) => Promise<void>;
-  handleSearchResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => Promise<void>;
+  handleSearchResultClick: (result: any) => Promise<void>;
   fetchManifestByIndex: (index: number) => Promise<void>;
 }
 
@@ -158,16 +154,47 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     if (get().searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
-    if (!get().searchUrl) {
+    const { searchUrl, manifestUrls } = get();
+    if (!searchUrl) {
       set({ error: 'This resource does not support content search.' });
       return;
     }
 
     try {
       set({ searching: true });
-      const searchEndpoint = `${get().searchUrl}?q=${encodeURIComponent(trimmed)}`;
+      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
-      set({ searchResults: results, activePanelTab: 'searchResults' });
+
+      // --- Prioritize `partOf` and fall back to URL matching ---
+      const taggedResults = results.map((result) => {
+        let manifestId = '';
+
+        // Step 1: Trust the `partOf` property if it's a valid manifest URL
+        if (result.partOf) {
+          const matchedUrl = manifestUrls.find(
+            (url) => url === result.partOf,
+          );
+          if (matchedUrl) {
+            manifestId = matchedUrl;
+            console.log(`Using partOf: ${manifestId}`);
+          }
+        }
+
+        // Step 2: If `partOf` was missing or invalid, fall back to prefix matching
+        if (!manifestId) {
+          const matchedUrl = manifestUrls.find((url) =>
+            result.canvasTarget.startsWith(url),
+          );
+          if (matchedUrl) {
+            manifestId = matchedUrl;
+            console.log(`Using canvasTarget prefix: ${manifestId}`);
+          }
+        }
+
+        return { ...result, manifestId: manifestId };
+      });
+
+      set({ searchResults: taggedResults, activePanelTab: 'search' });
     } catch {
       set({ error: 'Search failed. Please try again.' });
     } finally {
@@ -175,85 +202,73 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     }
   },
 
-  handleSearchResultClick: async (canvasTarget, manifestId, searchResultId) => {
+  handleSearchResultClick: async (result: any) => {
     try {
-      if (searchResultId) set({ selectedSearchResultId: searchResultId });
-      let targetManifest = get().currentManifest;
+      const { manifestId, canvasTarget } = result;
 
-      if (manifestId) {
-        const matchedIndex = get().manifestUrls.findIndex((url) =>
-          url.includes(manifestId),
+      const state = get();
+      let targetManifest = state.currentManifest;
+
+      // The URL of the manifest that is currently loaded
+      const currentManifestUrl =
+        state.manifestUrls[state.selectedManifestIndex];
+
+      // Check if the result is from a different manifest
+      if (manifestId && manifestId !== currentManifestUrl) {
+        const matchedIndex = state.manifestUrls.findIndex(
+          (url) => url === manifestId,
         );
+
         if (matchedIndex === -1) {
-          set({ error: 'Manifest not found.' });
+          set({
+            error: 'Manifest for search result not found in collection.',
+          });
           return;
         }
 
-        const { firstManifest, collection } = await parseResource(
-          get().manifestUrls[matchedIndex],
-        );
-        if (!firstManifest) {
-          set({ error: 'Failed to load manifest.' });
-          return;
-        }
+        // DELEGATE manifest loading to the dedicated function.
+        await state.fetchManifestByIndex(matchedIndex);
 
-        set({
-          selectedManifestIndex: matchedIndex,
-          selectedImageIndex: 0,
-          currentManifest: firstManifest,
-          manifestMetadata: {
-            label: firstManifest?.info?.name || '',
-            metadata: firstManifest?.info?.metadata || [],
-            provider: firstManifest?.info?.provider || [],
-            homepage: firstManifest?.info?.homepage || [],
-            requiredStatement: firstManifest?.info?.requiredStatement,
-          },
-          currentCollection: collection ?? null,
-          collectionMetadata: collection
-            ? {
-                label: collection.info.name || '',
-                metadata: collection.info.metadata || [],
-                provider: collection.info.provider || [],
-                homepage: collection.info.homepage || [],
-                requiredStatement: collection.info.requiredStatement,
-              }
-            : {},
-          autocompleteUrl:
-            collection?.collectionSearch?.autocomplete ??
-            firstManifest?.manifestSearch?.autocomplete ??
-            '',
-          searchUrl:
-            collection?.collectionSearch?.service ??
-            firstManifest?.manifestSearch?.service ??
-            '',
-        });
-
-        targetManifest = firstManifest;
+        // Get the newly loaded manifest from the state
+        targetManifest = get().currentManifest;
       }
 
-      const baseCanvasTarget = canvasTarget.split('#')[0];
-      const newImageIndex = targetManifest?.images.findIndex(
-        (img) => img.canvasTarget === baseCanvasTarget,
-      );
-      if (newImageIndex === -1 || newImageIndex === undefined) {
-        set({ error: 'Canvas not found.' });
+      if (!targetManifest) {
+        set({ error: 'No manifest loaded.' });
         return;
       }
 
-      set({
-        viewerReady: false,
-        selectedImageIndex: newImageIndex,
-        canvasId: canvasTarget,
-        activePanelTab: 'annotations',
-      });
-      if (searchResultId) set({ pendingAnnotationId: searchResultId });
+      // Now find the image in the correct, fully loaded manifest.
+      const newImageIndex = targetManifest.images.findIndex(
+        (img) => img.canvasTarget === canvasTarget,
+      );
+
+      if (newImageIndex === -1) {
+        set({ error: 'Canvas not found in the manifest.' });
+        return;
+      }
+
+      // Force state change by clearing pendingAnnotationId first, then setting it
+      // This ensures the viewer always detects a change, even for the same annotation
+      set({ pendingAnnotationId: null });
+      
+      // Use setTimeout to ensure the null state is processed before setting the new value
+      setTimeout(() => {
+        set({
+          viewerReady: false,
+          selectedImageIndex: newImageIndex,
+          canvasId: canvasTarget, // Use base URL without fragment for canvas identification
+          activePanelTab: 'annotations',
+          pendingAnnotationId: result.annotationId,
+          selectedSearchResultId: result.annotationId,
+        });
+      }, 0);
     } catch (err) {
       console.error('Failed to jump to search result:', err);
       set({ error: 'Could not jump to search result.' });
     }
   },
 
-  // ...existing code...
   fetchManifestByIndex: async (index) => {
     if (
       index < 0 ||
@@ -273,8 +288,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       set((state) => ({
         selectedAnnotation: null,
         annotations: [],
-        searchResults: [],
-        selectedSearchResultId: null,
         viewerReady: false,
         selectedManifestIndex: index,
         selectedImageIndex: 0,
