@@ -8,6 +8,25 @@ const IIIF_IMAGE_SERVICE_3 = 'ImageService3';
 const IIIF_IMAGE_SERVICE_2 = 'ImageService2';
 const IIIF_IMAGE_API_MARKER = 'iiif.io/api/image';
 
+
+/**
+ * Determines whether the given IIIF Image Service URL needs an explicit /info.json appended
+ * due to broken redirects or CORS behavior.
+ */
+function shouldForceInfoJson(url: string): boolean {
+  return url.includes('iiif.io/api/image/3.0/example/');
+}
+
+/**
+ * Ensures the IIIF image service URL is safe and normalized for OpenSeadragon.
+ */
+function normalizeIiifUrl(baseUrl: string): string {
+  const safeBase = ensureHttps(baseUrl).replace(/\/+$/, '');
+  return shouldForceInfoJson(safeBase)
+    ? `${safeBase}/info.json`
+    : `${safeBase}/`;
+}
+
 /**
  * Finds a IIIF image service within a resource's service list.
  */
@@ -43,10 +62,7 @@ export function getImage(resource: IIIFImageResource, canvasTarget: string): III
   if (iiifService) {
     let baseUrl = iiifService.id || iiifService['@id'];
     if (baseUrl) {
-      baseUrl = ensureHttps(baseUrl);
-      // The URL should be the base URI of the service.
-      // Ensure it has a trailing slash, but DO NOT append info.json.
-      url = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      url = normalizeIiifUrl(baseUrl);
     }
     imageWidth = iiifService.width ?? resource.width;
     imageHeight = iiifService.height ?? resource.height;
