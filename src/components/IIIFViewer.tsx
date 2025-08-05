@@ -14,17 +14,17 @@ interface IIIFViewerProps {
   imageHeight: number;
   selectedAnnotation: IIIFAnnotation | null;
   onViewerReady?: () => void;
+  onImageLoadError: (message: string) => void;
 }
 
 const IIIFViewer: React.FC<IIIFViewerProps> = ({
   imageUrl,
   imageType,
-  canvasWidth,
-  canvasHeight,
   imageWidth,
   imageHeight,
   selectedAnnotation,
   onViewerReady,
+  onImageLoadError,
 }) => {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
@@ -52,20 +52,21 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     osdViewerRef.current = OpenSeadragon({
       element: viewerRef.current,
       prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
+      tileSources: [tileSource],
       showNavigator: true,
       crossOriginPolicy: 'Anonymous',
     });
 
-    osdViewerRef.current.addTiledImage({
-      tileSource,
-      success: () => {
-        setIsLoading(false);
-        if (onViewerReady) onViewerReady();
-      },
-      error: (error) => {
-        console.error('Error loading image:', error);
-        setIsLoading(false);
-      },
+    osdViewerRef.current.addHandler('open', () => {
+      setIsLoading(false);
+      if (onViewerReady) onViewerReady();
+    });
+
+    osdViewerRef.current.addHandler('open-failed', () => {
+      setIsLoading(false);
+      onImageLoadError(
+        'Could not load image.',
+      );
     });
 
     return () => {
@@ -77,11 +78,8 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   }, [
     imageUrl,
     imageType,
-    canvasWidth,
-    canvasHeight,
-    imageWidth,
-    imageHeight,
     onViewerReady,
+    onImageLoadError,
   ]);
 
   useEffect(() => {
