@@ -8,7 +8,6 @@ const IIIF_IMAGE_SERVICE_3 = 'ImageService3';
 const IIIF_IMAGE_SERVICE_2 = 'ImageService2';
 const IIIF_IMAGE_API_MARKER = 'iiif.io/api/image';
 
-
 /**
  * Finds a IIIF image service within a resource's service list.
  */
@@ -42,28 +41,27 @@ export function getImage(resource: IIIFImageResource, canvasTarget: string): III
   const iiifService = findIiifService(resource);
 
   if (iiifService) {
-    url = iiifService.id || iiifService['@id'];
+    let baseUrl = iiifService.id || iiifService['@id'];
+    if (baseUrl) {
+      baseUrl = ensureHttps(baseUrl);
+      // The URL should be the base URI of the service.
+      // Ensure it has a trailing slash, but DO NOT append info.json.
+      url = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    }
     imageWidth = iiifService.width ?? resource.width;
     imageHeight = iiifService.height ?? resource.height;
     type = 'iiif';
-
-    if (url && !url.endsWith('/')) {
-      url += '/';
-    }
-
-    if (typeof iiifService.profile === 'string' && !iiifService.profile.includes(IIIF_IMAGE_API_MARKER)) {
-      console.warn(`⚠️ Unusual profile format: "${iiifService.profile}".`);
-    }
   } else {
     // Fallback to resource.id or resource.body.id
     if (typeof resource.id === 'string') {
-      url = resource.id;
+      url = ensureHttps(resource.id);
       imageWidth = resource.width;
       imageHeight = resource.height;
     } else if (resource.body && typeof resource.body.id === 'string') {
-      url = resource.body.id;
+      url = ensureHttps(resource.body.id);
       imageWidth = resource.body.width;
       imageHeight = resource.body.height;
+
       // Check if the body itself has a service
       if (findIiifService(resource.body)) {
         type = 'iiif';
@@ -74,13 +72,6 @@ export function getImage(resource: IIIFImageResource, canvasTarget: string): III
   if (!url) {
     throw new TamerlaneParseError('Unable to get image resource id.');
   }
-
-  if (type === 'standard' && /\.(jpg|jpeg|png|gif)$/i.test(url)) {
-    console.warn(`⚠️ Fallback to static image URL: ${url}. Tiling and zooming may be unavailable.`);
-  }
-
-  // Force HTTPS to prevent mixed content errors
-  url = ensureHttps(url);
 
   return {
     imageUrl: url,
