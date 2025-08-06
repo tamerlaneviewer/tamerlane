@@ -176,7 +176,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           );
           if (matchedUrl) {
             manifestId = matchedUrl;
-            console.log(`Using partOf: ${manifestId}`);
           }
         }
 
@@ -187,7 +186,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           );
           if (matchedUrl) {
             manifestId = matchedUrl;
-            console.log(`Using canvasTarget prefix: ${manifestId}`);
           }
         }
 
@@ -222,19 +220,26 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         if (matchedIndex === -1) {
           set({
             error: 'Manifest for search result not found in collection.',
+            searching: false,
           });
           return;
         }
 
+        // Store current search results before switching manifests
+        const currentSearchResults = state.searchResults;
+
         // DELEGATE manifest loading to the dedicated function.
         await state.fetchManifestByIndex(matchedIndex);
+
+        // Restore search results after switching manifests
+        set({ searchResults: currentSearchResults });
 
         // Get the newly loaded manifest from the state
         targetManifest = get().currentManifest;
       }
 
       if (!targetManifest) {
-        set({ error: 'No manifest loaded.' });
+        set({ error: 'No manifest loaded.', searching: false });
         return;
       }
 
@@ -244,28 +249,23 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       );
 
       if (newImageIndex === -1) {
-        set({ error: 'Canvas not found in the manifest.' });
+        set({ error: 'Canvas not found in the manifest.', searching: false });
         return;
       }
 
-      // Force state change by clearing pendingAnnotationId first, then setting it
-      // This ensures the viewer always detects a change, even for the same annotation
-      set({ pendingAnnotationId: null });
-      
-      // Use setTimeout to ensure the null state is processed before setting the new value
-      setTimeout(() => {
-        set({
-          viewerReady: false,
-          selectedImageIndex: newImageIndex,
-          canvasId: canvasTarget, // Use base URL without fragment for canvas identification
-          activePanelTab: 'annotations',
-          pendingAnnotationId: result.annotationId,
-          selectedSearchResultId: result.annotationId,
-        });
-      }, 0);
+      // Force state change by using functional update to ensure React detects changes
+      set((state) => ({
+        ...state,
+        viewerReady: false,
+        selectedImageIndex: newImageIndex,
+        canvasId: canvasTarget, // Use base URL without fragment for canvas identification
+        activePanelTab: 'annotations',
+        pendingAnnotationId: result.annotationId,
+        selectedSearchResultId: result.annotationId,
+      }));
     } catch (err) {
       console.error('Failed to jump to search result:', err);
-      set({ error: 'Could not jump to search result.' });
+      set({ error: 'Could not jump to search result.', searching: false });
     }
   },
 
@@ -292,6 +292,9 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         selectedManifestIndex: index,
         selectedImageIndex: 0,
         currentManifest: firstManifest,
+        searchResults: [],
+        selectedSearchResultId: null,
+        pendingAnnotationId: null,
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
           metadata: firstManifest?.info?.metadata || [],
