@@ -4,11 +4,8 @@ import { IIIFSearchSnippet } from '../types/index.ts';
 
 interface SearchResultsProps {
   searchResults: IIIFSearchSnippet[];
-  onResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => void;
+  onResultClick: (result: IIIFSearchSnippet) => void;
+  // This ID should now be the unique ID of the search result snippet itself.
   selectedSearchResultId?: string | null;
   selectedLanguage?: string | null;
 }
@@ -25,6 +22,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   selectedSearchResultId,
   selectedLanguage,
 }) => {
+
   return (
     <div>
       {searchResults.length === 0 ? (
@@ -39,18 +37,13 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           .map((result: IIIFSearchSnippet) => {
             const combinedHTML = `${result.prefix ?? ''}<span class="text-blue-600 font-semibold">${result.exact}</span>${result.suffix ?? ''}`;
 
-            const isSelected = selectedSearchResultId === result.annotationId;
+            // We now check against the result's own unique ID.
+            const isSelected = selectedSearchResultId === result.id;
 
             return (
               <div
                 key={result.id}
-                onClick={() =>
-                  onResultClick(
-                    result.canvasTarget,
-                    result.partOf,
-                    result.annotationId,
-                  )
-                }
+                onClick={() => onResultClick(result)}
                 className={`mb-1 p-1 cursor-pointer rounded transition-all text-sm text-gray-700 leading-tight ${
                   isSelected
                     ? 'bg-blue-200 border-l-4 border-blue-500'

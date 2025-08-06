@@ -8,7 +8,7 @@ import {
 import { searchAnnotations } from '../service/search.ts';
 
 interface IIIFState {
-  activePanelTab: 'annotations' | 'searchResults';
+  activePanelTab: 'annotations' | 'search';
   iiifContentUrl: string | null;
   currentManifest: IIIFManifest | null;
   currentCollection: IIIFCollection | null;
@@ -32,7 +32,7 @@ interface IIIFState {
   selectedLanguage: string | null;
   searching: boolean;
 
-  setActivePanelTab: (tab: 'annotations' | 'searchResults') => void;
+  setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
   setCurrentManifest: (manifest: IIIFManifest | null) => void;
   setCurrentCollection: (collection: IIIFCollection | null) => void;
@@ -63,12 +63,8 @@ interface IIIFState {
     collection: IIIFCollection | null,
   ) => void;
   handleSearch: (query: string) => Promise<void>;
-  handleSearchResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => Promise<void>;
-  fetchManifestByIndex: (index: number) => Promise<void>;
+  handleSearchResultClick: (result: any) => Promise<void>;
+  fetchManifestByIndex: (index: number, preserveSearchResults?: boolean) => Promise<void>;
 }
 
 export const useIIIFStore = create<IIIFState>((set, get) => ({
@@ -104,7 +100,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setManifestUrls: (urls) => set({ manifestUrls: urls }),
   setTotalManifests: (total) => set({ totalManifests: total }),
   setSelectedManifestIndex: (index) => set({ selectedManifestIndex: index }),
-  setSelectedImageIndex: (index) => set({ selectedImageIndex: index }),
+  setSelectedImageIndex: (index: number) =>
+    set({
+      selectedImageIndex: index,
+      selectedAnnotation: null,
+      annotations: [],
+      viewerReady: false,
+    }),
   setAnnotations: (annotations) => set({ annotations: annotations }),
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
@@ -158,16 +160,45 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     if (get().searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
-    if (!get().searchUrl) {
+    const { searchUrl, manifestUrls } = get();
+    if (!searchUrl) {
       set({ error: 'This resource does not support content search.' });
       return;
     }
 
     try {
       set({ searching: true });
-      const searchEndpoint = `${get().searchUrl}?q=${encodeURIComponent(trimmed)}`;
+      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
       const results = await searchAnnotations(searchEndpoint);
-      set({ searchResults: results, activePanelTab: 'searchResults' });
+
+      // --- Prioritize `partOf` and fall back to URL matching ---
+      const taggedResults = results.map((result) => {
+        let manifestId = '';
+
+        // Step 1: Trust the `partOf` property if it's a valid manifest URL
+        if (result.partOf) {
+          const matchedUrl = manifestUrls.find(
+            (url) => url === result.partOf,
+          );
+          if (matchedUrl) {
+            manifestId = matchedUrl;
+          }
+        }
+
+        // Step 2: If `partOf` was missing or invalid, fall back to prefix matching
+        if (!manifestId) {
+          const matchedUrl = manifestUrls.find((url) =>
+            result.canvasTarget.startsWith(url),
+          );
+          if (matchedUrl) {
+            manifestId = matchedUrl;
+          }
+        }
+
+        return { ...result, manifestId: manifestId };
+      });
+
+      set({ searchResults: taggedResults, activePanelTab: 'search' });
     } catch {
       set({ error: 'Search failed. Please try again.' });
     } finally {
@@ -175,86 +206,69 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     }
   },
 
-  handleSearchResultClick: async (canvasTarget, manifestId, searchResultId) => {
+  handleSearchResultClick: async (result: any) => {
     try {
-      if (searchResultId) set({ selectedSearchResultId: searchResultId });
-      let targetManifest = get().currentManifest;
+      const { manifestId, canvasTarget } = result;
+      const state = get();
+      let targetManifest = state.currentManifest;
+      const currentManifestUrl = state.manifestUrls[state.selectedManifestIndex];
 
-      if (manifestId) {
-        const matchedIndex = get().manifestUrls.findIndex((url) =>
-          url.includes(manifestId),
-        );
+      // Check if the result is from a different manifest
+      if (manifestId && manifestId !== currentManifestUrl) {
+        const matchedIndex = state.manifestUrls.findIndex((url) => url === manifestId);
         if (matchedIndex === -1) {
-          set({ error: 'Manifest not found.' });
+          set({
+            error: 'Manifest for search result not found in collection.',
+            searching: false,
+          });
           return;
         }
-
-        const { firstManifest, collection } = await parseResource(
-          get().manifestUrls[matchedIndex],
-        );
-        if (!firstManifest) {
-          set({ error: 'Failed to load manifest.' });
-          return;
-        }
-
-        set({
-          selectedManifestIndex: matchedIndex,
-          selectedImageIndex: 0,
-          currentManifest: firstManifest,
-          manifestMetadata: {
-            label: firstManifest?.info?.name || '',
-            metadata: firstManifest?.info?.metadata || [],
-            provider: firstManifest?.info?.provider || [],
-            homepage: firstManifest?.info?.homepage || [],
-            requiredStatement: firstManifest?.info?.requiredStatement,
-          },
-          currentCollection: collection ?? null,
-          collectionMetadata: collection
-            ? {
-                label: collection.info.name || '',
-                metadata: collection.info.metadata || [],
-                provider: collection.info.provider || [],
-                homepage: collection.info.homepage || [],
-                requiredStatement: collection.info.requiredStatement,
-              }
-            : {},
-          autocompleteUrl:
-            collection?.collectionSearch?.autocomplete ??
-            firstManifest?.manifestSearch?.autocomplete ??
-            '',
-          searchUrl:
-            collection?.collectionSearch?.service ??
-            firstManifest?.manifestSearch?.service ??
-            '',
-        });
-
-        targetManifest = firstManifest;
+        await state.fetchManifestByIndex(matchedIndex, true);
+        targetManifest = get().currentManifest;
       }
 
-      const baseCanvasTarget = canvasTarget.split('#')[0];
-      const newImageIndex = targetManifest?.images.findIndex(
-        (img) => img.canvasTarget === baseCanvasTarget,
-      );
-      if (newImageIndex === -1 || newImageIndex === undefined) {
-        set({ error: 'Canvas not found.' });
+      if (!targetManifest) {
+        set({ error: 'No manifest loaded.', searching: false });
         return;
       }
 
-      set({
-        viewerReady: false,
-        selectedImageIndex: newImageIndex,
-        canvasId: canvasTarget,
-        activePanelTab: 'annotations',
-      });
-      if (searchResultId) set({ pendingAnnotationId: searchResultId });
+      // Now find the image in the correct, fully loaded manifest.
+      const newImageIndex = targetManifest.images.findIndex(
+        (img) => img.canvasTarget === canvasTarget,
+      );
+      if (newImageIndex === -1) {
+        set({ error: 'Canvas not found in the manifest.', searching: false });
+        return;
+      }
+
+      // If the canvas is not changing, just set the pending annotation.
+      // This avoids resetting the viewer and causing a race condition.
+      if (newImageIndex === state.selectedImageIndex) {
+        set({
+          pendingAnnotationId: result.annotationId,
+          selectedAnnotation: null, // Clear previous selection
+          selectedSearchResultId: result.id,
+          activePanelTab: 'annotations',
+        });
+      } else {
+        // If the canvas is changing, reset the viewer state.
+        set({
+          viewerReady: false,
+          selectedImageIndex: newImageIndex,
+          canvasId: canvasTarget,
+          activePanelTab: 'annotations',
+          selectedAnnotation: null,
+          pendingAnnotationId: result.annotationId,
+          selectedSearchResultId: result.id,
+        });
+      }
     } catch (err) {
       console.error('Failed to jump to search result:', err);
-      set({ error: 'Could not jump to search result.' });
+      set({ error: 'Could not jump to search result.', searching: false });
     }
   },
 
-  // ...existing code...
-  fetchManifestByIndex: async (index) => {
+  fetchManifestByIndex: async (index, preserveSearchResults = false) => {
     if (
       index < 0 ||
       index >= get().totalManifests ||
@@ -273,12 +287,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       set((state) => ({
         selectedAnnotation: null,
         annotations: [],
-        searchResults: [],
-        selectedSearchResultId: null,
         viewerReady: false,
         selectedManifestIndex: index,
         selectedImageIndex: 0,
         currentManifest: firstManifest,
+        searchResults: preserveSearchResults ? state.searchResults : [],
+        selectedSearchResultId: preserveSearchResults ? state.selectedSearchResultId : null,
+        pendingAnnotationId: null, // Always clear pending annotation when switching manifests
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
           metadata: firstManifest?.info?.metadata || [],
@@ -286,7 +301,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           homepage: firstManifest?.info?.homepage || [],
           requiredStatement: firstManifest?.info?.requiredStatement,
         },
-        // --- FIX: Preserve existing collection context ---
         // Do not update the collection or its metadata. Keep the existing state.
         currentCollection: state.currentCollection,
         collectionMetadata: state.collectionMetadata,

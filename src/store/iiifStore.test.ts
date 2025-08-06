@@ -80,7 +80,13 @@ describe('useIIIFStore', () => {
 
   describe('handleSearch', () => {
     it('should perform a search and update results', async () => {
-      const mockResults = [{ id: 'res1', exact: 'test' }];
+      const mockResults = [
+        {
+          id: 'res1',
+          exact: 'test',
+          canvasTarget: 'http://example.com/canvas/1',
+        },
+      ];
       mockSearchAnnotations.mockResolvedValue(mockResults);
 
       act(() => {
@@ -92,10 +98,68 @@ describe('useIIIFStore', () => {
       });
 
       const state = useIIIFStore.getState();
-      expect(mockSearchAnnotations).toHaveBeenCalledWith('https://example.com/search?q=test');
-      expect(state.searchResults).toEqual(mockResults);
-      expect(state.activePanelTab).toBe('searchResults');
+      expect(mockSearchAnnotations).toHaveBeenCalledWith(
+        'https://example.com/search?q=test',
+      );
+
+      const expectedResults = [
+        {
+          id: 'res1',
+          exact: 'test',
+          canvasTarget: 'http://example.com/canvas/1',
+          manifestId: '', // The function adds this property
+        },
+      ];
+      expect(state.searchResults).toEqual(expectedResults);
+
+      expect(state.activePanelTab).toBe('search');
       expect(state.error).toBeNull();
+    });
+
+    it('should correctly tag results using partOf', async () => {
+      const mockResults = [
+        { id: 'res1', partOf: 'url1', canvasTarget: 'url1/canvas/1' },
+      ];
+      mockSearchAnnotations.mockResolvedValue(mockResults);
+
+      act(() => {
+        useIIIFStore.setState({
+          searchUrl: 'https://example.com/search',
+          manifestUrls: ['url1', 'url2'],
+        });
+      });
+
+      await act(async () => {
+        await useIIIFStore.getState().handleSearch('test');
+      });
+
+      const state = useIIIFStore.getState();
+      expect(state.searchResults[0].manifestId).toBe('url1');
+    });
+
+    it('should correctly tag results using canvasTarget prefix as a fallback', async () => {
+      const mockResults = [
+        {
+          id: 'res1',
+          partOf: 'invalid_url',
+          canvasTarget: 'url2/canvas/2',
+        },
+      ];
+      mockSearchAnnotations.mockResolvedValue(mockResults);
+
+      act(() => {
+        useIIIFStore.setState({
+          searchUrl: 'https://example.com/search',
+          manifestUrls: ['url1', 'url2'],
+        });
+      });
+
+      await act(async () => {
+        await useIIIFStore.getState().handleSearch('test');
+      });
+
+      const state = useIIIFStore.getState();
+      expect(state.searchResults[0].manifestId).toBe('url2');
     });
 
     it('should set an error if search fails', async () => {

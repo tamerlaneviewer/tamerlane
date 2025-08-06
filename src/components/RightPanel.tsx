@@ -1,23 +1,21 @@
 // components/RightPanel.tsx
 import React from 'react';
 import AnnotationsPanel from './AnnotationsPanel.tsx';
-import { IIIFAnnotation } from '../types/index.ts';
+import { IIIFAnnotation, IIIFSearchSnippet } from '../types/index.ts';
 
 interface RightPanelProps {
   annotations: IIIFAnnotation[];
-  searchResults: any[];
-  activeTab: 'annotations' | 'searchResults';
-  setActiveTab: (tab: 'annotations' | 'searchResults') => void;
+  searchResults: IIIFSearchSnippet[];
+  activeTab: 'annotations' | 'search';
+  setActiveTab: (tab: 'annotations' | 'search') => void;
   onAnnotationSelect: (anno: IIIFAnnotation) => void;
-  onSearchResultClick: (
-    canvasTarget: string,
-    manifestId?: string,
-    searchResultId?: string,
-  ) => void;
-  selectedAnnotation: IIIFAnnotation | null;
-  selectedSearchResultId: string | null;
-  autocompleteUrl: string;
-  selectedLanguage: string | null;
+  onResultClick: (result: IIIFSearchSnippet) => void;
+  selectedAnnotation?: IIIFAnnotation;
+  selectedSearchResultId?: string;
+  selectedLanguage?: string;
+  pendingAnnotationId?: string | null;
+  onPendingAnnotationProcessed?: () => void;
+  viewerReady?: boolean;
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({
@@ -26,11 +24,13 @@ const RightPanel: React.FC<RightPanelProps> = ({
   activeTab,
   setActiveTab,
   onAnnotationSelect,
-  onSearchResultClick,
+  onResultClick,
   selectedAnnotation,
   selectedSearchResultId,
-  autocompleteUrl,
   selectedLanguage,
+  pendingAnnotationId,
+  onPendingAnnotationProcessed,
+  viewerReady,
 }) => {
   return (
     <div className="w-1/4 border-l flex flex-col overflow-hidden">
@@ -40,11 +40,13 @@ const RightPanel: React.FC<RightPanelProps> = ({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAnnotationSelect={onAnnotationSelect}
-        onSearchResultClick={onSearchResultClick}
+        onResultClick={onResultClick}
         selectedAnnotation={selectedAnnotation}
         selectedSearchResultId={selectedSearchResultId}
-        autocompleteUrl={autocompleteUrl}
         selectedLanguage={selectedLanguage}
+        pendingAnnotationId={pendingAnnotationId}
+        onPendingAnnotationProcessed={onPendingAnnotationProcessed}
+        viewerReady={viewerReady}
       />
     </div>
   );

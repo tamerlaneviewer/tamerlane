@@ -146,26 +146,6 @@ const App: React.FC = () => {
   ]);
 
   useEffect(() => {
-    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
-      return;
-    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
-    if (match) {
-      setSelectedAnnotation(match);
-      setPendingAnnotationId(null);
-      setViewerReady(false);
-    } else {
-      console.warn('❌ Could not find annotation for ID:', pendingAnnotationId);
-    }
-  }, [
-    annotations,
-    pendingAnnotationId,
-    viewerReady,
-    setSelectedAnnotation,
-    setPendingAnnotationId,
-    setViewerReady,
-  ]);
-
-  useEffect(() => {
     setAutocompleteUrl(
       currentCollection?.collectionSearch?.autocomplete ??
         currentManifest?.manifestSearch?.autocomplete ??
@@ -223,12 +203,35 @@ const App: React.FC = () => {
         ];
   // --- End language logic ---
 
+  // --- Annotation selection effect ---
+  useEffect(() => {
+    if (pendingAnnotationId && annotations.length > 0 && viewerReady) {
+      const annotationToSelect = annotations.find(
+        (anno) => anno.id === pendingAnnotationId,
+      );
+      if (annotationToSelect) {
+        setSelectedAnnotation(annotationToSelect);
+        setPendingAnnotationId(null); // Clear after processing
+      }
+    }
+  }, [
+    pendingAnnotationId,
+    annotations,
+    viewerReady,
+    setSelectedAnnotation,
+    setPendingAnnotationId,
+  ]);
+
   const handleAnnotationSelect = useCallback(
     (annotation: IIIFAnnotation) => {
       setSelectedAnnotation(annotation);
     },
     [setSelectedAnnotation],
   );
+
+  const handlePendingAnnotationProcessed = useCallback(() => {
+    setPendingAnnotationId(null);
+  }, [setPendingAnnotationId]);
 
   const handleLanguageChange = useCallback(
     (language: string) => setSelectedLanguage(language),
@@ -357,11 +360,13 @@ const App: React.FC = () => {
           activeTab={activePanelTab}
           setActiveTab={setActivePanelTab}
           onAnnotationSelect={handleAnnotationSelect}
-          onSearchResultClick={handleSearchResultClick}
-          selectedAnnotation={selectedAnnotation}
-          selectedSearchResultId={selectedSearchResultId}
-          autocompleteUrl={autocompleteUrl}
-          selectedLanguage={selectedLanguage}
+          onResultClick={handleSearchResultClick}
+          selectedAnnotation={selectedAnnotation || undefined}
+          selectedSearchResultId={selectedSearchResultId || undefined}
+          selectedLanguage={selectedLanguage || undefined}
+          pendingAnnotationId={pendingAnnotationId}
+          onPendingAnnotationProcessed={handlePendingAnnotationProcessed}
+          viewerReady={viewerReady}
         />
       </div>
     </div>

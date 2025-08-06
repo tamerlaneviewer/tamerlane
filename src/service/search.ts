@@ -72,6 +72,9 @@ function buildSnippetFromAnnotation(
   // Extract `canvasTarget` and `partOf`
   const canvasTarget: string =
     baseAnnotation.target?.id || annotation.target?.id || '';
+  // Remove any fragment (part after #) for canvas identification
+  const cleanCanvasTarget = canvasTarget.split('#')[0];
+
   const partOf: string | undefined =
     baseAnnotation.target?.partOf?.id || annotation.target?.partOf?.id;
 
@@ -98,7 +101,7 @@ function buildSnippetFromAnnotation(
     prefix,
     exact,
     suffix,
-    canvasTarget,
+    canvasTarget: cleanCanvasTarget,
     partOf,
     language: annotation.target.language || undefined,
   };
