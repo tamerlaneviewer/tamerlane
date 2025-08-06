@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({
           onSearch={onSearch}
           autocompleteService={autocompleteUrl}
           searching={searching}
-          selectedLanguage={selectedLanguage}
+          selectedLanguage={selectedLanguage ?? undefined}
         />
       </div>
     </header>

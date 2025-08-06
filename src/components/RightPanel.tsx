@@ -13,6 +13,9 @@ interface RightPanelProps {
   selectedAnnotation?: IIIFAnnotation;
   selectedSearchResultId?: string;
   selectedLanguage?: string;
+  pendingAnnotationId?: string | null;
+  onPendingAnnotationProcessed?: () => void;
+  viewerReady?: boolean;
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({
@@ -25,6 +28,9 @@ const RightPanel: React.FC<RightPanelProps> = ({
   selectedAnnotation,
   selectedSearchResultId,
   selectedLanguage,
+  pendingAnnotationId,
+  onPendingAnnotationProcessed,
+  viewerReady,
 }) => {
   return (
     <div className="w-1/4 border-l flex flex-col overflow-hidden">
@@ -38,6 +44,9 @@ const RightPanel: React.FC<RightPanelProps> = ({
         selectedAnnotation={selectedAnnotation}
         selectedSearchResultId={selectedSearchResultId}
         selectedLanguage={selectedLanguage}
+        pendingAnnotationId={pendingAnnotationId}
+        onPendingAnnotationProcessed={onPendingAnnotationProcessed}
+        viewerReady={viewerReady}
       />
     </div>
   );

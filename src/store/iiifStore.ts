@@ -25,6 +25,7 @@ interface IIIFState {
   showUrlDialog: boolean;
   selectedAnnotation: IIIFAnnotation | null;
   pendingAnnotationId: string | null;
+  // nextPendingAnnotationId: string | null;
   selectedSearchResultId: string | null;
   viewerReady: boolean;
   autocompleteUrl: string;
@@ -49,6 +50,7 @@ interface IIIFState {
   setShowUrlDialog: (show: boolean) => void;
   setSelectedAnnotation: (annotation: IIIFAnnotation | null) => void;
   setPendingAnnotationId: (id: string | null) => void;
+  // setNextPendingAnnotationId: (id: string | null) => void;
   setSelectedSearchResultId: (id: string | null) => void;
   setViewerReady: (ready: boolean) => void;
   setAutocompleteUrl: (url: string) => void;
@@ -85,6 +87,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   showUrlDialog: false,
   selectedAnnotation: null,
   pendingAnnotationId: null,
+  // nextPendingAnnotationId: null,
   selectedSearchResultId: null,
   viewerReady: false,
   autocompleteUrl: '',
@@ -100,7 +103,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setManifestUrls: (urls) => set({ manifestUrls: urls }),
   setTotalManifests: (total) => set({ totalManifests: total }),
   setSelectedManifestIndex: (index) => set({ selectedManifestIndex: index }),
-  setSelectedImageIndex: (index) => set({ selectedImageIndex: index }),
+  setSelectedImageIndex: (index: number) =>
+    set({
+      selectedImageIndex: index,
+      selectedAnnotation: null,
+      annotations: [],
+      viewerReady: false,
+    }),
   setAnnotations: (annotations) => set({ annotations: annotations }),
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
@@ -110,6 +119,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSelectedAnnotation: (annotation) =>
     set({ selectedAnnotation: annotation }),
   setPendingAnnotationId: (id) => set({ pendingAnnotationId: id }),
+  // setNextPendingAnnotationId: (id) => set({ nextPendingAnnotationId: id }),
   setSelectedSearchResultId: (id) => set({ selectedSearchResultId: id }),
   setViewerReady: (ready) => set({ viewerReady: ready }),
   setAutocompleteUrl: (url) => set({ autocompleteUrl: url }),
@@ -203,20 +213,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   handleSearchResultClick: async (result: any) => {
     try {
       const { manifestId, canvasTarget } = result;
-
       const state = get();
       let targetManifest = state.currentManifest;
-
-      // The URL of the manifest that is currently loaded
-      const currentManifestUrl =
-        state.manifestUrls[state.selectedManifestIndex];
+      const currentManifestUrl = state.manifestUrls[state.selectedManifestIndex];
 
       // Check if the result is from a different manifest
       if (manifestId && manifestId !== currentManifestUrl) {
-        const matchedIndex = state.manifestUrls.findIndex(
-          (url) => url === manifestId,
-        );
-
+        const matchedIndex = state.manifestUrls.findIndex((url) => url === manifestId);
         if (matchedIndex === -1) {
           set({
             error: 'Manifest for search result not found in collection.',
@@ -224,14 +227,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           });
           return;
         }
-
-        // Store current search results before switching manifests
-        const currentSearchResults = state.searchResults;
-
-        // DELEGATE manifest loading to the dedicated function with search preservation
         await state.fetchManifestByIndex(matchedIndex, true);
-
-        // Get the newly loaded manifest from the state
         targetManifest = get().currentManifest;
       }
 
@@ -244,22 +240,32 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       const newImageIndex = targetManifest.images.findIndex(
         (img) => img.canvasTarget === canvasTarget,
       );
-
       if (newImageIndex === -1) {
         set({ error: 'Canvas not found in the manifest.', searching: false });
         return;
       }
 
-      // Force state change by using functional update to ensure React detects changes
-      set((state) => ({
-        ...state,
-        viewerReady: false,
-        selectedImageIndex: newImageIndex,
-        canvasId: canvasTarget, // Use base URL without fragment for canvas identification
-        activePanelTab: 'annotations',
-        pendingAnnotationId: result.annotationId,
-        selectedSearchResultId: result.annotationId,
-      }));
+      // If the canvas is not changing, just set the pending annotation.
+      // This avoids resetting the viewer and causing a race condition.
+      if (newImageIndex === state.selectedImageIndex) {
+        set({
+          pendingAnnotationId: result.annotationId,
+          selectedAnnotation: null, // Clear previous selection
+          selectedSearchResultId: result.id,
+          activePanelTab: 'annotations',
+        });
+      } else {
+        // If the canvas is changing, reset the viewer state.
+        set({
+          viewerReady: false,
+          selectedImageIndex: newImageIndex,
+          canvasId: canvasTarget,
+          activePanelTab: 'annotations',
+          selectedAnnotation: null,
+          pendingAnnotationId: result.annotationId,
+          selectedSearchResultId: result.id,
+        });
+      }
     } catch (err) {
       console.error('Failed to jump to search result:', err);
       set({ error: 'Could not jump to search result.', searching: false });
@@ -291,7 +297,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         currentManifest: firstManifest,
         searchResults: preserveSearchResults ? state.searchResults : [],
         selectedSearchResultId: preserveSearchResults ? state.selectedSearchResultId : null,
-        pendingAnnotationId: null,
+        pendingAnnotationId: null, // Always clear pending annotation when switching manifests
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
           metadata: firstManifest?.info?.metadata || [],

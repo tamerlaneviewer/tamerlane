@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { BookOpen, Search } from 'lucide-react';
 import AnnotationsList from './AnnotationsList.tsx';
 import SearchResults from './SearchResults.tsx';
@@ -14,6 +14,9 @@ interface AnnotationsPanelProps {
   selectedSearchResultId?: string;
   onResultClick: (result: IIIFSearchSnippet) => void;
   selectedLanguage?: string;
+  pendingAnnotationId?: string | null;
+  onPendingAnnotationProcessed?: () => void;
+  viewerReady?: boolean;
 }
 
 const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
@@ -26,7 +29,38 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   selectedAnnotation,
   selectedSearchResultId,
   selectedLanguage,
+  pendingAnnotationId,
+  onPendingAnnotationProcessed,
+  viewerReady,
 }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollPositions = useRef<{ annotations: number; search: number }>({
+    annotations: 0,
+    search: 0,
+  });
+
+  // Save scroll position when tab changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      // Save the current scroll position
+      if (activeTab === 'annotations') {
+        savedScrollPositions.current.annotations = scrollContainerRef.current.scrollTop;
+      } else {
+        savedScrollPositions.current.search = scrollContainerRef.current.scrollTop;
+      }
+    }
+  }, [activeTab]);
+
+  // Restore scroll position after tab change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const savedPosition = activeTab === 'annotations' 
+        ? savedScrollPositions.current.annotations 
+        : savedScrollPositions.current.search;
+      scrollContainerRef.current.scrollTop = savedPosition;
+    }
+  }, [activeTab]);
+
   return (
     <div className="flex flex-col h-full max-h-full border shadow-md bg-white">
       {/* Tabs Section (Icons Only) */}
@@ -56,7 +90,10 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       </div>
 
       {/* Scrollable Content Section */}
-      <div className="flex-grow overflow-y-auto p-3 max-h-[calc(100vh-100px)]">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-grow overflow-y-auto p-3 max-h-[calc(100vh-100px)]"
+      >
         {activeTab === 'annotations' ? (
           annotations.length === 0 ? (
             <p className="text-gray-500 text-center">
@@ -68,6 +105,9 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               onAnnotationSelect={onAnnotationSelect}
               selectedAnnotation={selectedAnnotation}
               selectedLanguage={selectedLanguage || undefined}
+              pendingAnnotationId={pendingAnnotationId}
+              onPendingAnnotationProcessed={onPendingAnnotationProcessed}
+              viewerReady={viewerReady}
             />
           )
         ) : searchResults.length === 0 ? (

@@ -8,6 +8,9 @@ interface AnnotationsListProps {
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
   selectedAnnotation?: IIIFAnnotation;
   selectedLanguage?: string;
+  pendingAnnotationId?: string | null;
+  onPendingAnnotationProcessed?: () => void;
+  viewerReady?: boolean;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
@@ -15,9 +18,34 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   onAnnotationSelect,
   selectedAnnotation,
   selectedLanguage,
+  pendingAnnotationId,
+  onPendingAnnotationProcessed,
+  viewerReady = true,
 }) => {
-  const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
+  const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
+
+  // Handle pending annotation selection from search results
+  useEffect(() => {
+    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
+      return;
+
+    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
+    if (match) {
+      onAnnotationSelect(match);
+      if (onPendingAnnotationProcessed) {
+        onPendingAnnotationProcessed();
+      }
+    } else {
+      console.warn('Could not find annotation for ID:', pendingAnnotationId);
+    }
+  }, [
+    annotations,
+    pendingAnnotationId,
+    viewerReady,
+    onAnnotationSelect,
+    onPendingAnnotationProcessed,
+  ]);
 
   useEffect(() => {
     if (selectedAnnotation?.id) {
@@ -104,15 +132,16 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         dangerouslySetInnerHTML={renderHTML(item.value)}
                       />
                       {annotation.id && (
-                        <ClipboardCopy
-                          size={14}
-                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                        <div
                           title="Copy ID"
+                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
                           onClick={(e) => {
                             e.stopPropagation();
                             copyToClipboard(annotation.id!);
                           }}
-                        />
+                        >
+                          <ClipboardCopy size={14} />
+                        </div>
                       )}
                     </div>
                   ))
@@ -124,15 +153,16 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                     dangerouslySetInnerHTML={renderHTML(annotation.body.value)}
                   />
                   {annotation.id && (
-                    <ClipboardCopy
-                      size={14}
-                      className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                    <div
                       title="Copy ID"
+                      className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
                       onClick={(e) => {
                         e.stopPropagation();
                         copyToClipboard(annotation.id!);
                       }}
-                    />
+                    >
+                      <ClipboardCopy size={14} />
+                    </div>
                   )}
                 </div>
               ) : (
