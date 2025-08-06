@@ -64,7 +64,7 @@ interface IIIFState {
   ) => void;
   handleSearch: (query: string) => Promise<void>;
   handleSearchResultClick: (result: any) => Promise<void>;
-  fetchManifestByIndex: (index: number) => Promise<void>;
+  fetchManifestByIndex: (index: number, preserveSearchResults?: boolean) => Promise<void>;
 }
 
 export const useIIIFStore = create<IIIFState>((set, get) => ({
@@ -228,11 +228,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         // Store current search results before switching manifests
         const currentSearchResults = state.searchResults;
 
-        // DELEGATE manifest loading to the dedicated function.
-        await state.fetchManifestByIndex(matchedIndex);
-
-        // Restore search results after switching manifests
-        set({ searchResults: currentSearchResults });
+        // DELEGATE manifest loading to the dedicated function with search preservation
+        await state.fetchManifestByIndex(matchedIndex, true);
 
         // Get the newly loaded manifest from the state
         targetManifest = get().currentManifest;
@@ -269,7 +266,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     }
   },
 
-  fetchManifestByIndex: async (index) => {
+  fetchManifestByIndex: async (index, preserveSearchResults = false) => {
     if (
       index < 0 ||
       index >= get().totalManifests ||
@@ -292,8 +289,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         selectedManifestIndex: index,
         selectedImageIndex: 0,
         currentManifest: firstManifest,
-        searchResults: [],
-        selectedSearchResultId: null,
+        searchResults: preserveSearchResults ? state.searchResults : [],
+        selectedSearchResultId: preserveSearchResults ? state.selectedSearchResultId : null,
         pendingAnnotationId: null,
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
