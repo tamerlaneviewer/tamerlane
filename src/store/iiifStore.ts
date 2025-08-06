@@ -25,7 +25,6 @@ interface IIIFState {
   showUrlDialog: boolean;
   selectedAnnotation: IIIFAnnotation | null;
   pendingAnnotationId: string | null;
-  // nextPendingAnnotationId: string | null;
   selectedSearchResultId: string | null;
   viewerReady: boolean;
   autocompleteUrl: string;
@@ -50,7 +49,6 @@ interface IIIFState {
   setShowUrlDialog: (show: boolean) => void;
   setSelectedAnnotation: (annotation: IIIFAnnotation | null) => void;
   setPendingAnnotationId: (id: string | null) => void;
-  // setNextPendingAnnotationId: (id: string | null) => void;
   setSelectedSearchResultId: (id: string | null) => void;
   setViewerReady: (ready: boolean) => void;
   setAutocompleteUrl: (url: string) => void;
@@ -87,7 +85,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   showUrlDialog: false,
   selectedAnnotation: null,
   pendingAnnotationId: null,
-  // nextPendingAnnotationId: null,
   selectedSearchResultId: null,
   viewerReady: false,
   autocompleteUrl: '',
@@ -119,7 +116,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSelectedAnnotation: (annotation) =>
     set({ selectedAnnotation: annotation }),
   setPendingAnnotationId: (id) => set({ pendingAnnotationId: id }),
-  // setNextPendingAnnotationId: (id) => set({ nextPendingAnnotationId: id }),
   setSelectedSearchResultId: (id) => set({ selectedSearchResultId: id }),
   setViewerReady: (ready) => set({ viewerReady: ready }),
   setAutocompleteUrl: (url) => set({ autocompleteUrl: url }),
@@ -305,7 +301,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           homepage: firstManifest?.info?.homepage || [],
           requiredStatement: firstManifest?.info?.requiredStatement,
         },
-        // --- FIX: Preserve existing collection context ---
         // Do not update the collection or its metadata. Keep the existing state.
         currentCollection: state.currentCollection,
         collectionMetadata: state.collectionMetadata,
