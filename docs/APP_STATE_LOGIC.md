@@ -2,67 +2,60 @@
 
 ## 📦 State Variables (Managed by Zustand Store)
 
-| State Variable                | Purpose/Usage                                                                                 | Component(s)         |
-|-------------------------------|----------------------------------------------------------------------------------------------|----------------------|
-| activePanelTab                | Which tab is active in the right panel (annotations/search results)                          | RightPanel           |
-| iiifContentUrl                | IIIF manifest/collection URL being viewed                                                    | App, UrlDialog       |
-| currentManifest               | The currently loaded IIIF manifest                                                           | App, MiddlePanel     |
-| canvasId                      | The current canvas/image being viewed                                                        | App, MiddlePanel     |
-| manifestUrls                  | List of manifest URLs in the current collection                                              | App, LeftPanel       |
-| totalManifests                | Total number of manifests in the collection                                                  | App, Header          |
-| selectedManifestIndex         | Index of the selected manifest                                                               | App, Header          |
-| selectedImageIndex            | Index of the selected image/canvas                                                           | App, Header          |
-| annotations                   | List of annotations for the current canvas                                                   | RightPanel           |
-| manifestMetadata              | Metadata for the current manifest                                                            | LeftPanel            |
-| collectionMetadata            | Metadata for the current collection                                                          | LeftPanel            |
-| searchResults                 | Results from content search                                                                  | RightPanel           |
-| error                         | Error message for user feedback                                                              | ErrorDialog          |
-| showUrlDialog                 | Whether to show the IIIF URL input dialog                                                    | UrlDialog            |
-| selectedAnnotation            | The annotation currently selected                                                            | MiddlePanel, RightPanel |
-| pendingAnnotationId           | Annotation ID to select after viewer is ready                                                | App                  |
-| selectedSearchResultId        | ID of the selected search result                                                             | RightPanel           |
-| autocompleteUrl               | Endpoint for search autocomplete                                                             | Header               |
-| searchUrl                     | Endpoint for content search                                                                  | Header, RightPanel   |
-| selectedLanguage              | Language selected for UI/metadata display                                                    | Header               |
-| viewerReady                   | Whether the image viewer is ready for annotation selection                                   | MiddlePanel, App     |
-| searching                     | Whether a search is currently in progress                                                    | Header, RightPanel   |
+| State Variable                | Purpose/Usage                                                                                 | Component(s) Used In |
+|-------------------------------|-----------------------------------------------------------------------------------------------|-------------------------|
+| `activePanelTab`              | Which tab is active in the right panel (`annotations` or `search`).                           | RightPanel              |
+| `iiifContentUrl`              | The root IIIF manifest or collection URL being viewed.                                        | App, UrlDialog          |
+| `currentManifest`             | The fully loaded IIIF manifest object currently being displayed.                              | App, MiddlePanel        |
+| `canvasId`                    | The ID of the current canvas/image being viewed.                                              | App, MiddlePanel        |
+| `manifestUrls`                | A list of all manifest URLs in the current collection.                                        | App, LeftPanel          |
+| `totalManifests`              | The total number of manifests in the collection.                                              | App, Header             |
+| `selectedManifestIndex`       | The index of the currently selected manifest in the `manifestUrls` list.                      | App, Header             |
+| `selectedImageIndex`          | The index of the currently selected image/canvas within the `currentManifest`.                | App, Header             |
+| `annotations`                 | A list of annotations for the current canvas.                                                 | RightPanel              |
+| `manifestMetadata`            | Metadata for the `currentManifest` (label, provider, etc.).                                   | LeftPanel               |
+| `collectionMetadata`          | Metadata for the parent collection, if one exists.                                            | LeftPanel               |
+| `searchResults`               | The list of results from a content search.                                                    | RightPanel              |
+| `error`                       | An error message for user feedback. Triggers the error dialog.                                | ErrorDialog             |
+| `showUrlDialog`               | A flag to control the visibility of the IIIF URL input dialog.                                | UrlDialog               |
+| `selectedAnnotation`          | The annotation object that is currently selected by the user.                                 | MiddlePanel, RightPanel |
+| `pendingAnnotationId`         | An annotation ID queued for selection, waiting for the viewer and annotations to be ready.    | App, RightPanel         |
+| `selectedSearchResultId`      | The ID of the search result currently selected, used for highlighting.                        | RightPanel              |
+| `autocompleteUrl`             | The endpoint URL for the search autocomplete service.                                         | Header                  |
+| `searchUrl`                   | The endpoint URL for the main content search service.                                         | Header, RightPanel      |
+| `selectedLanguage`            | The language selected for displaying multilingual metadata and annotations.                   | Header, Panels          |
+| `viewerReady`                 | A flag indicating if the image viewer is fully loaded and ready for interaction.              | MiddlePanel, App        |
+| `searching`                   | A flag to indicate that a search query is currently in progress.                              | Header, RightPanel      |
 
 > **All state is accessed and updated via the `useIIIFStore` hook.**
 
 ---
 
-## 🔁 Side Effects (useEffect in App.tsx)
+## 🔁 Side Effects (`useEffect` in App.tsx)
 
-Zustand actions and state are used inside effects to coordinate data fetching and UI updates.
+Zustand actions and state are used inside `useEffect` hooks to coordinate data fetching and UI updates.
 
 ### Effect 1 — `[ currentManifest, selectedImageIndex ]`
-Sets the current canvasId in the store when the manifest or image index changes.
+Sets the current `canvasId` in the store whenever the manifest or the selected image index changes.
 
-### Effect 2 — `[ currentManifest, canvasId, selectedManifestIndex, manifestUrls ]`
-Fetches annotations for the current canvas and manifest using a store action.
+### Effect 2 — `[ canvasId ]`
+Fetches the list of annotations (`annotations`) for the current `canvasId` by calling a store action.
 
 ### Effect 3 — `[ annotations, pendingAnnotationId, viewerReady ]`
-Selects an annotation by ID after the viewer is ready, updating store state.
+**The core selection logic.** When an annotation is pending (`pendingAnnotationId` is set), this effect waits for the `annotations` to load and the `viewerReady` flag to be true. It then finds the matching annotation, sets it as `selectedAnnotation`, and clears the `pendingAnnotationId`.
 
 ### Effect 4 — `[ iiifContentUrl ]`
-Loads the initial manifest/collection when the IIIF content URL changes, using a store action.
-
-### Effect 5 — `[ currentManifest, currentCollection ]`
-Updates autocomplete and search URLs in the store when manifest or collection changes.
-
-### Effect 6 — `[ iiifContentUrl, iiifContentUrlFromParams ]`
-Shows the URL dialog if no IIIF content URL is set.
+Loads the initial manifest or collection when the `iiifContentUrl` changes. This is the main entry point for loading new content.
 
 ---
 
-## 🧭 Core Logic Functions (Now Store Actions)
+## 🧭 Core Logic Functions (Store Actions)
 
-- `handleManifestUpdate(firstManifest, manifestUrls, total, collection)` — Updates manifest, collection, and related metadata state in the store.
-- `fetchManifestByIndex(index)` — Loads a manifest by its index using a store action.
-- `handleSearch(query)` — Performs a content search and updates search results in the store.
-- `handleSearchResultClick(canvasTarget, manifestId?, searchResultId?)` — Navigates to a search result and selects the relevant annotation via the store.
-- `handleViewerReady()` — Sets viewerReady to true in the store when the image viewer is ready.
-- `handleUrlSubmit(event)` — Handles submission of a new IIIF content URL, updating store state.
+- **`handleManifestUpdate(...)`**: Updates manifest, collection, and related metadata in the store.
+- **`fetchManifestByIndex(index, preserveSearchResults?)`**: Loads a manifest by its index. The optional `preserveSearchResults` flag keeps the search context when navigating between manifests from a search result.
+- **`handleSearch(query)`**: Performs a content search, tags results with their parent manifest ID, and updates `searchResults` in the store.
+- **`handleSearchResultClick(result)`**: The primary action for search interaction. It intelligently determines if the result is on the current canvas (for a quick selection) or a new canvas (triggering a full load), then sets the `pendingAnnotationId` to start the selection process.
+- **`handleViewerReady()`**: A simple handler passed to the viewer component, which calls `setViewerReady(true)` in the store.
 
 ---
 
@@ -70,22 +63,6 @@ Shows the URL dialog if no IIIF content URL is set.
 
 - **Header**: Receives navigation, search, and language state/handlers from the store.
 - **LeftPanel**: Receives manifest and collection metadata from the store.
-- **MiddlePanel**: Receives image/canvas data and selected annotation from the store.
-- **RightPanel**: Receives annotations, search results, and active tab state from the store.
-- **UrlDialog**: Shown when no IIIF content URL is set (store-driven).
-- **ErrorDialog**: Shown when an error occurs (store-driven).
-
----
-
-## ⚠️ Error Handling & User Flow
-
-- If an error occurs (e.g., failed manifest load), the app displays an error dialog and may prompt for a new IIIF URL (store-driven).
-- If no IIIF content URL is set, the app shows the URL input dialog (store-driven).
-
----
-
-## 📚 Further Reading
-
-- [IIIF Presentation API](https://iiif.io/api/presentation/)
-- [App.tsx source code](../src/App.tsx)
-- [Zustand documentation](https://zustand-demo.pmnd.rs/)
+- **MiddlePanel**: Receives image/canvas data, `selectedAnnotation`, and the `viewerReady` state. It calls `handleViewerReady` when it's done loading.
+- **RightPanel**: Receives `annotations`, `searchResults`, `pendingAnnotationId`, and the active tab state from the store. It triggers selection actions.
+- **UrlDialog / ErrorDialog**: Visibility is driven entirely by the `showUrlDialog` and `error` state variables in the store.
