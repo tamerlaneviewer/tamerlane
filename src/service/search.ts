@@ -14,6 +14,8 @@ export async function searchAnnotations(
   let nextPageUrl: string | null = targetUrl;
   let pageCount = 0;
   const MAX_PAGES = maxSearchPages || 10;
+  const annotationLookup = new Map<string, any>();
+  const hits: any[] = [];
 
   while (nextPageUrl && pageCount < MAX_PAGES) {
     const resource = await fetchResource(nextPageUrl);
@@ -22,9 +24,6 @@ export async function searchAnnotations(
         `Invalid or empty response received from ${nextPageUrl}`,
       );
     }
-
-    const annotationLookup = new Map<string, any>();
-    const hits: any[] = [];
 
     // First Pass: Build lookup map from top-level items (base annotations with geometry)
     if (resource.data.items && Array.isArray(resource.data.items)) {
