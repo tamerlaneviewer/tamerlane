@@ -46,7 +46,7 @@ describe('searchAnnotations', () => {
             {
               id: 'http://example.org/anno/2',
               type: 'Annotation',
-              motivation: 'commenting',
+              motivation: 'highlighting',
               target: {
                 source: 'http://example.org/anno/1',
                 selector: [
@@ -100,7 +100,7 @@ describe('searchAnnotations', () => {
     expect(snippets[0]).toEqual({
       id: 'http://example.org/anno/2',
       annotationId: 'http://example.org/anno/1',
-      motivation: 'commenting',
+      motivation: 'highlighting',
       prefix: '... for a ',
       exact: 'test',
       suffix: ' case ...',
@@ -133,7 +133,7 @@ describe('searchAnnotations', () => {
             type: 'AnnotationPage',
             id: MOCK_URL_PAGE1,
             items: [{ id: 'anno1', type: 'Annotation', target: { id: 'canvas1' } }],
-            annotations: [{ type: 'AnnotationPage', items: [{ id: 'snippet1', type: 'Annotation', motivation: 'commenting', target: { source: 'anno1', selector: [{ type: 'TextQuoteSelector', exact: 'text1' }] } }] }],
+            annotations: [{ type: 'AnnotationPage', items: [{ id: 'snippet1', type: 'Annotation', motivation: 'highlighting', target: { source: 'anno1', selector: [{ type: 'TextQuoteSelector', exact: 'text1' }] } }] }],
             next: MOCK_URL_PAGE2,
         };
 
@@ -141,7 +141,7 @@ describe('searchAnnotations', () => {
             type: 'AnnotationPage',
             id: MOCK_URL_PAGE2,
             items: [{ id: 'anno2', type: 'Annotation', target: { id: 'canvas2' } }],
-            annotations: [{ type: 'AnnotationPage', items: [{ id: 'snippet2', type: 'Annotation', motivation: 'commenting', target: { source: 'anno2', selector: [{ type: 'TextQuoteSelector', exact: 'text2' }] } }] }],
+            annotations: [{ type: 'AnnotationPage', items: [{ id: 'snippet2', type: 'Annotation', motivation: 'highlighting', target: { source: 'anno2', selector: [{ type: 'TextQuoteSelector', exact: 'text2' }] } }] }],
             next: null,
         };
 
