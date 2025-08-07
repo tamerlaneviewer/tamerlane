@@ -12,7 +12,7 @@ const LeftPanel: React.FC<LeftPanelProps> = ({
   collectionMetadata,
 }) => {
   return (
-    <div className="w-1/4 border-r flex flex-col">
+    <div className="hidden md:flex md:w-1/4 border-r flex-col">
       <MetadataPanel
         manifestMetadata={manifestMetadata}
         collectionMetadata={collectionMetadata}
