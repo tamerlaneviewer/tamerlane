@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-gray-800 text-white p-2 flex items-center justify-between">
+    <header className="bg-gray-800 text-white p-2 flex items-center justify-between md:justify-between">
       <div className="flex items-center">
         {SHOW_LOGO && (
           <img
@@ -74,35 +74,39 @@ const Header: React.FC<HeaderProps> = ({
             className="h-12 w-12"
           />
         )}
-        <span className="text-lg font-semibold ml-2">{APP_NAME}</span>
+        <span className="hidden md:inline text-lg font-semibold ml-2">{APP_NAME}</span>
       </div>
 
-      <IIIFControls
-        currentIndex={currentIndex}
-        totalImages={totalImages}
-        totalManifests={totalManifests}
-        selectedManifestIndex={selectedManifestIndex}
-        onPreviousImage={onPreviousImage}
-        onNextImage={onNextImage}
-        onPreviousManifest={onPreviousManifest}
-        onNextManifest={onNextManifest}
-        resetImageIndex={resetImageIndex}
-      />
+      <div className="flex-1 flex justify-center md:justify-start md:flex-initial">
+        <IIIFControls
+          currentIndex={currentIndex}
+          totalImages={totalImages}
+          totalManifests={totalManifests}
+          selectedManifestIndex={selectedManifestIndex}
+          onPreviousImage={onPreviousImage}
+          onNextImage={onNextImage}
+          onPreviousManifest={onPreviousManifest}
+          onNextManifest={onNextManifest}
+          resetImageIndex={resetImageIndex}
+        />
+      </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="hidden md:flex items-center space-x-2">
         <button
           onClick={toggleLanguage}
-          className="bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
+          className="hidden md:block bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
           title={currentLanguage?.name}
         >
           {currentLanguage?.code?.toUpperCase()}
         </button>
-        <SearchBar
-          onSearch={onSearch}
-          autocompleteService={autocompleteUrl}
-          searching={searching}
-          selectedLanguage={selectedLanguage ?? undefined}
-        />
+        <div className="hidden md:block">
+          <SearchBar
+            onSearch={onSearch}
+            autocompleteService={autocompleteUrl}
+            searching={searching}
+            selectedLanguage={selectedLanguage ?? undefined}
+          />
+        </div>
       </div>
     </header>
   );
