@@ -61,18 +61,18 @@ export async function searchAnnotations(
       }
     }
 
-    // Second Pass: Build snippets from the collected hits.
-    for (const hit of hits) {
-      const snippet = buildSnippetFromAnnotation(hit, annotationLookup);
-      if (snippet) {
-        snippets.push(snippet);
-      }
-    }
-
     // Get the next page (if applicable)
     const mainParser = new Maniiifest(resource.data, 'AnnotationPage');
     nextPageUrl = mainParser.getAnnotationPage()?.next ?? null;
     pageCount++;
+  }
+
+  // Build snippets from all collected hits after processing all pages
+  for (const hit of hits) {
+    const snippet = buildSnippetFromAnnotation(hit, annotationLookup);
+    if (snippet) {
+      snippets.push(snippet);
+    }
   }
 
   return snippets;
