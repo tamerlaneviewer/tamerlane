@@ -49,6 +49,8 @@ interface IIIFState {
   selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'selected' | 'failed';
   selectionDebug: boolean;
   selectionLog: string[];
+  searchAbortController: AbortController | null;
+  searchDebounceId: any;
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -128,6 +130,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   manifestError: null,
   annotationsError: null,
   searchError: null,
+  searchAbortController: null as AbortController | null,
+  searchDebounceId: null as any,
 
   setManifestError: (err) => set({ manifestError: err }),
   setAnnotationsError: (err) => set({ annotationsError: err }),
@@ -331,54 +335,55 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   },
 
   handleSearch: async (query) => {
-    if (get().searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
-    const { searchUrl, manifestUrls, buildDomainError, setSearchError } = get();
+    const { searchUrl, manifestUrls, buildDomainError, setSearchError, searchAbortController, searchDebounceId } = get();
     if (!searchUrl) {
       setSearchError(buildDomainError('SEARCH_UNSUPPORTED', 'This resource does not support content search.', { recoverable: false }));
       return;
     }
 
-    try {
-      set({ searching: true });
-      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
-      const results = await searchAnnotations(searchEndpoint);
-
-      // --- Prioritize `partOf` and fall back to URL matching ---
-      const taggedResults = results.map((result) => {
-        let manifestId = '';
-
-        // Step 1: Trust the `partOf` property if it's a valid manifest URL
-        if (result.partOf) {
-          const matchedUrl = manifestUrls.find(
-            (url) => url === result.partOf,
-          );
-          if (matchedUrl) {
-            manifestId = matchedUrl;
-          }
-        }
-
-        // Step 2: If `partOf` was missing or invalid, fall back to prefix matching
-        if (!manifestId) {
-          const matchedUrl = manifestUrls.find((url) =>
-            result.canvasTarget.startsWith(url),
-          );
-          if (matchedUrl) {
-            manifestId = matchedUrl;
-          }
-        }
-
-        return { ...result, manifestId: manifestId };
-      });
-
-  set({ searchResults: taggedResults, activePanelTab: 'search' });
-  setSearchError(null);
-    } catch (err) {
-  setSearchError(buildDomainError('NETWORK_SEARCH_FETCH', toUserMessage(err) || 'Search failed. Please try again.', { recoverable: true }));
-    } finally {
-      set({ searching: false });
+    if (searchDebounceId) {
+      clearTimeout(searchDebounceId);
+      set({ searchDebounceId: null });
     }
+    if (searchAbortController) {
+      searchAbortController.abort();
+      set({ searchAbortController: null, searching: false });
+    }
+
+    const debounceId = setTimeout(async () => {
+      const controller = new AbortController();
+      set({ searchAbortController: controller, searching: true });
+      try {
+        const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
+        const results = await searchAnnotations(searchEndpoint, controller.signal);
+        const taggedResults = results.map((result) => {
+          let manifestId = '';
+          if (result.partOf) {
+            const matchedUrl = manifestUrls.find((url) => url === result.partOf);
+            if (matchedUrl) manifestId = matchedUrl;
+          }
+          if (!manifestId) {
+            const matchedUrl = manifestUrls.find((url) => result.canvasTarget.startsWith(url));
+            if (matchedUrl) manifestId = matchedUrl;
+          }
+          return { ...result, manifestId };
+        });
+        set({ searchResults: taggedResults, activePanelTab: 'search' });
+        setSearchError(null);
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          // ignore
+        } else {
+          setSearchError(buildDomainError('NETWORK_SEARCH_FETCH', toUserMessage(err) || 'Search failed. Please try again.', { recoverable: true }));
+        }
+      } finally {
+        set({ searching: false, searchAbortController: null });
+      }
+    }, 300);
+
+    set({ searchDebounceId: debounceId });
   },
 
   handleSearchResultClick: async (result: any) => {

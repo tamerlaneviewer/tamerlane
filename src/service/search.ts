@@ -9,6 +9,7 @@ import { createError } from '../errors/structured.ts';
  */
 export async function searchAnnotations(
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFSearchSnippet[]> {
   let snippets: IIIFSearchSnippet[] = [];
   let nextPageUrl: string | null = targetUrl;
@@ -18,7 +19,8 @@ export async function searchAnnotations(
   const hits: any[] = [];
 
   while (nextPageUrl && pageCount < MAX_PAGES) {
-    const resource = await fetchResource(nextPageUrl);
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  const resource = await fetchResource(nextPageUrl, { signal });
     if (resource.data.type !== 'AnnotationPage') {
       throw createError(
         'NETWORK_SEARCH_FETCH',
