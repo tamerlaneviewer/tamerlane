@@ -211,7 +211,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       set({ selectionPhase: 'ready' });
     }
 
-    const match = annotations.find((a) => a.id === pendingAnnotationId);
+  // Array scan (sufficient for expected small annotation lists)
+  const match = annotations.find(a => a.id === pendingAnnotationId);
     if (match) {
       debug(`Selected annotation ${pendingAnnotationId}`);
       set({
@@ -481,12 +482,13 @@ useIIIFStore.subscribe((state) => {
     current.annotationsForCanvasId !== previousState.annotationsForCanvasId ||
     current.pendingAnnotationId !== previousState.pendingAnnotationId;
   
-  if (conditionsChanged && 
-      current.viewerReady && 
-      current.annotations.length > 0 && 
-      current.annotationsForCanvasId === current.canvasId &&
-      (current.selectionPhase === 'pending' || current.selectionPhase === 'waiting_viewer' || current.selectionPhase === 'waiting_annotations')) {
-    // Conditions are now met, trigger selection
+  // If we're still idle but a pending annotation exists, run an initial evaluation
+  if (current.selectionPhase === 'idle') {
+    state.selectPendingAnnotation();
+  } else if (
+    // Otherwise only re-evaluate if relevant sources changed
+    conditionsChanged
+  ) {
     state.selectPendingAnnotation();
   }
   

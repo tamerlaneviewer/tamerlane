@@ -216,43 +216,7 @@ const App: React.FC = () => {
         ];
   // --- End language logic ---
 
-  // --- Annotation selection effect ---
-  const clearPendingAnnotation = useIIIFStore(
-    (state) => state.clearPendingAnnotation,
-  );
-  const annotationsForCanvasId = useIIIFStore(
-    (state) => state.annotationsForCanvasId,
-  );
-
-  useEffect(() => {
-    if (
-      pendingAnnotationId &&
-      annotations.length > 0 &&
-      viewerReady &&
-      annotationsForCanvasId === canvasId
-    ) {
-      const annotationToSelect = annotations.find(
-        (anno) => anno.id === pendingAnnotationId,
-      );
-      if (annotationToSelect) {
-        setSelectedAnnotation(annotationToSelect);
-        clearPendingAnnotation(); // Clear after processing
-      } else {
-        // If not found, clear the pending ID to prevent stale state
-        console.warn(`Annotation ${pendingAnnotationId} not found in list.`);
-        clearPendingAnnotation();
-      }
-    }
-  }, [
-    pendingAnnotationId,
-    annotations,
-    viewerReady,
-    setSelectedAnnotation,
-    clearPendingAnnotation,
-    canvasId,
-    annotationsForCanvasId,
-  ]);
-
+    // Selection logic now lives entirely in the store subscription (component effect removed).
   const handleAnnotationSelect = useCallback(
     (annotation: IIIFAnnotation) => {
       setSelectedAnnotation(annotation);
