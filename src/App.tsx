@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
   const setIiifContentUrl = useIIIFStore((state) => state.setIiifContentUrl);
   const setCanvasId = useIIIFStore((state) => state.setCanvasId);
+  const setAnnotationsLoading = useIIIFStore((state) => state.setAnnotationsLoading);
   const setSelectedImageIndex = useIIIFStore(
     (state) => state.setSelectedImageIndex,
   );
@@ -132,6 +133,8 @@ const App: React.FC = () => {
     let isStale = false;
 
     const manifestUrl = manifestUrls[selectedManifestIndex];
+  // Mark annotations as loading before starting fetch
+  setAnnotationsLoading(true);
     getAnnotationsForTarget(manifestUrl, canvasId)
       .then((annotations) => {
         if (!isStale) {
@@ -155,6 +158,7 @@ const App: React.FC = () => {
     selectedManifestIndex,
     manifestUrls,
     setAnnotations,
+  setAnnotationsLoading,
     setError,
   ]);
 
@@ -216,43 +220,7 @@ const App: React.FC = () => {
         ];
   // --- End language logic ---
 
-  // --- Annotation selection effect ---
-  const clearPendingAnnotation = useIIIFStore(
-    (state) => state.clearPendingAnnotation,
-  );
-  const annotationsForCanvasId = useIIIFStore(
-    (state) => state.annotationsForCanvasId,
-  );
-
-  useEffect(() => {
-    if (
-      pendingAnnotationId &&
-      annotations.length > 0 &&
-      viewerReady &&
-      annotationsForCanvasId === canvasId
-    ) {
-      const annotationToSelect = annotations.find(
-        (anno) => anno.id === pendingAnnotationId,
-      );
-      if (annotationToSelect) {
-        setSelectedAnnotation(annotationToSelect);
-        clearPendingAnnotation(); // Clear after processing
-      } else {
-        // If not found, clear the pending ID to prevent stale state
-        console.warn(`Annotation ${pendingAnnotationId} not found in list.`);
-        clearPendingAnnotation();
-      }
-    }
-  }, [
-    pendingAnnotationId,
-    annotations,
-    viewerReady,
-    setSelectedAnnotation,
-    clearPendingAnnotation,
-    canvasId,
-    annotationsForCanvasId,
-  ]);
-
+    // Selection logic now lives entirely in the store subscription (component effect removed).
   const handleAnnotationSelect = useCallback(
     (annotation: IIIFAnnotation) => {
       setSelectedAnnotation(annotation);

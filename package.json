@@ -1,6 +1,6 @@
 {
   "name": "tamerlane",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "homepage": "https://jptmoore.github.io/tamerlane",
   "dependencies": {
