@@ -93,7 +93,8 @@ describe('searchAnnotations', () => {
     const snippets = await searchAnnotations(MOCK_URL);
 
     // Assert
-    expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL);
+  // Called with URL and options object (signal / timeout)
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL, expect.any(Object));
     expect(mockFetchResource).toHaveBeenCalledTimes(1);
     expect(snippets).toHaveLength(1);
     expect(snippets[0]).toEqual({
@@ -174,8 +175,8 @@ describe('searchAnnotations', () => {
 
         // Assert
         expect(mockFetchResource).toHaveBeenCalledTimes(2);
-        expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE1);
-        expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE2);
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE1, expect.any(Object));
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE2, expect.any(Object));
         expect(snippets).toHaveLength(2);
         expect(snippets[0].exact).toBe('text1');
         expect(snippets[1].exact).toBe('text2');

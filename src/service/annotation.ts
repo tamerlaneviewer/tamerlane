@@ -71,7 +71,7 @@ async function processAnnotations(
 
     const nextPageUrl = currentParser.getAnnotationPage().next;
     if (nextPageUrl) {
-      const resource = await fetchResource(nextPageUrl, { signal });
+  const resource = await fetchResource(nextPageUrl, { signal });
       if (!resource.type || resource.type !== 'AnnotationPage') {
         throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
       }

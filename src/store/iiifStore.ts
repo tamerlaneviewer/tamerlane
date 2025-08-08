@@ -7,6 +7,7 @@ import {
 } from '../types/index.ts';
 import { searchAnnotations } from '../service/search.ts';
 import { toUserMessage } from '../errors/structured.ts';
+import { networkConfig } from '../config/appConfig.ts';
 
 interface DomainError {
   code: string;
@@ -352,7 +353,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       set({ searchAbortController: null, searching: false });
     }
 
-    const debounceId = setTimeout(async () => {
+  const executeSearch = async () => {
       const controller = new AbortController();
       set({ searchAbortController: controller, searching: true });
       try {
@@ -381,9 +382,16 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       } finally {
         set({ searching: false, searchAbortController: null });
       }
-    }, 300);
+    };
 
-    set({ searchDebounceId: debounceId });
+    const debounceMs = networkConfig.searchDebounceMs ?? 300;
+    if (debounceMs <= 0) {
+      // Immediate execution (test environment)
+      executeSearch();
+    } else {
+      const debounceId = setTimeout(executeSearch, debounceMs);
+      set({ searchDebounceId: debounceId });
+    }
   },
 
   handleSearchResultClick: async (result: any) => {

@@ -99,7 +99,7 @@ describe('useIIIFStore', () => {
 
       const state = useIIIFStore.getState();
       expect(mockSearchAnnotations).toHaveBeenCalledWith(
-        'https://example.com/search?q=test',
+        'https://example.com/search?q=test', expect.any(Object)
       );
 
       const expectedResults = [
