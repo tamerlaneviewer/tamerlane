@@ -32,6 +32,10 @@ interface IIIFState {
   searchUrl: string;
   selectedLanguage: string | null;
   searching: boolean;
+  isNavigating: boolean;
+  selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'ready' | 'selected' | 'failed';
+  selectionDebug: boolean;
+  selectionLog: string[];
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -56,7 +60,11 @@ interface IIIFState {
   setSearchUrl: (url: string) => void;
   setSelectedLanguage: (language: string | null) => void;
   setSearching: (searching: boolean) => void;
+  setNavigating: (isNavigating: boolean) => void;
   clearPendingAnnotation: () => void;
+  selectPendingAnnotation: () => void;
+  setSelectionDebug: (debug: boolean) => void;
+  clearSelectionLog: () => void;
 
   handleManifestUpdate: (
     firstManifest: IIIFManifest | null,
@@ -94,6 +102,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   searchUrl: '',
   selectedLanguage: 'en',
   searching: false,
+  isNavigating: false,
+  selectionPhase: 'idle',
+  selectionDebug: false,
+  selectionLog: [],
 
   setActivePanelTab: (tab) => set({ activePanelTab: tab }),
   setIiifContentUrl: (url) => set({ iiifContentUrl: url }),
@@ -110,9 +122,13 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       annotations: [],
       annotationsForCanvasId: null,
       viewerReady: false,
+      selectionPhase: 'idle', // Reset selection phase
+      pendingAnnotationId: null, // Clear any pending selection
     }),
-  setAnnotations: (annotations, canvasId) =>
-    set({ annotations: annotations, annotationsForCanvasId: canvasId }),
+  setAnnotations: (annotations, canvasId) => {
+    set({ annotations: annotations, annotationsForCanvasId: canvasId });
+    // Subscription will automatically handle selection evaluation
+  },
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
   setSearchResults: (results) => set({ searchResults: results }),
@@ -122,14 +138,94 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     set({ selectedAnnotation: annotation }),
   setPendingAnnotationId: (id) => set({ pendingAnnotationId: id }),
   setSelectedSearchResultId: (id) => set({ selectedSearchResultId: id }),
-  setViewerReady: (ready) => set({ viewerReady: ready }),
+  setViewerReady: (ready) => {
+    set({ viewerReady: ready });
+    // Subscription will automatically handle selection evaluation
+  },
   setAutocompleteUrl: (url) => set({ autocompleteUrl: url }),
   setSearchUrl: (url) => set({ searchUrl: url }),
   setSelectedLanguage: (language) => set({ selectedLanguage: language }),
   setSearching: (searching) => set({ searching: searching }),
+  setNavigating: (isNavigating) => set({ isNavigating }),
+  setSelectionDebug: (debug) => set({ selectionDebug: debug }),
+  clearSelectionLog: () => set({ selectionLog: [] }),
 
   clearPendingAnnotation: () => {
     set({ pendingAnnotationId: null, selectedSearchResultId: null });
+  },
+
+  selectPendingAnnotation: () => {
+    // --- This logic is moved from the external helper function ---
+    const {
+      pendingAnnotationId,
+      annotations,
+      viewerReady,
+      annotationsForCanvasId,
+      canvasId,
+      selectionPhase,
+      selectionDebug,
+    } = get();
+
+    const debug = (msg: string) => {
+      if (!selectionDebug) return;
+      // Correctly update state via set() to prevent mutation
+      set((state) => ({
+        selectionLog: [...state.selectionLog.slice(-199), msg],
+      }));
+    };
+
+    if (!pendingAnnotationId) {
+      if (selectionPhase !== 'idle' && selectionPhase !== 'selected') {
+        set({ selectionPhase: 'idle' });
+      }
+      return;
+    }
+
+    if (!viewerReady) {
+      if (selectionPhase !== 'waiting_viewer') {
+        debug(`Waiting for viewerReady for annotation ${pendingAnnotationId}`);
+        set({ selectionPhase: 'waiting_viewer' });
+      }
+      return;
+    }
+
+    if (annotationsForCanvasId !== canvasId) {
+      if (selectionPhase !== 'waiting_annotations') {
+        debug(
+          `Annotations not yet for current canvas (have ${annotationsForCanvasId} need ${canvasId})`,
+        );
+        set({ selectionPhase: 'waiting_annotations' });
+      }
+      return;
+    }
+
+    if (!annotations || annotations.length === 0) {
+      if (selectionPhase !== 'waiting_annotations') {
+        debug('Annotation array empty, waiting.');
+        set({ selectionPhase: 'waiting_annotations' });
+      }
+      return;
+    }
+
+    if (selectionPhase !== 'ready' && selectionPhase !== 'pending') {
+      set({ selectionPhase: 'ready' });
+    }
+
+    const match = annotations.find((a) => a.id === pendingAnnotationId);
+    if (match) {
+      debug(`Selected annotation ${pendingAnnotationId}`);
+      set({
+        selectedAnnotation: match,
+        pendingAnnotationId: null,
+        selectionPhase: 'selected',
+      });
+    } else {
+      debug(`Failed to locate annotation ${pendingAnnotationId} among ${annotations.length}`);
+      set({
+        pendingAnnotationId: null,
+        selectionPhase: 'failed',
+      });
+    }
   },
 
   handleManifestUpdate: (firstManifest, manifestUrls, total, collection) => {
@@ -219,10 +315,14 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     const { manifestId, canvasTarget, annotationId } = result;
     const state = get();
 
-    // Prevent multiple jumps if one is already in progress
-    if (state.searching) return;
+    // Use the new isNavigating flag
+    if (state.isNavigating) return;
 
-    set({ searching: true, selectedSearchResultId: result.id });
+    set({ 
+      isNavigating: true, 
+      selectedSearchResultId: result.id,
+      selectionPhase: 'pending' // Set initial phase
+    });
 
     try {
       // Helper function to perform the jump once the manifest is ready
@@ -251,7 +351,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             pendingAnnotationId: annotationId,
             selectedAnnotation: null,
             activePanelTab: 'annotations',
+            selectionPhase: 'pending', // Re-assert phase for clarity
           });
+          // Trigger selection evaluation immediately after state update
+          const state = get();
+          state.selectPendingAnnotation();
         } else {
           // Otherwise, switch the image and set the pending ID.
           set({
@@ -260,8 +364,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             pendingAnnotationId: annotationId,
             selectedAnnotation: null,
             activePanelTab: 'annotations',
-            viewerReady: false, // Important: reset viewer readiness
+            viewerReady: false, // This will trigger the selection logic later
+            selectionPhase: 'pending',
           });
+          // No setTimeout needed; logic is now correctly triggered by setAnnotations/setViewerReady.
         }
       };
 
@@ -286,7 +392,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       console.error('Failed to handle search result click:', err);
       set({ error: 'Could not jump to the selected search result.' });
     } finally {
-      set({ searching: false });
+      set({ isNavigating: false });
     }
   },
 
@@ -316,6 +422,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         searchResults: preserveSearchResults ? state.searchResults : [],
         selectedSearchResultId: preserveSearchResults ? state.selectedSearchResultId : null,
         pendingAnnotationId: null, // Always clear pending annotation when switching manifests
+        selectionPhase: 'idle', // Reset selection phase
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
           metadata: firstManifest?.info?.metadata || [],
@@ -342,3 +449,55 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     }
   },
 }));
+
+// Auto-trigger selection when conditions are met
+let previousState = {
+  pendingAnnotationId: null as string | null,
+  annotations: [] as any[],
+  viewerReady: false,
+  annotationsForCanvasId: null as string | null,
+  canvasId: null as string | null,
+  selectionPhase: 'idle' as string,
+};
+
+useIIIFStore.subscribe((state) => {
+  const current = {
+    pendingAnnotationId: state.pendingAnnotationId,
+    annotations: state.annotations,
+    viewerReady: state.viewerReady,
+    annotationsForCanvasId: state.annotationsForCanvasId,
+    canvasId: state.canvasId,
+    selectionPhase: state.selectionPhase,
+  };
+  
+  // Only trigger if we have a pending annotation and conditions have changed
+  if (!current.pendingAnnotationId) {
+    previousState = current;
+    return;
+  }
+  
+  // Check if any of the key conditions changed and we might now be ready
+  const conditionsChanged = 
+    current.viewerReady !== previousState.viewerReady ||
+    current.annotations !== previousState.annotations ||
+    current.annotationsForCanvasId !== previousState.annotationsForCanvasId ||
+    current.pendingAnnotationId !== previousState.pendingAnnotationId;
+  
+  if (conditionsChanged && 
+      current.viewerReady && 
+      current.annotations.length > 0 && 
+      current.annotationsForCanvasId === current.canvasId &&
+      (current.selectionPhase === 'pending' || current.selectionPhase === 'waiting_viewer' || current.selectionPhase === 'waiting_annotations')) {
+    // Conditions are now met, trigger selection
+    state.selectPendingAnnotation();
+  }
+  
+  previousState = current;
+});
+
+// This function is now obsolete and can be removed.
+/*
+function evaluatePendingSelection() {
+  ...
+}
+*/
