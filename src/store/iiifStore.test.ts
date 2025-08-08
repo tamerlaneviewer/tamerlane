@@ -99,7 +99,7 @@ describe('useIIIFStore', () => {
 
       const state = useIIIFStore.getState();
       expect(mockSearchAnnotations).toHaveBeenCalledWith(
-        'https://example.com/search?q=test',
+        'https://example.com/search?q=test', expect.any(Object)
       );
 
       const expectedResults = [
@@ -112,8 +112,8 @@ describe('useIIIFStore', () => {
       ];
       expect(state.searchResults).toEqual(expectedResults);
 
-      expect(state.activePanelTab).toBe('search');
-      expect(state.error).toBeNull();
+  expect(state.activePanelTab).toBe('search');
+  expect(state.searchError).toBeNull();
     });
 
     it('should correctly tag results using partOf', async () => {
@@ -173,7 +173,7 @@ describe('useIIIFStore', () => {
       });
 
       const state = useIIIFStore.getState();
-      expect(state.error).toBe('Search failed. Please try again.');
+  expect(state.searchError?.message).toBe('Search failed');
       expect(state.searchResults).toEqual([]);
     });
   });

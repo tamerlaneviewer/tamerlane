@@ -1,7 +1,6 @@
 import { searchAnnotations } from './search';
 import * as resource from './resource';
 import { Maniiifest } from 'maniiifest';
-import { TamerlaneResourceError } from '../errors';
 
 // Mock the dependencies
 jest.mock('./resource');
@@ -94,7 +93,8 @@ describe('searchAnnotations', () => {
     const snippets = await searchAnnotations(MOCK_URL);
 
     // Assert
-    expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL);
+  // Called with URL and options object (signal / timeout)
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL, expect.any(Object));
     expect(mockFetchResource).toHaveBeenCalledTimes(1);
     expect(snippets).toHaveLength(1);
     expect(snippets[0]).toEqual({
@@ -110,7 +110,7 @@ describe('searchAnnotations', () => {
     });
   });
 
-  it('should throw TamerlaneResourceError for invalid resource type', async () => {
+  it('should return a structured error for invalid resource type', async () => {
     // Arrange
     mockFetchResource.mockResolvedValue({
       type: 'Manifest', // Invalid type
@@ -118,10 +118,10 @@ describe('searchAnnotations', () => {
     });
 
     // Act & Assert
-    await expect(searchAnnotations(MOCK_URL)).rejects.toThrow(TamerlaneResourceError);
-    await expect(searchAnnotations(MOCK_URL)).rejects.toThrow(
-      `Invalid or empty response received from ${MOCK_URL}`
-    );
+    await expect(searchAnnotations(MOCK_URL)).rejects.toMatchObject({
+      code: 'NETWORK_SEARCH_FETCH',
+      message: `Invalid or empty response received from ${MOCK_URL}`,
+    });
   });
 
   it('should handle multiple pages of annotations', async () => {
@@ -175,8 +175,8 @@ describe('searchAnnotations', () => {
 
         // Assert
         expect(mockFetchResource).toHaveBeenCalledTimes(2);
-        expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE1);
-        expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE2);
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE1, expect.any(Object));
+  expect(mockFetchResource).toHaveBeenCalledWith(MOCK_URL_PAGE2, expect.any(Object));
         expect(snippets).toHaveLength(2);
         expect(snippets[0].exact).toBe('text1');
         expect(snippets[1].exact).toBe('text2');

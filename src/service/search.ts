@@ -1,14 +1,15 @@
 import { fetchResource } from './resource.ts';
 import { Maniiifest } from 'maniiifest';
 import { IIIFSearchSnippet } from '../types/index.ts'; // Adjust the import path
-import { TamerlaneResourceError } from '../errors/index.ts';
 import { maxSearchPages } from '../config/appConfig.ts'; // Import the max pages limit
+import { createError } from '../errors/structured.ts';
 
 /**
  * Fetch annotations and extract snippets.
  */
 export async function searchAnnotations(
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFSearchSnippet[]> {
   let snippets: IIIFSearchSnippet[] = [];
   let nextPageUrl: string | null = targetUrl;
@@ -18,10 +19,13 @@ export async function searchAnnotations(
   const hits: any[] = [];
 
   while (nextPageUrl && pageCount < MAX_PAGES) {
-    const resource = await fetchResource(nextPageUrl);
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  const resource = await fetchResource(nextPageUrl, { signal });
     if (resource.data.type !== 'AnnotationPage') {
-      throw new TamerlaneResourceError(
+      throw createError(
+        'NETWORK_SEARCH_FETCH',
         `Invalid or empty response received from ${nextPageUrl}`,
+        { cause: resource, recoverable: true }
       );
     }
 

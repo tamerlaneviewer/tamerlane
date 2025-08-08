@@ -1,5 +1,3 @@
-import { TamerlaneResourceError } from '../errors/index.ts';
-
 const TEST_URL = 'https://example.com/iiif/manifest.json';
 
 describe('fetchResource', () => {
@@ -51,34 +49,37 @@ describe('fetchResource', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('throws a generic error on HTTP error due to catch block', async () => {
+  it('throws a structured NETWORK_MANIFEST_FETCH error on HTTP error', async () => {
     // @ts-ignore
     global.fetch.mockResolvedValue({
       ok: false,
       status: 404,
       json: async () => ({}),
     });
-
-    // The original code catches the TamerlaneResourceError and re-throws a generic Error.
-    await expect(fetchResource(TEST_URL)).rejects.toThrow('Error fetching IIIF resource');
+    await expect(fetchResource(TEST_URL)).rejects.toMatchObject({
+      code: 'NETWORK_MANIFEST_FETCH',
+      message: expect.stringContaining('HTTP error 404'),
+    });
   });
 
-  it('throws a generic error on invalid IIIF resource type due to catch block', async () => {
+  it('throws a structured PARSING_MANIFEST error on invalid IIIF resource type', async () => {
     // @ts-ignore
     global.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ type: 'NotAType' }),
     });
-
-    // The original code catches the specific error and re-throws a generic Error.
-    await expect(fetchResource(TEST_URL)).rejects.toThrow('Error fetching IIIF resource');
+    await expect(fetchResource(TEST_URL)).rejects.toMatchObject({
+      code: 'PARSING_MANIFEST',
+      message: expect.stringContaining('Invalid IIIF resource type'),
+    });
   });
 
-  it('throws on fetch failure', async () => {
+  it('throws structured NETWORK_MANIFEST_FETCH on network failure', async () => {
     // @ts-ignore
     global.fetch.mockRejectedValue(new Error('Network error'));
-
-    // The original code catches the network error and re-throws a generic Error.
-    await expect(fetchResource(TEST_URL)).rejects.toThrow('Error fetching IIIF resource');
+    await expect(fetchResource(TEST_URL)).rejects.toMatchObject({
+      code: 'NETWORK_MANIFEST_FETCH',
+      message: expect.stringContaining('Error fetching IIIF resource'),
+    });
   });
 });

@@ -7,6 +7,7 @@ import { IIIFAnnotation, IIIFSearchSnippet } from '../types/index.ts';
 interface AnnotationsPanelProps {
   annotations: IIIFAnnotation[];
   searchResults: IIIFSearchSnippet[];
+  // Removed annotationsError and searchError props
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
   activeTab: 'annotations' | 'search';
   setActiveTab: (tab: 'annotations' | 'search') => void;
@@ -32,6 +33,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
+  // Removed annotationsError and searchError from props
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollPositions = useRef<{ annotations: number; search: number }>({
@@ -94,6 +96,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         ref={scrollContainerRef}
         className="flex-grow overflow-y-auto p-3 max-h-[calc(100vh-100px)]"
       >
+  {/* Removed error banners for annotations and search */}
         {activeTab === 'annotations' ? (
           annotations.length === 0 ? (
             <p className="text-gray-500 text-center">

@@ -5,7 +5,7 @@ import {
   IIIFCanvas,
   TamerlaneResource,
 } from '../types/index.ts';
-import { TamerlaneParseError } from '../errors/index.ts';
+import { createError } from '../errors/structured.ts';
 import { fetchResource } from './resource.ts';
 import { getImage } from './image.ts';
 
@@ -13,7 +13,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   const parser = new Maniiifest(jsonData);
   const type = parser.getSpecificationType();
   if (type !== 'Manifest') {
-    throw new TamerlaneParseError('Invalid IIIF resource type: ' + type);
+  throw createError('PARSING_MANIFEST', 'Invalid IIIF resource type: ' + type, { recoverable: false });
   }
 
   const labelData: any = parser.getManifestLabel();
@@ -37,11 +37,11 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     const annoParser = new Maniiifest(anno, 'Annotation');
     const targets = Array.from(annoParser.iterateAnnotationTarget());
     if (targets.length !== 1) {
-      throw new TamerlaneParseError('Expected a single canvas target');
+  throw createError('PARSING_MANIFEST', 'Expected a single canvas target');
     }
     const canvasTarget = targets[0];
     if (typeof canvasTarget !== 'string') {
-      throw new TamerlaneParseError('Expected canvas target to be a string');
+  throw createError('PARSING_MANIFEST', 'Expected canvas target to be a string');
     }
 
     for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
@@ -73,9 +73,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   const parser = new Maniiifest(jsonData);
 
   if (parser.getSpecificationType() !== 'Collection') {
-    throw new TamerlaneParseError(
-      'Invalid IIIF resource type: Collection expected',
-    );
+  throw createError('PARSING_MANIFEST', 'Invalid IIIF resource type: Collection expected');
   }
   const manifestUrls: string[] = [];
   let firstManifest: IIIFManifest | null = null;
@@ -174,7 +172,7 @@ export async function parseResource(url: string): Promise<TamerlaneResource> {
     return { firstManifest, manifestUrls, total, collection };
   }
 
-  throw new TamerlaneParseError('Unknown IIIF resource type');
+  throw createError('PARSING_MANIFEST', 'Unknown IIIF resource type');
 }
 
 // constructManifests("https://iiif.io/api/cookbook/recipe/0266-full-canvas-annotation/manifest.json")

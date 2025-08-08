@@ -6,6 +6,17 @@ import {
   IIIFAnnotation,
 } from '../types/index.ts';
 import { searchAnnotations } from '../service/search.ts';
+import { toUserMessage } from '../errors/structured.ts';
+import { networkConfig } from '../config/appConfig.ts';
+
+interface DomainError {
+  code: string;
+  message: string;
+  recoverable?: boolean;
+  detail?: string;
+  at: number; // timestamp
+}
+
 
 interface IIIFState {
   activePanelTab: 'annotations' | 'search';
@@ -23,7 +34,9 @@ interface IIIFState {
   manifestMetadata: any;
   collectionMetadata: any;
   searchResults: any[];
-  error: string | null;
+  manifestError: DomainError | null;
+  annotationsError: DomainError | null;
+  searchError: DomainError | null;
   showUrlDialog: boolean;
   selectedAnnotation: IIIFAnnotation | null;
   pendingAnnotationId: string | null;
@@ -37,6 +50,8 @@ interface IIIFState {
   selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'selected' | 'failed';
   selectionDebug: boolean;
   selectionLog: string[];
+  searchAbortController: AbortController | null;
+  searchDebounceId: any;
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -52,7 +67,11 @@ interface IIIFState {
   setManifestMetadata: (metadata: any) => void;
   setCollectionMetadata: (metadata: any) => void;
   setSearchResults: (results: any[]) => void;
-  setError: (error: string | null) => void;
+  setManifestError: (err: DomainError | null) => void;
+  setAnnotationsError: (err: DomainError | null) => void;
+  setSearchError: (err: DomainError | null) => void;
+  buildDomainError: (code: string, message: string, opts?: Partial<DomainError>) => DomainError;
+  clearAllErrors: () => void;
   setShowUrlDialog: (show: boolean) => void;
   setSelectedAnnotation: (annotation: IIIFAnnotation | null) => void;
   setPendingAnnotationId: (id: string | null) => void;
@@ -109,6 +128,23 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   selectionPhase: 'idle',
   selectionDebug: false,
   selectionLog: [],
+  manifestError: null,
+  annotationsError: null,
+  searchError: null,
+  searchAbortController: null as AbortController | null,
+  searchDebounceId: null as any,
+
+  setManifestError: (err) => set({ manifestError: err }),
+  setAnnotationsError: (err) => set({ annotationsError: err }),
+  setSearchError: (err) => set({ searchError: err }),
+  buildDomainError: (code, message, opts = {}) => ({
+    code,
+    message,
+    recoverable: opts.recoverable,
+    detail: opts.detail,
+    at: Date.now(),
+  }),
+  clearAllErrors: () => set({ manifestError: null, annotationsError: null, searchError: null }),
 
   setActivePanelTab: (tab) => set({ activePanelTab: tab }),
   setIiifContentUrl: (url) => set({ iiifContentUrl: url }),
@@ -159,7 +195,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
   setSearchResults: (results) => set({ searchResults: results }),
-  setError: (error) => set({ error: error }),
   setShowUrlDialog: (show) => set({ showUrlDialog: show }),
   setSelectedAnnotation: (annotation) =>
     set({ selectedAnnotation: annotation }),
@@ -301,58 +336,68 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   },
 
   handleSearch: async (query) => {
-    if (get().searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
-    const { searchUrl, manifestUrls } = get();
+    const { searchUrl, manifestUrls, buildDomainError, setSearchError, searchAbortController, searchDebounceId } = get();
     if (!searchUrl) {
-      set({ error: 'This resource does not support content search.' });
+      setSearchError(buildDomainError('SEARCH_UNSUPPORTED', 'This resource does not support content search.', { recoverable: false }));
       return;
     }
 
-    try {
-      set({ searching: true });
-      const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
-      const results = await searchAnnotations(searchEndpoint);
+    if (searchDebounceId) {
+      clearTimeout(searchDebounceId);
+      set({ searchDebounceId: null });
+    }
+    if (searchAbortController) {
+      searchAbortController.abort();
+      set({ searchAbortController: null, searching: false });
+    }
 
-      // --- Prioritize `partOf` and fall back to URL matching ---
-      const taggedResults = results.map((result) => {
-        let manifestId = '';
-
-        // Step 1: Trust the `partOf` property if it's a valid manifest URL
-        if (result.partOf) {
-          const matchedUrl = manifestUrls.find(
-            (url) => url === result.partOf,
-          );
-          if (matchedUrl) {
-            manifestId = matchedUrl;
+  const executeSearch = async () => {
+      const controller = new AbortController();
+      set({ searchAbortController: controller, searching: true });
+      try {
+        const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
+        const results = await searchAnnotations(searchEndpoint, controller.signal);
+        const taggedResults = results.map((result) => {
+          let manifestId = '';
+          if (result.partOf) {
+            const matchedUrl = manifestUrls.find((url) => url === result.partOf);
+            if (matchedUrl) manifestId = matchedUrl;
           }
-        }
-
-        // Step 2: If `partOf` was missing or invalid, fall back to prefix matching
-        if (!manifestId) {
-          const matchedUrl = manifestUrls.find((url) =>
-            result.canvasTarget.startsWith(url),
-          );
-          if (matchedUrl) {
-            manifestId = matchedUrl;
+          if (!manifestId) {
+            const matchedUrl = manifestUrls.find((url) => result.canvasTarget.startsWith(url));
+            if (matchedUrl) manifestId = matchedUrl;
           }
+          return { ...result, manifestId };
+        });
+        set({ searchResults: taggedResults, activePanelTab: 'search' });
+        setSearchError(null);
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          // ignore
+        } else {
+          setSearchError(buildDomainError('NETWORK_SEARCH_FETCH', toUserMessage(err) || 'Search failed. Please try again.', { recoverable: true }));
         }
+      } finally {
+        set({ searching: false, searchAbortController: null });
+      }
+    };
 
-        return { ...result, manifestId: manifestId };
-      });
-
-      set({ searchResults: taggedResults, activePanelTab: 'search' });
-    } catch {
-      set({ error: 'Search failed. Please try again.' });
-    } finally {
-      set({ searching: false });
+    const debounceMs = networkConfig.searchDebounceMs ?? 300;
+    if (debounceMs <= 0) {
+      // Immediate execution (test environment)
+      executeSearch();
+    } else {
+      const debounceId = setTimeout(executeSearch, debounceMs);
+      set({ searchDebounceId: debounceId });
     }
   },
 
   handleSearchResultClick: async (result: any) => {
-    const { manifestId, canvasTarget, annotationId } = result;
-    const state = get();
+  const { manifestId, canvasTarget, annotationId } = result;
+  const state = get();
+  const { setManifestError, buildDomainError } = state;
 
     // Use the new isNavigating flag
     if (state.isNavigating) return;
@@ -368,7 +413,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       const jumpToResult = () => {
         const targetManifest = get().currentManifest;
         if (!targetManifest) {
-          set({ error: 'No manifest loaded for search result.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'No manifest loaded for search result.', { recoverable: true }));
           return;
         }
 
@@ -377,7 +422,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         );
 
         if (newImageIndex === -1) {
-          set({ error: 'Canvas for search result not found in manifest.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'Canvas for search result not found in manifest.', { recoverable: true }));
           return;
         }
 
@@ -419,14 +464,14 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           await state.fetchManifestByIndex(manifestIndex, true);
           jumpToResult(); // Jump after the new manifest is loaded
         } else {
-          set({ error: 'Manifest for search result not found.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'Manifest for search result not found.', { recoverable: true }));
         }
       } else {
         jumpToResult(); // Jump within the current manifest
       }
     } catch (err) {
       console.error('Failed to handle search result click:', err);
-      set({ error: 'Could not jump to the selected search result.' });
+      setManifestError(buildDomainError('PARSING_MANIFEST', toUserMessage(err) || 'Could not jump to the selected search result.', { recoverable: true }));
     } finally {
       set({ isNavigating: false });
     }
@@ -439,13 +484,14 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       index === get().selectedManifestIndex
     )
       return;
-    const manifestUrl = get().manifestUrls[index];
+  const manifestUrl = get().manifestUrls[index];
+  const { buildDomainError, setManifestError } = get();
 
     try {
       // The `collection` variable will be null here, which is the source of the issue.
       const { firstManifest } = await parseResource(manifestUrl);
       if (!firstManifest) {
-        set({ error: 'Failed to load selected manifest.' });
+        setManifestError(buildDomainError('NETWORK_MANIFEST_FETCH', 'Failed to load selected manifest.', { recoverable: true }));
         return;
       }
       set((state) => {
@@ -489,7 +535,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
-      set({ error: 'Failed to load selected manifest.' });
+      setManifestError(buildDomainError('NETWORK_MANIFEST_FETCH', toUserMessage(err) || 'Failed to load selected manifest.', { recoverable: true }));
     }
   },
 }));
