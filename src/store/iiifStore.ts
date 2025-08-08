@@ -343,20 +343,17 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         }
 
         // If we are already on the correct image, just set the pending ID.
-        if (
-          newImageIndex === get().selectedImageIndex &&
-          get().canvasId === canvasTarget
-        ) {
-          set({
-            pendingAnnotationId: annotationId,
-            selectedAnnotation: null,
-            activePanelTab: 'annotations',
-            selectionPhase: 'pending', // Re-assert phase for clarity
-          });
-          // Trigger selection evaluation immediately after state update
-          const state = get();
-          state.selectPendingAnnotation();
-        } else {
+          if (
+            newImageIndex === get().selectedImageIndex &&
+            get().canvasId === canvasTarget
+          ) {
+            set({
+              pendingAnnotationId: annotationId,
+              selectedAnnotation: null,
+              activePanelTab: 'annotations',
+              selectionPhase: 'pending', // Re-assert phase for clarity
+            });
+          } else {
           // Otherwise, switch the image and set the pending ID.
           set({
             selectedImageIndex: newImageIndex,
@@ -415,6 +412,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       set((state) => ({
         selectedAnnotation: null,
         annotations: [],
+        annotationsForCanvasId: null, // Explicit reset to avoid stale canvas association
         viewerReady: false,
         selectedManifestIndex: index,
         selectedImageIndex: 0,
