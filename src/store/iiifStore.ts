@@ -13,6 +13,7 @@ interface IIIFState {
   currentManifest: IIIFManifest | null;
   currentCollection: IIIFCollection | null;
   canvasId: string;
+  annotationsLoading: boolean; // true while fetching annotations for current canvas
   manifestUrls: string[];
   totalManifests: number;
   selectedManifestIndex: number;
@@ -33,7 +34,8 @@ interface IIIFState {
   selectedLanguage: string | null;
   searching: boolean;
   isNavigating: boolean;
-  selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'ready' | 'selected' | 'failed';
+  // Removed transient 'ready' phase for simplicity; direct transition to selected/failed
+  selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'selected' | 'failed';
   selectionDebug: boolean;
   selectionLog: string[];
 
@@ -42,6 +44,7 @@ interface IIIFState {
   setCurrentManifest: (manifest: IIIFManifest | null) => void;
   setCurrentCollection: (collection: IIIFCollection | null) => void;
   setCanvasId: (id: string) => void;
+  setAnnotationsLoading: (loading: boolean) => void;
   setManifestUrls: (urls: string[]) => void;
   setTotalManifests: (total: number) => void;
   setSelectedManifestIndex: (index: number) => void;
@@ -83,6 +86,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   currentManifest: null,
   currentCollection: null,
   canvasId: '',
+  annotationsLoading: false,
   manifestUrls: [],
   totalManifests: 0,
   selectedManifestIndex: 0,
@@ -112,6 +116,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setCurrentManifest: (manifest) => set({ currentManifest: manifest }),
   setCurrentCollection: (collection) => set({ currentCollection: collection }),
   setCanvasId: (id) => set({ canvasId: id }),
+  setAnnotationsLoading: (loading) => set({ annotationsLoading: loading }),
   setManifestUrls: (urls) => set({ manifestUrls: urls }),
   setTotalManifests: (total) => set({ totalManifests: total }),
   setSelectedManifestIndex: (index) => set({ selectedManifestIndex: index }),
@@ -122,11 +127,12 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       annotations: [],
       annotationsForCanvasId: null,
       viewerReady: false,
+      annotationsLoading: true,
       selectionPhase: 'idle', // Reset selection phase
-      pendingAnnotationId: null, // Clear any pending selection
+      pendingAnnotationId: null, // Clear any pending selection (changing image cancels prior intent)
     }),
   setAnnotations: (annotations, canvasId) => {
-    set({ annotations: annotations, annotationsForCanvasId: canvasId });
+    set({ annotations: annotations, annotationsForCanvasId: canvasId, annotationsLoading: false });
     // Subscription will automatically handle selection evaluation
   },
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
@@ -205,10 +211,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         set({ selectionPhase: 'waiting_annotations' });
       }
       return;
-    }
-
-    if (selectionPhase !== 'ready' && selectionPhase !== 'pending') {
-      set({ selectionPhase: 'ready' });
     }
 
   // Array scan (sufficient for expected small annotation lists)
@@ -415,6 +417,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         annotations: [],
         annotationsForCanvasId: null, // Explicit reset to avoid stale canvas association
         viewerReady: false,
+        annotationsLoading: true,
         selectedManifestIndex: index,
         selectedImageIndex: 0,
         currentManifest: firstManifest,
@@ -422,6 +425,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         selectedSearchResultId: preserveSearchResults ? state.selectedSearchResultId : null,
         pendingAnnotationId: null, // Always clear pending annotation when switching manifests
         selectionPhase: 'idle', // Reset selection phase
+        // Automatically set the canvasId to the first image's canvasTarget (if available)
+        canvasId: firstManifest.images?.[0]?.canvasTarget || '',
         manifestMetadata: {
           label: firstManifest?.info?.name || '',
           metadata: firstManifest?.info?.metadata || [],
@@ -454,6 +459,7 @@ let previousState = {
   pendingAnnotationId: null as string | null,
   annotations: [] as any[],
   viewerReady: false,
+  annotationsLoading: false,
   annotationsForCanvasId: null as string | null,
   canvasId: null as string | null,
   selectionPhase: 'idle' as string,
@@ -464,6 +470,7 @@ useIIIFStore.subscribe((state) => {
     pendingAnnotationId: state.pendingAnnotationId,
     annotations: state.annotations,
     viewerReady: state.viewerReady,
+  annotationsLoading: state.annotationsLoading,
     annotationsForCanvasId: state.annotationsForCanvasId,
     canvasId: state.canvasId,
     selectionPhase: state.selectionPhase,
@@ -478,6 +485,7 @@ useIIIFStore.subscribe((state) => {
   // Check if any of the key conditions changed and we might now be ready
   const conditionsChanged = 
     current.viewerReady !== previousState.viewerReady ||
+  current.annotationsLoading !== previousState.annotationsLoading ||
     current.annotations !== previousState.annotations ||
     current.annotationsForCanvasId !== previousState.annotationsForCanvasId ||
     current.pendingAnnotationId !== previousState.pendingAnnotationId;

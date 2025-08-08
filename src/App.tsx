@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
   const setIiifContentUrl = useIIIFStore((state) => state.setIiifContentUrl);
   const setCanvasId = useIIIFStore((state) => state.setCanvasId);
+  const setAnnotationsLoading = useIIIFStore((state) => state.setAnnotationsLoading);
   const setSelectedImageIndex = useIIIFStore(
     (state) => state.setSelectedImageIndex,
   );
@@ -132,6 +133,8 @@ const App: React.FC = () => {
     let isStale = false;
 
     const manifestUrl = manifestUrls[selectedManifestIndex];
+  // Mark annotations as loading before starting fetch
+  setAnnotationsLoading(true);
     getAnnotationsForTarget(manifestUrl, canvasId)
       .then((annotations) => {
         if (!isStale) {
@@ -155,6 +158,7 @@ const App: React.FC = () => {
     selectedManifestIndex,
     manifestUrls,
     setAnnotations,
+  setAnnotationsLoading,
     setError,
   ]);
 

@@ -13,6 +13,7 @@
 | `selectedManifestIndex`       | The index of the currently selected manifest in the `manifestUrls` list.                      | App, Header             |
 | `selectedImageIndex`          | The index of the currently selected image/canvas within the `currentManifest`.                | App, Header             |
 | `annotations`                 | A list of annotations for the current canvas.                                                 | RightPanel              |
+| `annotationsLoading`          | True while annotations for the active canvas are being fetched (distinct from empty results). | RightPanel, App         |
 | `manifestMetadata`            | Metadata for the `currentManifest` (label, provider, etc.).                                   | LeftPanel               |
 | `collectionMetadata`          | Metadata for the parent collection, if one exists.                                            | LeftPanel               |
 | `searchResults`               | The list of results from a content search.                                                    | RightPanel              |
@@ -29,7 +30,7 @@
 | `isNavigating`                | A flag to indicate navigation between images/manifests is in progress, distinct from searching. | App, Header             |
 | `annotationsForCanvasId`      | The canvas ID for the currently loaded `annotations`. Prevents race conditions.               | App, iiifStore          |
 | `currentCollection`           | The fully loaded IIIF collection object currently being displayed.                            | App, LeftPanel          |
-| `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `waiting_viewer`, `waiting_annotations`, `ready`, `selected`, `failed`). | iiifStore               |
+| `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `waiting_viewer`, `waiting_annotations`, `selected`, `failed`). | iiifStore               |
 | `selectionDebug`              | A boolean flag that enables detailed logging of the selection process.                        | iiifStore               |
 | `selectionLog`                | An array of debug messages tracking selection attempts (when `selectionDebug` is enabled).   | iiifStore               |
 
@@ -62,24 +63,26 @@ Annotation selection is now fully centralized inside the store; there is **no co
 
 Flow summary:
 1. **Pending set**: When `pendingAnnotationId` is set (e.g. from a search result click), the subscription immediately invokes `selectPendingAnnotation()`. If prerequisites are missing, the phase transitions to `waiting_viewer` or `waiting_annotations`.
-2. **Prerequisites evolve**: Subsequent changes to `viewerReady`, `annotations`, or `annotationsForCanvasId` re-trigger evaluation only if they actually changed since last check.
-3. **Conditions satisfied**: When all are true (viewer ready, annotations loaded for current canvas, non-empty list) a lookup scans the annotations array for the pending ID.
-4. **Resolution**: Match found → phase `selected`, state updates `selectedAnnotation` and clears `pendingAnnotationId`. Not found → phase `failed` and pending cleared (prevents stale looping).
+2. **Prerequisites evolve**: Subsequent changes to `viewerReady`, `annotations`, `annotationsLoading`, or `annotationsForCanvasId` re-trigger evaluation only when a relevant input changed.
+3. **Conditions satisfied**: When viewer is ready, annotations are finished loading for the current canvas, and the list is non-empty, a scan attempts to locate the pending ID.
+4. **Resolution**: Match found → phase `selected`, `selectedAnnotation` set, `pendingAnnotationId` cleared. No match → phase `failed`, pending cleared.
 
 Key guarantees:
-- Deterministic: Order of viewer readiness vs annotation arrival no longer matters.
-- Idempotent: Repeated evaluations without state change do nothing (no infinite loops).
-- Simple: Array scan is retained (dataset expected to be small) after reverting a previously trialed map structure.
-- Transparent: `selectionPhase` exposes progress externally for debugging or UI affordances.
+* Deterministic ordering independent of fetch / viewer timing.
+* No transient "ready" phase (removed) — reduces noise and simplifies testing.
+* Transparent progress via `selectionPhase` and optional debug log.
 
 Phase meanings:
-- `idle`: No pending selection.
-- `pending`: Initial state after a request (may transition immediately to a waiting_* phase).
-- `waiting_viewer`: Waiting for image viewer readiness.
-- `waiting_annotations`: Waiting for annotations (or correct canvas annotations) to be available.
-- `ready`: Transient internal checkpoint just before attempting resolution.
-- `selected`: Successful resolution.
-- `failed`: Annotation ID not present in loaded list; system cleaned up.
+* `idle`: No pending selection.
+* `pending`: A selection intent exists; prerequisites not yet validated.
+* `waiting_viewer`: Awaiting viewer readiness.
+* `waiting_annotations`: Awaiting annotation retrieval (or correct-canvas alignment) — also covers the period while `annotationsLoading` is true.
+* `selected`: Annotation successfully matched.
+* `failed`: Annotation ID absent in the loaded set; intent cleared.
+
+Viewer / annotation interplay:
+* `annotationsLoading` differentiates "not arrived yet" from "arrived empty" (an empty array with loading=false allows a fast fail to `failed`).
+* Switching manifest or image resets `viewerReady` to false and sets `annotationsLoading` true until the new fetch completes.
 
 ---
 
