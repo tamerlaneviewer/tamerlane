@@ -1,7 +1,6 @@
 import { searchAnnotations } from './search';
 import * as resource from './resource';
 import { Maniiifest } from 'maniiifest';
-import { TamerlaneResourceError } from '../errors';
 
 // Mock the dependencies
 jest.mock('./resource');
@@ -110,7 +109,7 @@ describe('searchAnnotations', () => {
     });
   });
 
-  it('should throw TamerlaneResourceError for invalid resource type', async () => {
+  it('should return a structured error for invalid resource type', async () => {
     // Arrange
     mockFetchResource.mockResolvedValue({
       type: 'Manifest', // Invalid type
@@ -118,10 +117,10 @@ describe('searchAnnotations', () => {
     });
 
     // Act & Assert
-    await expect(searchAnnotations(MOCK_URL)).rejects.toThrow(TamerlaneResourceError);
-    await expect(searchAnnotations(MOCK_URL)).rejects.toThrow(
-      `Invalid or empty response received from ${MOCK_URL}`
-    );
+    await expect(searchAnnotations(MOCK_URL)).rejects.toMatchObject({
+      code: 'NETWORK_SEARCH_FETCH',
+      message: `Invalid or empty response received from ${MOCK_URL}`,
+    });
   });
 
   it('should handle multiple pages of annotations', async () => {

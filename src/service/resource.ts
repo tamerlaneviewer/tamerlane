@@ -1,5 +1,6 @@
 import { IIIFResource } from '../types/index.ts';
 import { TamerlaneResourceError } from '../errors/index.ts';
+import { createError } from '../errors/structured.ts';
 
 const CACHE_TIMEOUT = 1 * 60 * 1000; // 1 minutes
 const resourceCache = new Map<
@@ -7,7 +8,7 @@ const resourceCache = new Map<
   { resource: IIIFResource; timestamp: number }
 >(); // Cache with timestamps
 
-export async function fetchResource(url: string): Promise<IIIFResource> {
+export async function fetchResource(url: string, opts: { signal?: AbortSignal } = {}): Promise<IIIFResource> {
   const currentTime = Date.now();
   // Check if the resource is in cache and still valid
   if (resourceCache.has(url)) {
@@ -24,7 +25,7 @@ export async function fetchResource(url: string): Promise<IIIFResource> {
 
   try {
     console.log(`📥 Fetching new IIIF resource from: ${url}`);
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: opts.signal });
     if (!response.ok) {
       throw new TamerlaneResourceError(
         `HTTP error! status: ${response.status}`,
@@ -38,8 +39,12 @@ export async function fetchResource(url: string): Promise<IIIFResource> {
     // Store the fetched resource in cache with timestamp
     resourceCache.set(url, { resource, timestamp: currentTime });
     return resource;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.warn(`⛔ Fetch aborted for: ${url}`);
+      throw error; // propagate so callers can silently ignore
+    }
     console.error('❌ Error fetching IIIF resource:', error);
-    throw new Error('Error fetching IIIF resource');
+    throw createError('NETWORK_MANIFEST_FETCH', 'Error fetching IIIF resource', { cause: error, recoverable: true });
   }
 }

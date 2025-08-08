@@ -6,6 +6,16 @@ import {
   IIIFAnnotation,
 } from '../types/index.ts';
 import { searchAnnotations } from '../service/search.ts';
+import { toUserMessage } from '../errors/structured.ts';
+
+interface DomainError {
+  code: string;
+  message: string;
+  recoverable?: boolean;
+  detail?: string;
+  at: number; // timestamp
+}
+
 
 interface IIIFState {
   activePanelTab: 'annotations' | 'search';
@@ -23,7 +33,9 @@ interface IIIFState {
   manifestMetadata: any;
   collectionMetadata: any;
   searchResults: any[];
-  error: string | null;
+  manifestError: DomainError | null;
+  annotationsError: DomainError | null;
+  searchError: DomainError | null;
   showUrlDialog: boolean;
   selectedAnnotation: IIIFAnnotation | null;
   pendingAnnotationId: string | null;
@@ -52,7 +64,11 @@ interface IIIFState {
   setManifestMetadata: (metadata: any) => void;
   setCollectionMetadata: (metadata: any) => void;
   setSearchResults: (results: any[]) => void;
-  setError: (error: string | null) => void;
+  setManifestError: (err: DomainError | null) => void;
+  setAnnotationsError: (err: DomainError | null) => void;
+  setSearchError: (err: DomainError | null) => void;
+  buildDomainError: (code: string, message: string, opts?: Partial<DomainError>) => DomainError;
+  clearAllErrors: () => void;
   setShowUrlDialog: (show: boolean) => void;
   setSelectedAnnotation: (annotation: IIIFAnnotation | null) => void;
   setPendingAnnotationId: (id: string | null) => void;
@@ -109,6 +125,21 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   selectionPhase: 'idle',
   selectionDebug: false,
   selectionLog: [],
+  manifestError: null,
+  annotationsError: null,
+  searchError: null,
+
+  setManifestError: (err) => set({ manifestError: err }),
+  setAnnotationsError: (err) => set({ annotationsError: err }),
+  setSearchError: (err) => set({ searchError: err }),
+  buildDomainError: (code, message, opts = {}) => ({
+    code,
+    message,
+    recoverable: opts.recoverable,
+    detail: opts.detail,
+    at: Date.now(),
+  }),
+  clearAllErrors: () => set({ manifestError: null, annotationsError: null, searchError: null }),
 
   setActivePanelTab: (tab) => set({ activePanelTab: tab }),
   setIiifContentUrl: (url) => set({ iiifContentUrl: url }),
@@ -159,7 +190,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
   setSearchResults: (results) => set({ searchResults: results }),
-  setError: (error) => set({ error: error }),
   setShowUrlDialog: (show) => set({ showUrlDialog: show }),
   setSelectedAnnotation: (annotation) =>
     set({ selectedAnnotation: annotation }),
@@ -304,9 +334,9 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     if (get().searching) return;
     const trimmed = query.trim();
     if (!trimmed) return;
-    const { searchUrl, manifestUrls } = get();
+    const { searchUrl, manifestUrls, buildDomainError, setSearchError } = get();
     if (!searchUrl) {
-      set({ error: 'This resource does not support content search.' });
+      setSearchError(buildDomainError('SEARCH_UNSUPPORTED', 'This resource does not support content search.', { recoverable: false }));
       return;
     }
 
@@ -342,17 +372,19 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         return { ...result, manifestId: manifestId };
       });
 
-      set({ searchResults: taggedResults, activePanelTab: 'search' });
-    } catch {
-      set({ error: 'Search failed. Please try again.' });
+  set({ searchResults: taggedResults, activePanelTab: 'search' });
+  setSearchError(null);
+    } catch (err) {
+  setSearchError(buildDomainError('NETWORK_SEARCH_FETCH', toUserMessage(err) || 'Search failed. Please try again.', { recoverable: true }));
     } finally {
       set({ searching: false });
     }
   },
 
   handleSearchResultClick: async (result: any) => {
-    const { manifestId, canvasTarget, annotationId } = result;
-    const state = get();
+  const { manifestId, canvasTarget, annotationId } = result;
+  const state = get();
+  const { setManifestError, buildDomainError } = state;
 
     // Use the new isNavigating flag
     if (state.isNavigating) return;
@@ -368,7 +400,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       const jumpToResult = () => {
         const targetManifest = get().currentManifest;
         if (!targetManifest) {
-          set({ error: 'No manifest loaded for search result.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'No manifest loaded for search result.', { recoverable: true }));
           return;
         }
 
@@ -377,7 +409,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         );
 
         if (newImageIndex === -1) {
-          set({ error: 'Canvas for search result not found in manifest.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'Canvas for search result not found in manifest.', { recoverable: true }));
           return;
         }
 
@@ -419,14 +451,14 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           await state.fetchManifestByIndex(manifestIndex, true);
           jumpToResult(); // Jump after the new manifest is loaded
         } else {
-          set({ error: 'Manifest for search result not found.' });
+          setManifestError(buildDomainError('PARSING_MANIFEST', 'Manifest for search result not found.', { recoverable: true }));
         }
       } else {
         jumpToResult(); // Jump within the current manifest
       }
     } catch (err) {
       console.error('Failed to handle search result click:', err);
-      set({ error: 'Could not jump to the selected search result.' });
+      setManifestError(buildDomainError('PARSING_MANIFEST', toUserMessage(err) || 'Could not jump to the selected search result.', { recoverable: true }));
     } finally {
       set({ isNavigating: false });
     }
@@ -439,13 +471,14 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       index === get().selectedManifestIndex
     )
       return;
-    const manifestUrl = get().manifestUrls[index];
+  const manifestUrl = get().manifestUrls[index];
+  const { buildDomainError, setManifestError } = get();
 
     try {
       // The `collection` variable will be null here, which is the source of the issue.
       const { firstManifest } = await parseResource(manifestUrl);
       if (!firstManifest) {
-        set({ error: 'Failed to load selected manifest.' });
+        setManifestError(buildDomainError('NETWORK_MANIFEST_FETCH', 'Failed to load selected manifest.', { recoverable: true }));
         return;
       }
       set((state) => {
@@ -489,7 +522,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       });
     } catch (err) {
       console.error('Failed to fetch manifest by index:', err);
-      set({ error: 'Failed to load selected manifest.' });
+      setManifestError(buildDomainError('NETWORK_MANIFEST_FETCH', toUserMessage(err) || 'Failed to load selected manifest.', { recoverable: true }));
     }
   },
 }));

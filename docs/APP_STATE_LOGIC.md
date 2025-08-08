@@ -55,7 +55,7 @@ A few `useEffect` hooks in `App.tsx` orchestrate high-level data fetching:
 3.  **Annotation Fetching (`useEffect` on `canvasId`)**:
     *   **Trigger**: The `canvasId` changes to a non-empty value.
     *   **Action**: Fetches annotations for that canvas; on completion calls `setAnnotations(annotations, canvasId)` which also ends loading and prunes any stale `selectedAnnotation`.
-    *   **Key Logic**: Uses an `isStale` flag to ignore late arrivals after a canvas switch. If the manifest has zero images (`canvasId === ''`) no fetch occurs and loading is not shown.
+    *   **Key Logic**: Uses a real `AbortController` passed through `getAnnotationsForTarget -> fetchResource` so network requests are actually cancelled on rapid canvas/manifest switches (no reliance on a local stale flag). If the manifest has zero images (`canvasId === ''`) no fetch occurs and loading is not shown.
 
 ### Core Selection Logic (Centralized in Store Subscription)
 
@@ -84,6 +84,14 @@ Viewer / annotation interplay:
 * `annotationsLoading` differentiates "fetch in progress" from "loaded (possibly empty)"; empty + `annotationsLoading=false` triggers immediate fail.
 * Manifest / image / canvas changes reset `viewerReady`, clear annotations, and set `annotationsLoading=true` (unless zero images => stays false and no fetch is attempted).
 * `setAnnotations` clears `selectedAnnotation` if it no longer exists in the new list (stale protection).
+
+### Cancellation & Concurrency Guarantees
+
+Annotation fetches are now cancellable at the network layer:
+* Each canvas change instantiates a new `AbortController` whose signal is passed to `getAnnotationsForTarget` and down into every paginated `fetchResource` call.
+* On effect cleanup (canvas or manifest switch) `controller.abort()` triggers immediate rejection with `AbortError`; the effect silently ignores these.
+* This prevents wasted bandwidth / CPU on deep pagination of prior canvases during rapid navigation and removes the need for ad-hoc `isStale` guards.
+* Cache entries are only populated for successful (non-aborted) responses; aborted requests do not poison the cache.
 
 ---
 

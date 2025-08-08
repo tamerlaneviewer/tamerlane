@@ -1,7 +1,7 @@
 import { Maniiifest } from 'maniiifest';
 import { fetchResource } from './resource.ts';
+import { createError } from '../errors/structured.ts';
 import { IIIFAnnotation } from '../types/index.ts';
-import { TamerlaneResourceError } from '../errors/index.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
@@ -55,11 +55,13 @@ async function processAnnotationsWorker(
 async function processAnnotations(
   parser: any,
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
   let currentParser = parser;
   let allAnnotations: IIIFAnnotation[] = [];
 
   while (currentParser) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const result = await processAnnotationsWorker(
       currentParser,
       targetUrl,
@@ -69,9 +71,9 @@ async function processAnnotations(
 
     const nextPageUrl = currentParser.getAnnotationPage().next;
     if (nextPageUrl) {
-      const resource = await fetchResource(nextPageUrl);
+      const resource = await fetchResource(nextPageUrl, { signal });
       if (!resource.type || resource.type !== 'AnnotationPage') {
-        throw new TamerlaneResourceError('No JSON data returned from fetchJson');
+        throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
       }
       currentParser = new Maniiifest(resource.data, 'AnnotationPage');
     } else {
@@ -87,26 +89,29 @@ async function processAnnotations(
 async function processAnnotationPageRef(
   annotationPageUrl: string,
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
-  const resource = await fetchResource(annotationPageUrl);
+  const resource = await fetchResource(annotationPageUrl, { signal });
   if (!resource.type || resource.type !== 'AnnotationPage') {
-    throw new TamerlaneResourceError('No JSON data returned from fetchJson');
+    throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
   }
   const parser = new Maniiifest(resource.data, 'AnnotationPage');
-  return processAnnotations(parser, targetUrl);
+  return processAnnotations(parser, targetUrl, signal);
 }
 
 async function processAnnotationPage(
   page: any,
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
   const parser = new Maniiifest(page, 'AnnotationPage');
-  return processAnnotations(parser, targetUrl);
+  return processAnnotations(parser, targetUrl, signal);
 }
 
 export async function getAnnotationsForTarget(
   manifestUrl: string,
   targetUrl: string,
+  signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
   let parser: Maniiifest;
 
@@ -115,9 +120,9 @@ export async function getAnnotationsForTarget(
     parser = manifestCache[manifestUrl];
   } else {
     console.log(`📥 Fetching new manifest from: ${manifestUrl}`);
-    const resource = await fetchResource(manifestUrl);
+  const resource = await fetchResource(manifestUrl, { signal });
     if (!resource.type || resource.type !== 'Manifest') {
-      throw new TamerlaneResourceError('No JSON data returned from fetchJson');
+      throw createError('NETWORK_MANIFEST_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
     }
     parser = new Maniiifest(resource.data);
     manifestCache[manifestUrl] = parser;
@@ -141,11 +146,12 @@ export async function getAnnotationsForTarget(
         for (const annotationPage of annotations) {
           let result: IIIFAnnotation[] = [];
           if (Array.isArray(annotationPage.items)) {
-            result = await processAnnotationPage(annotationPage, targetUrl);
+            result = await processAnnotationPage(annotationPage, targetUrl, signal);
           } else if (typeof annotationPage.id === 'string') {
             result = await processAnnotationPageRef(
               annotationPage.id,
               targetUrl,
+              signal,
             );
           } else {
             console.warn(

@@ -11,6 +11,7 @@ import MiddlePanel from './components/MiddlePanel.tsx';
 import RightPanel from './components/RightPanel.tsx';
 import { useIIIFStore } from './store/iiifStore.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
+import { toUserMessage } from './errors/structured.ts';
 import { parseResource } from './service/parser.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
 import { availableLanguages as configLanguages } from './config/appConfig.ts';
@@ -32,7 +33,7 @@ const App: React.FC = () => {
   const manifestMetadata = useIIIFStore((state) => state.manifestMetadata);
   const collectionMetadata = useIIIFStore((state) => state.collectionMetadata);
   const searchResults = useIIIFStore((state) => state.searchResults);
-  const error = useIIIFStore((state) => state.error);
+  const manifestError = useIIIFStore((state) => state.manifestError);
   const showUrlDialog = useIIIFStore((state) => state.showUrlDialog);
   const selectedAnnotation = useIIIFStore((state) => state.selectedAnnotation);
   const pendingAnnotationId = useIIIFStore(
@@ -55,13 +56,11 @@ const App: React.FC = () => {
     (state) => state.setSelectedImageIndex,
   );
   const setAnnotations = useIIIFStore((state) => state.setAnnotations);
-  const setError = useIIIFStore((state) => state.setError);
+  const setManifestError = useIIIFStore((state) => state.setManifestError);
+  const setAnnotationsError = useIIIFStore((state) => state.setAnnotationsError);
   const setShowUrlDialog = useIIIFStore((state) => state.setShowUrlDialog);
   const setSelectedAnnotation = useIIIFStore(
     (state) => state.setSelectedAnnotation,
-  );
-  const setPendingAnnotationId = useIIIFStore(
-    (state) => state.setPendingAnnotationId,
   );
   const setViewerReady = useIIIFStore((state) => state.setViewerReady);
   const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
@@ -103,11 +102,11 @@ const App: React.FC = () => {
             collection ?? null,
           );
         })
-        .catch(() =>
-          setError('Failed to load IIIF content. Please check the URL.'),
+        .catch((err) =>
+          setManifestError({ code: 'NETWORK_MANIFEST_FETCH', message: 'Failed to load IIIF content. Please check the URL.', at: Date.now(), recoverable: true }),
         );
     }
-  }, [iiifContentUrl, manifestUrls.length, handleManifestUpdate, setError]);
+  }, [iiifContentUrl, manifestUrls.length, handleManifestUpdate, setManifestError]);
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -120,46 +119,40 @@ const App: React.FC = () => {
     }
   };
 
+  // Guarded canvasId update to avoid redundant resets in store
   useEffect(() => {
-    if (currentManifest && selectedImageIndex >= 0) {
-      const selectedImage = currentManifest.images[selectedImageIndex];
-      setCanvasId(selectedImage?.canvasTarget || '');
+    if (!currentManifest || selectedImageIndex < 0) return;
+    const nextId = currentManifest.images[selectedImageIndex]?.canvasTarget || '';
+    if (nextId !== canvasId) {
+      setCanvasId(nextId);
     }
-  }, [currentManifest, selectedImageIndex, setCanvasId]);
+  }, [currentManifest, selectedImageIndex, canvasId, setCanvasId]);
 
+  // Annotation fetch with real AbortController propagation
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
-
-    let isStale = false;
-
+    const controller = new AbortController();
     const manifestUrl = manifestUrls[selectedManifestIndex];
-  // Mark annotations as loading before starting fetch
-  setAnnotationsLoading(true);
-    getAnnotationsForTarget(manifestUrl, canvasId)
-      .then((annotations) => {
-        if (!isStale) {
-          setAnnotations(annotations, canvasId);
-        }
+    setAnnotationsLoading(true);
+    getAnnotationsForTarget(manifestUrl, canvasId, controller.signal)
+      .then((anns) => {
+        setAnnotations(anns, canvasId);
       })
-      .catch((err) => {
-        if (!isStale) {
-          console.error('Error fetching annotations:', err);
-          setAnnotations([], canvasId);
-          setError('Unable to load annotations for this canvas.');
-        }
+      .catch((err: any) => {
+        if (err?.name === 'AbortError') return; // silent on navigation
+        console.error('Error fetching annotations:', err);
+    setAnnotations([], canvasId);
+    setAnnotationsError({ code: 'NETWORK_ANNOTATION_FETCH', message: toUserMessage(err) || 'Unable to load annotations for this canvas.', at: Date.now(), recoverable: true });
       });
-    
-    return () => {
-      isStale = true;
-    };
+    return () => controller.abort();
   }, [
     currentManifest,
     canvasId,
     selectedManifestIndex,
     manifestUrls,
     setAnnotations,
-  setAnnotationsLoading,
-    setError,
+    setAnnotationsLoading,
+  setAnnotationsError,
   ]);
 
   useEffect(() => {
@@ -228,9 +221,7 @@ const App: React.FC = () => {
     [setSelectedAnnotation],
   );
 
-  const handlePendingAnnotationProcessed = useCallback(() => {
-    setPendingAnnotationId(null);
-  }, [setPendingAnnotationId]);
+  // Store handles clearing pendingAnnotationId; no manual callback needed
 
   const handleLanguageChange = useCallback(
     (language: string) => setSelectedLanguage(language),
@@ -243,21 +234,21 @@ const App: React.FC = () => {
 
   const handleImageLoadError = useCallback(
     (message: string) => {
-      setError(message);
+      setAnnotationsError({ code: 'IMAGE_LOAD', message, at: Date.now(), recoverable: true });
     },
-    [setError],
+    [setAnnotationsError],
   );
 
   // Use the store's handleSearch, which uses searchUrl internally
   const onSearch = (query: string) => handleSearch(query);
 
   if (showUrlDialog) return <UrlDialog onSubmit={handleUrlSubmit} />;
-  if (error) {
+  if (manifestError) {
     return (
       <ErrorDialog
-        message={error}
+        message={manifestError.message}
         onDismiss={() => {
-          setError(null);
+          setManifestError(null);
           // Reset state to go back to the URL dialog
           setIiifContentUrl(null);
           handleManifestUpdate(null, [], 0, null);
@@ -364,7 +355,6 @@ const App: React.FC = () => {
           selectedSearchResultId={selectedSearchResultId || undefined}
           selectedLanguage={selectedLanguage || undefined}
           pendingAnnotationId={pendingAnnotationId}
-          onPendingAnnotationProcessed={handlePendingAnnotationProcessed}
           viewerReady={viewerReady}
         />
       </div>
