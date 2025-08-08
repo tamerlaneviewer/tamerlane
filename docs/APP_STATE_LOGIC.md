@@ -56,23 +56,30 @@ A few `useEffect` hooks in `App.tsx` orchestrate high-level data fetching:
     *   **Action**: Fetches the list of annotations for the new canvas.
     *   **Key Logic**: This effect includes a cleanup function with an `isStale` flag. If the `canvasId` changes again before the current request finishes, the `isStale` flag ensures that the outdated results are ignored, preventing race conditions where annotations for a previous canvas could overwrite the current list.
 
-### Core Selection Logic (Zustand `subscribe` in `iiifStore.ts`)
+### Core Selection Logic (Centralized in Store Subscription)
 
-The complex logic for selecting an annotation is no longer in a component `useEffect`. Instead, the `iiifStore` subscribes to its own state changes, creating a reactive and deterministic flow.
+Annotation selection is now fully centralized inside the store; there is **no component-level selection `useEffect`**. A lightweight subscription reacts to state changes and drives a small state machine (`selectionPhase`).
 
-1.  **Trigger**: The subscription fires on *every* state change in the store.
+Flow summary:
+1. **Pending set**: When `pendingAnnotationId` is set (e.g. from a search result click), the subscription immediately invokes `selectPendingAnnotation()`. If prerequisites are missing, the phase transitions to `waiting_viewer` or `waiting_annotations`.
+2. **Prerequisites evolve**: Subsequent changes to `viewerReady`, `annotations`, or `annotationsForCanvasId` re-trigger evaluation only if they actually changed since last check.
+3. **Conditions satisfied**: When all are true (viewer ready, annotations loaded for current canvas, non-empty list) a lookup scans the annotations array for the pending ID.
+4. **Resolution**: Match found → phase `selected`, state updates `selectedAnnotation` and clears `pendingAnnotationId`. Not found → phase `failed` and pending cleared (prevents stale looping).
 
-2.  **Guard**: It first checks if an annotation selection is pending (`pendingAnnotationId` is not null). If not, it does nothing.
+Key guarantees:
+- Deterministic: Order of viewer readiness vs annotation arrival no longer matters.
+- Idempotent: Repeated evaluations without state change do nothing (no infinite loops).
+- Simple: Array scan is retained (dataset expected to be small) after reverting a previously trialed map structure.
+- Transparent: `selectionPhase` exposes progress externally for debugging or UI affordances.
 
-3.  **Condition Validation**: If an annotation is pending, it checks if all prerequisites for selection have been met:
-    *   Is the viewer ready? (`viewerReady === true`)
-    *   Are the annotations loaded? (`annotations.length > 0`)
-    *   Do the loaded annotations belong to the current canvas? (`annotationsForCanvasId === canvasId`)
-    *   Is the selection process in a "waiting" state? (`selectionPhase` is `pending`, `waiting_viewer`, or `waiting_annotations`)
-
-4.  **Action**: If and only if all conditions are met, it calls the `selectPendingAnnotation` action *within the store*. This action finds the annotation object by its ID, sets it as the `selectedAnnotation`, and updates the `selectionPhase` to `selected` or `failed`.
-
-This subscription-based architecture is the key to eliminating race conditions. It doesn't matter in what order the viewer becomes ready or the annotations arrive; the selection will only proceed when the state is confirmed to be correct.
+Phase meanings:
+- `idle`: No pending selection.
+- `pending`: Initial state after a request (may transition immediately to a waiting_* phase).
+- `waiting_viewer`: Waiting for image viewer readiness.
+- `waiting_annotations`: Waiting for annotations (or correct canvas annotations) to be available.
+- `ready`: Transient internal checkpoint just before attempting resolution.
+- `selected`: Successful resolution.
+- `failed`: Annotation ID not present in loaded list; system cleaned up.
 
 ---
 
@@ -81,7 +88,7 @@ This subscription-based architecture is the key to eliminating race conditions. 
 - **`handleManifestUpdate(...)`**: Updates manifest, collection, and related metadata in the store.
 - **`fetchManifestByIndex(index, preserveSearchResults?)`**: Loads a manifest by its index. The optional `preserveSearchResults` flag keeps the search context when navigating between manifests from a search result.
 - **`handleSearch(query)`**: Performs a content search, tags results with their parent manifest ID, and updates `searchResults` in the store.
-- **`handleSearchResultClick(result)`**: The primary action for search interaction. It intelligently determines if the result is on the current canvas (for a quick selection) or a new canvas (triggering a full load), then sets the `pendingAnnotationId` to start the selection process.
+- **`handleSearchResultClick(result)`**: Determines if the result targets the current canvas or requires navigation. It sets `pendingAnnotationId`, adjusts indices if needed, and relies on the subscription to drive selection (no manual effect).
 - **`handleViewerReady()`**: A simple handler passed to the viewer component, which calls `setViewerReady(true)` in the store.
 
 ---
