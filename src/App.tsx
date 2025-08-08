@@ -130,10 +130,10 @@ const App: React.FC = () => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
     const manifestUrl = manifestUrls[selectedManifestIndex];
     getAnnotationsForTarget(manifestUrl, canvasId)
-      .then(setAnnotations)
+      .then((annotations) => setAnnotations(annotations, canvasId))
       .catch((err) => {
         console.error('Error fetching annotations:', err);
-        setAnnotations([]);
+        setAnnotations([], canvasId);
         setError('Unable to load annotations for this canvas.');
       });
   }, [
@@ -204,14 +204,30 @@ const App: React.FC = () => {
   // --- End language logic ---
 
   // --- Annotation selection effect ---
+  const clearPendingAnnotation = useIIIFStore(
+    (state) => state.clearPendingAnnotation,
+  );
+  const annotationsForCanvasId = useIIIFStore(
+    (state) => state.annotationsForCanvasId,
+  );
+
   useEffect(() => {
-    if (pendingAnnotationId && annotations.length > 0 && viewerReady) {
+    if (
+      pendingAnnotationId &&
+      annotations.length > 0 &&
+      viewerReady &&
+      annotationsForCanvasId === canvasId
+    ) {
       const annotationToSelect = annotations.find(
         (anno) => anno.id === pendingAnnotationId,
       );
       if (annotationToSelect) {
         setSelectedAnnotation(annotationToSelect);
-        setPendingAnnotationId(null); // Clear after processing
+        clearPendingAnnotation(); // Clear after processing
+      } else {
+        // If not found, clear the pending ID to prevent stale state
+        console.warn(`Annotation ${pendingAnnotationId} not found in list.`);
+        clearPendingAnnotation();
       }
     }
   }, [
@@ -219,7 +235,9 @@ const App: React.FC = () => {
     annotations,
     viewerReady,
     setSelectedAnnotation,
-    setPendingAnnotationId,
+    clearPendingAnnotation,
+    canvasId,
+    annotationsForCanvasId,
   ]);
 
   const handleAnnotationSelect = useCallback(

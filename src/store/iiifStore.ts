@@ -18,6 +18,7 @@ interface IIIFState {
   selectedManifestIndex: number;
   selectedImageIndex: number;
   annotations: IIIFAnnotation[];
+  annotationsForCanvasId: string | null;
   manifestMetadata: any;
   collectionMetadata: any;
   searchResults: any[];
@@ -41,7 +42,7 @@ interface IIIFState {
   setTotalManifests: (total: number) => void;
   setSelectedManifestIndex: (index: number) => void;
   setSelectedImageIndex: (index: number) => void;
-  setAnnotations: (annotations: IIIFAnnotation[]) => void;
+  setAnnotations: (annotations: IIIFAnnotation[], canvasId: string) => void;
   setManifestMetadata: (metadata: any) => void;
   setCollectionMetadata: (metadata: any) => void;
   setSearchResults: (results: any[]) => void;
@@ -55,6 +56,7 @@ interface IIIFState {
   setSearchUrl: (url: string) => void;
   setSelectedLanguage: (language: string | null) => void;
   setSearching: (searching: boolean) => void;
+  clearPendingAnnotation: () => void;
 
   handleManifestUpdate: (
     firstManifest: IIIFManifest | null,
@@ -78,6 +80,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   selectedManifestIndex: 0,
   selectedImageIndex: 0,
   annotations: [],
+  annotationsForCanvasId: null,
   manifestMetadata: {},
   collectionMetadata: {},
   searchResults: [],
@@ -105,9 +108,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       selectedImageIndex: index,
       selectedAnnotation: null,
       annotations: [],
+      annotationsForCanvasId: null,
       viewerReady: false,
     }),
-  setAnnotations: (annotations) => set({ annotations: annotations }),
+  setAnnotations: (annotations, canvasId) =>
+    set({ annotations: annotations, annotationsForCanvasId: canvasId }),
   setManifestMetadata: (metadata) => set({ manifestMetadata: metadata }),
   setCollectionMetadata: (metadata) => set({ collectionMetadata: metadata }),
   setSearchResults: (results) => set({ searchResults: results }),
@@ -122,6 +127,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSearchUrl: (url) => set({ searchUrl: url }),
   setSelectedLanguage: (language) => set({ selectedLanguage: language }),
   setSearching: (searching) => set({ searching: searching }),
+
+  clearPendingAnnotation: () => {
+    set({ pendingAnnotationId: null, selectedSearchResultId: null });
+  },
 
   handleManifestUpdate: (firstManifest, manifestUrls, total, collection) => {
     set({
