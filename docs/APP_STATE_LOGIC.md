@@ -28,8 +28,10 @@
 | `searching`                   | A flag to indicate that a search query is currently in progress.                              | Header, RightPanel      |
 | `isNavigating`                | A flag to indicate navigation between images/manifests is in progress, distinct from searching. | App, Header             |
 | `annotationsForCanvasId`      | The canvas ID for the currently loaded `annotations`. Prevents race conditions.               | App, iiifStore          |
-| `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `selected`, `failed`). | iiifStore               |
-| `selectionDebug`              | A log of the last significant event in the selection process, for debugging.                  | iiifStore               |
+| `currentCollection`           | The fully loaded IIIF collection object currently being displayed.                            | App, LeftPanel          |
+| `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `waiting_viewer`, `waiting_annotations`, `ready`, `selected`, `failed`). | iiifStore               |
+| `selectionDebug`              | A boolean flag that enables detailed logging of the selection process.                        | iiifStore               |
+| `selectionLog`                | An array of debug messages tracking selection attempts (when `selectionDebug` is enabled).   | iiifStore               |
 
 > **All state is accessed and updated via the `useIIIFStore` hook.**
 
