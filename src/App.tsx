@@ -128,14 +128,27 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
+
+    let isStale = false;
+
     const manifestUrl = manifestUrls[selectedManifestIndex];
     getAnnotationsForTarget(manifestUrl, canvasId)
-      .then((annotations) => setAnnotations(annotations, canvasId))
+      .then((annotations) => {
+        if (!isStale) {
+          setAnnotations(annotations, canvasId);
+        }
+      })
       .catch((err) => {
-        console.error('Error fetching annotations:', err);
-        setAnnotations([], canvasId);
-        setError('Unable to load annotations for this canvas.');
+        if (!isStale) {
+          console.error('Error fetching annotations:', err);
+          setAnnotations([], canvasId);
+          setError('Unable to load annotations for this canvas.');
+        }
       });
+    
+    return () => {
+      isStale = true;
+    };
   }, [
     currentManifest,
     canvasId,

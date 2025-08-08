@@ -35,16 +35,17 @@
 
 Zustand actions and state are used inside `useEffect` hooks to coordinate data fetching and UI updates.
 
-### Effect 1 — `[ currentManifest, selectedImageIndex ]`
+### Effect 1 — `[ currentManifest, selectedImageIndex, ... ]`
 Sets the current `canvasId` in the store whenever the manifest or the selected image index changes.
 
-### Effect 2 — `[ canvasId ]`
-Fetches the list of annotations (`annotations`) for the current `canvasId` by calling a store action.
+### Effect 2 — `[ canvasId, ... ]`
+Fetches the list of annotations (`annotations`) for the current `canvasId`. 
+**Key Logic**: This effect includes a cleanup function that sets a `isStale` flag. If another `canvasId` change occurs before the current annotation request finishes, the cleanup function runs, and the stale request's results are ignored, preventing race conditions.
 
-### Effect 3 — `[ annotations, pendingAnnotationId, viewerReady ]`
-**The core selection logic.** When an annotation is pending (`pendingAnnotationId` is set), this effect waits for the `annotations` to load and the `viewerReady` flag to be true. It then finds the matching annotation, sets it as `selectedAnnotation`, and clears the `pendingAnnotationId`.
+### Effect 3 — `[ pendingAnnotationId, annotations, viewerReady, ... ]`
+**The core selection logic.** When an annotation is pending (`pendingAnnotationId` is set), this effect waits for the `annotations` to load for the correct `canvasId` and for the `viewerReady` flag to be true. It then finds the matching annotation, sets it as `selectedAnnotation`, and clears the `pendingAnnotationId`.
 
-### Effect 4 — `[ iiifContentUrl ]`
+### Effect 4 — `[ iiifContentUrl, ... ]`
 Loads the initial manifest or collection when the `iiifContentUrl` changes. This is the main entry point for loading new content.
 
 ---
