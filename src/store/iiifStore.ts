@@ -207,64 +207,77 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   },
 
   handleSearchResultClick: async (result: any) => {
-    try {
-      const { manifestId, canvasTarget } = result;
-      const state = get();
-      let targetManifest = state.currentManifest;
-      const currentManifestUrl = state.manifestUrls[state.selectedManifestIndex];
+    const { manifestId, canvasTarget, annotationId } = result;
+    const state = get();
 
-      // Check if the result is from a different manifest
-      if (manifestId && manifestId !== currentManifestUrl) {
-        const matchedIndex = state.manifestUrls.findIndex((url) => url === manifestId);
-        if (matchedIndex === -1) {
-          set({
-            error: 'Manifest for search result not found in collection.',
-            searching: false,
-          });
+    // Prevent multiple jumps if one is already in progress
+    if (state.searching) return;
+
+    set({ searching: true, selectedSearchResultId: result.id });
+
+    try {
+      // Helper function to perform the jump once the manifest is ready
+      const jumpToResult = () => {
+        const targetManifest = get().currentManifest;
+        if (!targetManifest) {
+          set({ error: 'No manifest loaded for search result.' });
           return;
         }
-        await state.fetchManifestByIndex(matchedIndex, true);
-        targetManifest = get().currentManifest;
-      }
 
-      if (!targetManifest) {
-        set({ error: 'No manifest loaded.', searching: false });
-        return;
-      }
+        const newImageIndex = targetManifest.images.findIndex(
+          (img) => img.canvasTarget === canvasTarget,
+        );
 
-      // Now find the image in the correct, fully loaded manifest.
-      const newImageIndex = targetManifest.images.findIndex(
-        (img) => img.canvasTarget === canvasTarget,
-      );
-      if (newImageIndex === -1) {
-        set({ error: 'Canvas not found in the manifest.', searching: false });
-        return;
-      }
+        if (newImageIndex === -1) {
+          set({ error: 'Canvas for search result not found in manifest.' });
+          return;
+        }
 
-      // If the canvas is not changing, just set the pending annotation.
-      // This avoids resetting the viewer and causing a race condition.
-      if (newImageIndex === state.selectedImageIndex) {
-        set({
-          pendingAnnotationId: result.annotationId,
-          selectedAnnotation: null, // Clear previous selection
-          selectedSearchResultId: result.id,
-          activePanelTab: 'annotations',
-        });
+        // If we are already on the correct image, just set the pending ID.
+        if (
+          newImageIndex === get().selectedImageIndex &&
+          get().canvasId === canvasTarget
+        ) {
+          set({
+            pendingAnnotationId: annotationId,
+            selectedAnnotation: null,
+            activePanelTab: 'annotations',
+          });
+        } else {
+          // Otherwise, switch the image and set the pending ID.
+          set({
+            selectedImageIndex: newImageIndex,
+            canvasId: canvasTarget,
+            pendingAnnotationId: annotationId,
+            selectedAnnotation: null,
+            activePanelTab: 'annotations',
+            viewerReady: false, // Important: reset viewer readiness
+          });
+        }
+      };
+
+      // If the result is in a different manifest, fetch it first.
+      if (
+        manifestId &&
+        manifestId !== state.manifestUrls[state.selectedManifestIndex]
+      ) {
+        const manifestIndex = state.manifestUrls.findIndex(
+          (url) => url === manifestId,
+        );
+        if (manifestIndex !== -1) {
+          await state.fetchManifestByIndex(manifestIndex, true);
+          jumpToResult(); // Jump after the new manifest is loaded
+        } else {
+          set({ error: 'Manifest for search result not found.' });
+        }
       } else {
-        // If the canvas is changing, reset the viewer state.
-        set({
-          viewerReady: false,
-          selectedImageIndex: newImageIndex,
-          canvasId: canvasTarget,
-          activePanelTab: 'annotations',
-          selectedAnnotation: null,
-          pendingAnnotationId: result.annotationId,
-          selectedSearchResultId: result.id,
-        });
+        jumpToResult(); // Jump within the current manifest
       }
     } catch (err) {
-      console.error('Failed to jump to search result:', err);
-      set({ error: 'Could not jump to search result.', searching: false });
+      console.error('Failed to handle search result click:', err);
+      set({ error: 'Could not jump to the selected search result.' });
+    } finally {
+      set({ searching: false });
     }
   },
 
