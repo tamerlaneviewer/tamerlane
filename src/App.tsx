@@ -128,14 +128,27 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!currentManifest || !canvasId || manifestUrls.length === 0) return;
+
+    let isStale = false;
+
     const manifestUrl = manifestUrls[selectedManifestIndex];
     getAnnotationsForTarget(manifestUrl, canvasId)
-      .then(setAnnotations)
+      .then((annotations) => {
+        if (!isStale) {
+          setAnnotations(annotations, canvasId);
+        }
+      })
       .catch((err) => {
-        console.error('Error fetching annotations:', err);
-        setAnnotations([]);
-        setError('Unable to load annotations for this canvas.');
+        if (!isStale) {
+          console.error('Error fetching annotations:', err);
+          setAnnotations([], canvasId);
+          setError('Unable to load annotations for this canvas.');
+        }
       });
+    
+    return () => {
+      isStale = true;
+    };
   }, [
     currentManifest,
     canvasId,
@@ -204,14 +217,30 @@ const App: React.FC = () => {
   // --- End language logic ---
 
   // --- Annotation selection effect ---
+  const clearPendingAnnotation = useIIIFStore(
+    (state) => state.clearPendingAnnotation,
+  );
+  const annotationsForCanvasId = useIIIFStore(
+    (state) => state.annotationsForCanvasId,
+  );
+
   useEffect(() => {
-    if (pendingAnnotationId && annotations.length > 0 && viewerReady) {
+    if (
+      pendingAnnotationId &&
+      annotations.length > 0 &&
+      viewerReady &&
+      annotationsForCanvasId === canvasId
+    ) {
       const annotationToSelect = annotations.find(
         (anno) => anno.id === pendingAnnotationId,
       );
       if (annotationToSelect) {
         setSelectedAnnotation(annotationToSelect);
-        setPendingAnnotationId(null); // Clear after processing
+        clearPendingAnnotation(); // Clear after processing
+      } else {
+        // If not found, clear the pending ID to prevent stale state
+        console.warn(`Annotation ${pendingAnnotationId} not found in list.`);
+        clearPendingAnnotation();
       }
     }
   }, [
@@ -219,7 +248,9 @@ const App: React.FC = () => {
     annotations,
     viewerReady,
     setSelectedAnnotation,
-    setPendingAnnotationId,
+    clearPendingAnnotation,
+    canvasId,
+    annotationsForCanvasId,
   ]);
 
   const handleAnnotationSelect = useCallback(

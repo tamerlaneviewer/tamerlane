@@ -25,28 +25,6 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
 
-  // Handle pending annotation selection from search results
-  useEffect(() => {
-    if (!pendingAnnotationId || annotations.length === 0 || !viewerReady)
-      return;
-
-    const match = annotations.find((anno) => anno.id === pendingAnnotationId);
-    if (match) {
-      onAnnotationSelect(match);
-      if (onPendingAnnotationProcessed) {
-        onPendingAnnotationProcessed();
-      }
-    } else {
-      console.warn('Could not find annotation for ID:', pendingAnnotationId);
-    }
-  }, [
-    annotations,
-    pendingAnnotationId,
-    viewerReady,
-    onAnnotationSelect,
-    onPendingAnnotationProcessed,
-  ]);
-
   useEffect(() => {
     if (selectedAnnotation?.id) {
       const ref = itemRefs.current[selectedAnnotation.id];

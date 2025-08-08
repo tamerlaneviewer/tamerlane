@@ -19,33 +19,60 @@
 | `error`                       | An error message for user feedback. Triggers the error dialog.                                | ErrorDialog             |
 | `showUrlDialog`               | A flag to control the visibility of the IIIF URL input dialog.                                | UrlDialog               |
 | `selectedAnnotation`          | The annotation object that is currently selected by the user.                                 | MiddlePanel, RightPanel |
-| `pendingAnnotationId`         | An annotation ID queued for selection, waiting for the viewer and annotations to be ready.    | App, RightPanel         |
+| `pendingAnnotationId`         | An annotation ID queued for selection. The store's subscription logic will automatically attempt to select it once all conditions are met. | App, RightPanel         |
 | `selectedSearchResultId`      | The ID of the search result currently selected, used for highlighting.                        | RightPanel              |
 | `autocompleteUrl`             | The endpoint URL for the search autocomplete service.                                         | Header                  |
 | `searchUrl`                   | The endpoint URL for the main content search service.                                         | Header, RightPanel      |
 | `selectedLanguage`            | The language selected for displaying multilingual metadata and annotations.                   | Header, Panels          |
-| `viewerReady`                 | A flag indicating if the image viewer is fully loaded and ready for interaction.              | MiddlePanel, App        |
+| `viewerReady`                 | A flag indicating if the image viewer is fully loaded. A key condition for triggering automatic annotation selection. | MiddlePanel, App        |
 | `searching`                   | A flag to indicate that a search query is currently in progress.                              | Header, RightPanel      |
+| `isNavigating`                | A flag to indicate navigation between images/manifests is in progress, distinct from searching. | App, Header             |
+| `annotationsForCanvasId`      | The canvas ID for the currently loaded `annotations`. Prevents race conditions.               | App, iiifStore          |
+| `currentCollection`           | The fully loaded IIIF collection object currently being displayed.                            | App, LeftPanel          |
+| `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `waiting_viewer`, `waiting_annotations`, `ready`, `selected`, `failed`). | iiifStore               |
+| `selectionDebug`              | A boolean flag that enables detailed logging of the selection process.                        | iiifStore               |
+| `selectionLog`                | An array of debug messages tracking selection attempts (when `selectionDebug` is enabled).   | iiifStore               |
 
 > **All state is accessed and updated via the `useIIIFStore` hook.**
 
 ---
 
-## 🔁 Side Effects (`useEffect` in App.tsx)
+## 🔁 Application Logic and Data Flow
 
-Zustand actions and state are used inside `useEffect` hooks to coordinate data fetching and UI updates.
+### Component Effects (`useEffect` in `App.tsx`)
 
-### Effect 1 — `[ currentManifest, selectedImageIndex ]`
-Sets the current `canvasId` in the store whenever the manifest or the selected image index changes.
+A few `useEffect` hooks in `App.tsx` orchestrate high-level data fetching:
 
-### Effect 2 — `[ canvasId ]`
-Fetches the list of annotations (`annotations`) for the current `canvasId` by calling a store action.
+1.  **Initial Load (`useEffect` on `iiifContentUrl`)**:
+    *   **Trigger**: The `iiifContentUrl` changes.
+    *   **Action**: Loads the root manifest or collection, populating `manifestUrls` and setting the initial `currentManifest`.
 
-### Effect 3 — `[ annotations, pendingAnnotationId, viewerReady ]`
-**The core selection logic.** When an annotation is pending (`pendingAnnotationId` is set), this effect waits for the `annotations` to load and the `viewerReady` flag to be true. It then finds the matching annotation, sets it as `selectedAnnotation`, and clears the `pendingAnnotationId`.
+2.  **Canvas Change (`useEffect` on `currentManifest`, `selectedImageIndex`)**:
+    *   **Trigger**: The user selects a new manifest or a new image within the current manifest.
+    *   **Action**: Updates the `canvasId` in the store to reflect the new view.
 
-### Effect 4 — `[ iiifContentUrl ]`
-Loads the initial manifest or collection when the `iiifContentUrl` changes. This is the main entry point for loading new content.
+3.  **Annotation Fetching (`useEffect` on `canvasId`)**:
+    *   **Trigger**: The `canvasId` changes.
+    *   **Action**: Fetches the list of annotations for the new canvas.
+    *   **Key Logic**: This effect includes a cleanup function with an `isStale` flag. If the `canvasId` changes again before the current request finishes, the `isStale` flag ensures that the outdated results are ignored, preventing race conditions where annotations for a previous canvas could overwrite the current list.
+
+### Core Selection Logic (Zustand `subscribe` in `iiifStore.ts`)
+
+The complex logic for selecting an annotation is no longer in a component `useEffect`. Instead, the `iiifStore` subscribes to its own state changes, creating a reactive and deterministic flow.
+
+1.  **Trigger**: The subscription fires on *every* state change in the store.
+
+2.  **Guard**: It first checks if an annotation selection is pending (`pendingAnnotationId` is not null). If not, it does nothing.
+
+3.  **Condition Validation**: If an annotation is pending, it checks if all prerequisites for selection have been met:
+    *   Is the viewer ready? (`viewerReady === true`)
+    *   Are the annotations loaded? (`annotations.length > 0`)
+    *   Do the loaded annotations belong to the current canvas? (`annotationsForCanvasId === canvasId`)
+    *   Is the selection process in a "waiting" state? (`selectionPhase` is `pending`, `waiting_viewer`, or `waiting_annotations`)
+
+4.  **Action**: If and only if all conditions are met, it calls the `selectPendingAnnotation` action *within the store*. This action finds the annotation object by its ID, sets it as the `selectedAnnotation`, and updates the `selectionPhase` to `selected` or `failed`.
+
+This subscription-based architecture is the key to eliminating race conditions. It doesn't matter in what order the viewer becomes ready or the annotations arrive; the selection will only proceed when the state is confirmed to be correct.
 
 ---
 
