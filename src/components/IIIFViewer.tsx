@@ -204,7 +204,13 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isLoading ? 'Loading image…' : ''}
       </div>
-      <div ref={viewerRef} className="w-full h-full"></div>
+      <div
+        ref={viewerRef}
+        className="w-full h-full"
+  id="iiif-viewer"
+        tabIndex={0}
+        aria-label="Zoomable image viewer"
+      ></div>
     </div>
   );
 };

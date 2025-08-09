@@ -37,7 +37,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
   searching,
 }) => {
   return (
-    <div className="hidden md:flex md:w-1/4 border-l flex-col overflow-hidden">
+    <div className="hidden md:flex md:w-1/4 border-l flex-col min-h-0 overflow-hidden">
       <AnnotationsPanel
         annotations={annotations}
         searchResults={searchResults}

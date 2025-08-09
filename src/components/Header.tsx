@@ -94,7 +94,7 @@ const Header: React.FC<HeaderProps> = ({
       <div className="hidden md:flex items-center space-x-2">
         <button
           onClick={toggleLanguage}
-          className="hidden md:block bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
+          className="hidden md:block bg-slate-600 text-white px-3 py-2 rounded text-sm hover:bg-slate-500 min-w-[44px] min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title={currentLanguage?.name}
           aria-label={currentLanguage ? `Language: ${currentLanguage.name} (${currentLanguage.code.toUpperCase()}). Activate to change language.` : 'Change language'}
         >

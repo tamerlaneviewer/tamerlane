@@ -339,7 +339,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen min-h-0">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:p-2 focus:rounded focus:shadow"
@@ -387,7 +387,7 @@ const App: React.FC = () => {
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex flex-grow"
+        className="flex flex-grow min-h-0 overflow-hidden"
         ref={mainRef}
         aria-label="IIIF Viewer content"
       >

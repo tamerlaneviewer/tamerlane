@@ -155,7 +155,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       {/* Scrollable Content Section */}
       <div 
         ref={scrollContainerRef}
-        className="flex-grow overflow-y-auto p-3 max-h-[calc(100vh-100px)]"
+        className="flex-grow min-h-0 overflow-y-auto p-3 overscroll-contain"
         role="tabpanel"
         id="panel-tabs"
         aria-labelledby={activeTab === 'annotations' ? 'tab-annotations' : 'tab-search'}
