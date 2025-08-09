@@ -10,3 +10,8 @@ html, body, #root {
 body {
 	overflow: hidden;
 }
+
+/* Reserve scrollbar space to avoid layout shift when content toggles */
+.gutter-stable {
+	scrollbar-gutter: stable;
+}

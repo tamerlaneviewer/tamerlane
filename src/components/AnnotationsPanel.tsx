@@ -76,6 +76,27 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
     setFocusedTab(activeTab);
   }, [activeTab]);
 
+  // When switching back to the Search tab, restore the selected result into view and focus it
+  useEffect(() => {
+    if (activeTab !== 'search') return;
+    const scroller = scrollContainerRef.current;
+    if (!scroller || !selectedSearchResultId) return;
+    const all = scroller.querySelectorAll('[data-result-id]');
+    let selected: HTMLElement | null = null;
+    for (const el of Array.from(all)) {
+      const e = el as HTMLElement & { dataset?: { resultId?: string } };
+      // dataset keys convert data-result-id to resultId
+      if (e.dataset && e.dataset.resultId === selectedSearchResultId) {
+        selected = e as HTMLElement;
+        break;
+      }
+    }
+    if (!selected) return;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  selected.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+    try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
+  }, [activeTab, selectedSearchResultId]);
+
   const handleTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const order: Array<'annotations' | 'search'> = ['annotations', 'search'];
     const currentIndex = order.indexOf(focusedTab);
@@ -100,8 +121,37 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
     } else if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       setActiveTab(focusedTab);
-  // When activated via keyboard, move focus into the tabpanel
-  setTimeout(() => scrollContainerRef.current?.focus(), 0);
+  // When activated via keyboard, move focus into the tabpanel without scrolling the viewport
+  setTimeout(() => {
+    try {
+      (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+    } catch {
+      scrollContainerRef.current?.focus();
+    }
+  }, 0);
+    }
+  };
+
+  const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Ignore if typing in an input/textarea/contenteditable inside the panel
+    const target = e.target as HTMLElement;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        (target as HTMLElement).isContentEditable)
+    ) {
+      return;
+    }
+    const scroller = scrollContainerRef.current;
+    if (!scroller) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      scroller.scrollBy({ top: 40, behavior: reduceMotion ? 'auto' : 'smooth' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      scroller.scrollBy({ top: -40, behavior: reduceMotion ? 'auto' : 'smooth' });
     }
   };
 
@@ -121,7 +171,15 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               ? 'bg-gray-300 text-black'
               : 'bg-gray-200 text-gray-500'
           } hover:bg-gray-400`}
-          onClick={() => setActiveTab('annotations')}
+          onClick={() => {
+            setActiveTab('annotations');
+            // Keep viewport stable when moving focus into panel programmatically
+            try {
+              (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+            } catch {
+              scrollContainerRef.current?.focus();
+            }
+          }}
           title="Annotations"
           role="tab"
           id="tab-annotations"
@@ -139,7 +197,14 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               ? 'bg-gray-300 text-black'
               : 'bg-gray-200 text-gray-500'
           } hover:bg-gray-400`}
-          onClick={() => setActiveTab('search')}
+          onClick={() => {
+            setActiveTab('search');
+            try {
+              (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+            } catch {
+              scrollContainerRef.current?.focus();
+            }
+          }}
           title="Search Results"
           role="tab"
           id="tab-search"
@@ -155,12 +220,13 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       {/* Scrollable Content Section */}
       <div 
         ref={scrollContainerRef}
-        className="flex-grow min-h-0 overflow-y-auto p-3 overscroll-contain"
+  className="flex-grow min-h-0 overflow-y-scroll p-3 overscroll-contain gutter-stable touch-pan-y"
         role="tabpanel"
         id="panel-tabs"
         aria-labelledby={activeTab === 'annotations' ? 'tab-annotations' : 'tab-search'}
         tabIndex={0}
         aria-busy={activeTab === 'annotations' ? annotationsLoading : searching}
+        onKeyDown={handlePanelKeyDown}
       >
   {/* Removed error banners for annotations and search */}
         {activeTab === 'annotations' ? (

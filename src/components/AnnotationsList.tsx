@@ -29,8 +29,10 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     if (selectedAnnotation?.id) {
       const ref = itemRefs.current[selectedAnnotation.id];
       if (ref) {
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  // Move keyboard focus to the selected item without scrolling the viewport
+  try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
       }
     }
   }, [selectedAnnotation]);
@@ -54,23 +56,33 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
       .catch((err) => console.error('Clipboard write failed:', err));
   };
 
+  // Normalize IIIF body value which may be a string or a language map
+  const getText = (value: any, preferredLang?: string): string | null => {
+    if (typeof value === 'string') {
+      const v = value.trim();
+      return v ? v : null;
+    }
+    if (value && typeof value === 'object') {
+      // Language map like { en: ["text"], de: ["text"] }
+      if (preferredLang && Array.isArray(value[preferredLang]) && value[preferredLang].length > 0) {
+        const v = String(value[preferredLang][0]).trim();
+        return v ? v : null;
+      }
+      const keys = Object.keys(value);
+      for (const k of keys) {
+        const arr = (value as any)[k];
+        if (Array.isArray(arr) && arr.length > 0) {
+          const v = String(arr[0]).trim();
+          if (v) return v;
+        }
+      }
+    }
+    return null;
+  };
+
   return (
-    <div className="relative flex flex-col flex-grow h-full overflow-auto p-2">
+    <div className="relative">
       {annotations
-        .filter((annotation: IIIFAnnotation) => {
-          if (!selectedLanguage) return true;
-
-          if (Array.isArray(annotation.body)) {
-            return annotation.body.some(
-              (item) => item.language === selectedLanguage || !item.language,
-            );
-          }
-
-          return (
-            annotation.body.language === selectedLanguage ||
-            !annotation.body.language
-          );
-        })
         .map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
           const isTagging =
@@ -84,6 +96,17 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               ? 'bg-red-200 border-l-4 border-red-500'
               : 'bg-blue-200 border-l-4 border-blue-500'
             : 'hover:bg-gray-100';
+
+          // Pre-compute items to render when annotation.body is an array
+          let itemsToRender: any[] | null = null;
+          if (Array.isArray(annotation.body)) {
+            const base = annotation.body.filter((item) => !!getText(item.value, selectedLanguage));
+            if (isSelected) {
+              itemsToRender = base; // Always show content for the selected annotation
+            } else {
+              itemsToRender = base;
+            }
+          }
 
           return (
             <div
@@ -102,43 +125,61 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                   onAnnotationSelect(annotation);
                 }
               }}
-              className={`mb-1 p-1 cursor-pointer rounded transition-all ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
+              onFocus={(e) => {
+                const el = e.currentTarget as HTMLElement;
+                const scroller = el.closest('[role="tabpanel"]') as HTMLElement | null;
+                if (!scroller) return;
+                const itemRect = el.getBoundingClientRect();
+                const scrollRect = scroller.getBoundingClientRect();
+                const above = itemRect.top < scrollRect.top;
+                const below = itemRect.bottom > scrollRect.bottom;
+                if (above || below) {
+                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+                }
+              }}
+              className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
               {Array.isArray(annotation.body) ? (
-                annotation.body
-                  .filter(
-                    (item) =>
-                      typeof item.value === 'string' &&
-                      item.value.trim() !== '' &&
-                      (item.language === selectedLanguage || !item.language),
-                  )
-                  .map((item, itemIndex) => (
-                    <div key={itemIndex} className="flex items-start gap-2">
+                itemsToRender && itemsToRender.length > 0 ? (
+                  itemsToRender.map((item, itemIndex) => {
+                    const text = getText(item.value, selectedLanguage);
+                    if (!text) return null;
+                    return (
+                      <div key={itemIndex} className="flex items-start gap-2">
+                        <p
+                          className="text-sm text-gray-700 leading-tight flex-1"
+                          dangerouslySetInnerHTML={renderHTML(text)}
+                        />
+                        {annotation.id && (
+                          <div
+                            title="Copy ID"
+                            className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(annotation.id!);
+                            }}
+                          >
+                            <ClipboardCopy size={14} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-gray-700 leading-tight">No text available</p>
+                )
+              ) : (
+                <div className="flex items-start gap-2">
+                  {(() => {
+                    const text = getText((annotation.body as any).value, selectedLanguage);
+                    return (
                       <p
                         className="text-sm text-gray-700 leading-tight flex-1"
-                        dangerouslySetInnerHTML={renderHTML(item.value)}
+                        dangerouslySetInnerHTML={renderHTML(text || 'No text available')}
                       />
-                      {annotation.id && (
-                        <div
-                          title="Copy ID"
-                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(annotation.id!);
-                          }}
-                        >
-                          <ClipboardCopy size={14} />
-                        </div>
-                      )}
-                    </div>
-                  ))
-              ) : annotation.body.language === selectedLanguage ||
-                !annotation.body.language ? (
-                <div className="flex items-start gap-2">
-                  <p
-                    className="text-sm text-gray-700 leading-tight flex-1"
-                    dangerouslySetInnerHTML={renderHTML(annotation.body.value)}
-                  />
+                    );
+                  })()}
                   {annotation.id && (
                     <div
                       title="Copy ID"
@@ -152,10 +193,6 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                     </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-gray-700 leading-tight">
-                  No text available
-                </p>
               )}
             </div>
           );

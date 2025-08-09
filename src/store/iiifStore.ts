@@ -52,6 +52,7 @@ interface IIIFState {
   selectionLog: string[];
   searchAbortController: AbortController | null;
   searchDebounceId: any;
+  isSearchJump: boolean;
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -125,6 +126,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   selectedLanguage: 'en',
   searching: false,
   isNavigating: false,
+  // True while jumping from a search result into annotations; used to gate focus changes
+  isSearchJump: false,
   selectionPhase: 'idle',
   selectionDebug: false,
   selectionLog: [],
@@ -404,6 +407,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
 
     set({
       isNavigating: true,
+      isSearchJump: true,
       selectedSearchResultId: result.id,
       selectionPhase: 'pending' // Set initial phase
     });
@@ -437,6 +441,12 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             activePanelTab: 'annotations',
             selectionPhase: 'pending', // Re-assert phase for clarity
           });
+          // Keep focus in the panel without scrolling the viewport
+          setTimeout(() => {
+            const panel = document.getElementById('panel-tabs');
+            const scroller = panel?.closest('[role="tabpanel"]') as HTMLElement | null;
+            try { (scroller as any)?.focus?.({ preventScroll: true }); } catch { scroller?.focus?.(); }
+          }, 0);
         } else {
           // Otherwise, switch the image and set the pending ID.
           set({
@@ -448,6 +458,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             viewerReady: false, // This will trigger the selection logic later
             selectionPhase: 'pending',
           });
+          setTimeout(() => {
+            const panel = document.getElementById('panel-tabs');
+            const scroller = panel?.closest('[role="tabpanel"]') as HTMLElement | null;
+            try { (scroller as any)?.focus?.({ preventScroll: true }); } catch { scroller?.focus?.(); }
+          }, 0);
           // No setTimeout needed; logic is now correctly triggered by setAnnotations/setViewerReady.
         }
       };
@@ -473,7 +488,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       console.error('Failed to handle search result click:', err);
       setManifestError(buildDomainError('PARSING_MANIFEST', toUserMessage(err) || 'Could not jump to the selected search result.', { recoverable: true }));
     } finally {
-      set({ isNavigating: false });
+      set({ isNavigating: false, isSearchJump: false });
     }
   },
 

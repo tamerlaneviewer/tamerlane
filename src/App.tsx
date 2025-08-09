@@ -43,6 +43,7 @@ const App: React.FC = () => {
     (state) => state.selectedSearchResultId,
   );
   const viewerReady = useIIIFStore((state) => state.viewerReady);
+  const isSearchJump = useIIIFStore((state) => state.isSearchJump);
   const autocompleteUrl = useIIIFStore((state) => state.autocompleteUrl);
   const selectedLanguage = useIIIFStore((state) => state.selectedLanguage);
   const searching = useIIIFStore((state) => state.searching);
@@ -212,14 +213,25 @@ const App: React.FC = () => {
     const imagePosition = selectedImageIndex + 1;
     const titleBase = currentManifest?.info?.name || 'Viewer';
     document.title = `${titleBase} – Image ${imagePosition} of ${total}`;
-    // Focus main region for SRs and keyboards after navigation
-    mainRef.current?.focus();
+    // Focus main region for SRs after navigation unless user is interacting in the panel or viewer
+    const active = document.activeElement as HTMLElement | null;
+    const panel = document.getElementById('panel-tabs');
+    const viewer = document.getElementById('iiif-viewer');
+    const isInPanel = !!(active && panel && (active === panel || panel.contains(active)));
+    const isInViewer = !!(active && viewer && (active === viewer || viewer.contains(active)));
+  if (!isInPanel && !isInViewer && !isSearchJump) {
+      try {
+        (mainRef.current as any)?.focus({ preventScroll: true });
+      } catch {
+        mainRef.current?.focus();
+      }
+    }
     // Announce via live region
     const el = liveNavRef.current;
     if (el) {
       el.textContent = `Image ${imagePosition} of ${total}`;
     }
-  }, [currentManifest, selectedImageIndex]);
+  }, [currentManifest, selectedImageIndex, isSearchJump]);
 
   // --- Language extraction and selection logic ---
   const DEFAULT_LANGUAGE = configLanguages[0]?.code || 'en';

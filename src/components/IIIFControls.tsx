@@ -49,17 +49,26 @@ const IIIFControls = ({
     return !!(viewer && active && (active === viewer || viewer.contains(active)));
   };
 
+  const isModalOpen = () => {
+    // If an accessible modal dialog is open, don't change images/manifests behind it
+    const dlg = document.querySelector('[role="dialog"][aria-modal="true"]') as HTMLElement | null;
+    return !!dlg;
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isTyping()) return;
+      if (isTyping() || isModalOpen()) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
 
       // Global shortcuts that always work
       if (e.key === '[' || e.key === 'PageUp') {
+        if (isViewerFocused()) return; // don't steal from OSD when focused
         e.preventDefault();
         mode === 'image' ? onPreviousImage() : onPreviousManifest();
         return;
       }
       if (e.key === ']' || e.key === 'PageDown') {
+        if (isViewerFocused()) return;
         e.preventDefault();
         mode === 'image' ? onNextImage() : onNextManifest();
         return;

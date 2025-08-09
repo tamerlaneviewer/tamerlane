@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { IIIFSearchSnippet } from '../types/index.ts';
 
@@ -22,9 +22,21 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   selectedSearchResultId,
   selectedLanguage,
 }) => {
+  const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
+
+  useEffect(() => {
+    if (selectedSearchResultId) {
+      const ref = itemRefs.current[selectedSearchResultId];
+      if (ref) {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
+      }
+    }
+  }, [selectedSearchResultId]);
 
   return (
-    <div>
+    <div className="relative">
       {searchResults.length === 0 ? (
         <p className="text-gray-500 text-center">No search results found.</p>
       ) : (
@@ -43,8 +55,33 @@ const SearchResults: React.FC<SearchResultsProps> = ({
             return (
               <div
                 key={result.id}
+                data-result-id={result.id}
+                ref={(el) => {
+                  if (el) itemRefs.current[result.id] = el;
+                }}
                 onClick={() => onResultClick(result)}
-                className={`mb-1 p-1 cursor-pointer rounded transition-all text-sm text-gray-700 leading-tight ${
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onResultClick(result);
+                  }
+                }}
+                onFocus={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  const scroller = el.closest('[role="tabpanel"]') as HTMLElement | null;
+                  if (!scroller) return;
+                  const itemRect = el.getBoundingClientRect();
+                  const scrollRect = scroller.getBoundingClientRect();
+                  const above = itemRect.top < scrollRect.top;
+                  const below = itemRect.bottom > scrollRect.bottom;
+                  if (above || below) {
+                    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+                  }
+                }}
+                className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 text-sm text-gray-700 leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   isSelected
                     ? 'bg-blue-200 border-l-4 border-blue-500'
                     : 'hover:bg-gray-100'
