@@ -446,6 +446,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             const panel = document.getElementById('panel-tabs');
             const scroller = panel?.closest('[role="tabpanel"]') as HTMLElement | null;
             try { (scroller as any)?.focus?.({ preventScroll: true }); } catch { scroller?.focus?.(); }
+            // Clamp scroll in case previous position exceeds current content
+            if (scroller) {
+              const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+              if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+            }
           }, 0);
         } else {
           // Otherwise, switch the image and set the pending ID.
@@ -462,6 +467,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             const panel = document.getElementById('panel-tabs');
             const scroller = panel?.closest('[role="tabpanel"]') as HTMLElement | null;
             try { (scroller as any)?.focus?.({ preventScroll: true }); } catch { scroller?.focus?.(); }
+            if (scroller) {
+              const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+              if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+            }
           }, 0);
           // No setTimeout needed; logic is now correctly triggered by setAnnotations/setViewerReady.
         }

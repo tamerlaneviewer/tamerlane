@@ -44,9 +44,19 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     }
   }, [copied]);
 
-  const renderHTML = (text: string) => {
-    const safeString = text.replace(/\n/g, '<br />');
-    return { __html: DOMPurify.sanitize(safeString) };
+  const renderHTML = (text: string, fallback: string = 'No text available') => {
+    const safeString = (text || '').replace(/\n/g, '<br />');
+    const sanitized = DOMPurify.sanitize(safeString);
+    // Strip tags like <br> to detect if there is any visible content
+    const visible = sanitized
+      .replace(/<br\s*\/?>(\s|&nbsp;|&#160;)*?/gi, ' ')
+      .replace(/<[^>]*>/g, '')
+      .trim();
+    if (!visible) {
+      const fb = fallback.replace(/\n/g, '<br />');
+      return { __html: DOMPurify.sanitize(fb) };
+    }
+    return { __html: sanitized };
   };
 
   const copyToClipboard = (text: string) => {
@@ -146,10 +156,10 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                     const text = getText(item.value, selectedLanguage);
                     if (!text) return null;
                     return (
-                      <div key={itemIndex} className="flex items-start gap-2">
+            <div key={itemIndex} className="flex items-start gap-2">
                         <p
                           className="text-sm text-gray-700 leading-tight flex-1"
-                          dangerouslySetInnerHTML={renderHTML(text)}
+              dangerouslySetInnerHTML={renderHTML(text)}
                         />
                         {annotation.id && (
                           <div
@@ -172,11 +182,11 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               ) : (
                 <div className="flex items-start gap-2">
                   {(() => {
-                    const text = getText((annotation.body as any).value, selectedLanguage);
+                    const text = getText((annotation.body as any).value, selectedLanguage) || '';
                     return (
                       <p
                         className="text-sm text-gray-700 leading-tight flex-1"
-                        dangerouslySetInnerHTML={renderHTML(text || 'No text available')}
+                        dangerouslySetInnerHTML={renderHTML(text, 'No text available')}
                       />
                     );
                   })()}

@@ -49,27 +49,38 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const [focusedTab, setFocusedTab] = useState<'annotations' | 'search'>(
     activeTab,
   );
+  // Track previous tab to correctly save its position when switching
+  const prevTabRef = useRef<'annotations' | 'search'>(activeTab);
 
-  // Save scroll position when tab changes
+  // Save previous tab scroll position when switching tabs
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      // Save the current scroll position
-      if (activeTab === 'annotations') {
-        savedScrollPositions.current.annotations = scrollContainerRef.current.scrollTop;
+    const scroller = scrollContainerRef.current;
+    const prev = prevTabRef.current;
+    if (scroller) {
+      const top = scroller.scrollTop;
+      if (prev === 'annotations') {
+        savedScrollPositions.current.annotations = top;
       } else {
-        savedScrollPositions.current.search = scrollContainerRef.current.scrollTop;
+        savedScrollPositions.current.search = top;
       }
     }
+    prevTabRef.current = activeTab;
   }, [activeTab]);
 
-  // Restore scroll position after tab change
+  // Restore scroll position after tab change (after content paints), clamped to range
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const savedPosition = activeTab === 'annotations' 
-        ? savedScrollPositions.current.annotations 
+    const scroller = scrollContainerRef.current;
+    if (!scroller) return;
+    const savedPosition =
+      activeTab === 'annotations'
+        ? savedScrollPositions.current.annotations
         : savedScrollPositions.current.search;
-      scrollContainerRef.current.scrollTop = savedPosition;
-    }
+    // Defer to next frame so content dimensions are accurate
+    const raf = requestAnimationFrame(() => {
+      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      scroller.scrollTop = Math.min(savedPosition || 0, maxTop);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [activeTab]);
 
   useEffect(() => {
@@ -95,6 +106,12 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   selected.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
     try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
+    // Clamp after any scroll to avoid blank viewport if content is shorter
+    const raf = requestAnimationFrame(() => {
+      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+    });
+    return () => cancelAnimationFrame(raf);
   }, [activeTab, selectedSearchResultId]);
 
   const handleTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
