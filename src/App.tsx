@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
@@ -46,6 +46,9 @@ const App: React.FC = () => {
   const autocompleteUrl = useIIIFStore((state) => state.autocompleteUrl);
   const selectedLanguage = useIIIFStore((state) => state.selectedLanguage);
   const searching = useIIIFStore((state) => state.searching);
+  const annotationsLoading = useIIIFStore((state) => state.annotationsLoading);
+  const annotationsError = useIIIFStore((state) => state.annotationsError);
+  const searchError = useIIIFStore((state) => state.searchError);
 
   // Granular selectors for actions
   const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
@@ -81,6 +84,9 @@ const App: React.FC = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
+  const mainRef = useRef<HTMLElement | null>(null);
+  const liveNavRef = useRef<HTMLDivElement | null>(null);
+  const liveErrorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (iiifContentUrlFromParams) {
@@ -174,6 +180,47 @@ const App: React.FC = () => {
     }
   }, [iiifContentUrl, iiifContentUrlFromParams, setShowUrlDialog]);
 
+  // Keep document language in sync with selectedLanguage
+  useEffect(() => {
+    if (!selectedLanguage) return;
+    const prev = document.documentElement.getAttribute('lang');
+    document.documentElement.setAttribute('lang', selectedLanguage);
+    return () => {
+      if (prev) document.documentElement.setAttribute('lang', prev);
+    };
+  }, [selectedLanguage]);
+
+  // Toggle background inert/aria-hidden when a modal is open
+  useEffect(() => {
+    const main = document.getElementById('main-content');
+    if (!main) return;
+    const active = showUrlDialog || !!manifestError;
+    try {
+      (main as any).inert = active;
+    } catch {}
+    if (active) main.setAttribute('aria-hidden', 'true');
+    else main.removeAttribute('aria-hidden');
+  }, [showUrlDialog, manifestError]);
+
+  // Announce navigation changes and update title at top-level (must not be conditional)
+  useEffect(() => {
+    if (!currentManifest) return;
+    const total = Array.isArray(currentManifest.images)
+      ? currentManifest.images.length
+      : 0;
+    if (total <= 0) return;
+    const imagePosition = selectedImageIndex + 1;
+    const titleBase = currentManifest?.info?.name || 'Viewer';
+    document.title = `${titleBase} – Image ${imagePosition} of ${total}`;
+    // Focus main region for SRs and keyboards after navigation
+    mainRef.current?.focus();
+    // Announce via live region
+    const el = liveNavRef.current;
+    if (el) {
+      el.textContent = `Image ${imagePosition} of ${total}`;
+    }
+  }, [currentManifest, selectedImageIndex]);
+
   // --- Language extraction and selection logic ---
   const DEFAULT_LANGUAGE = configLanguages[0]?.code || 'en';
   const availableLanguages = React.useMemo(() => {
@@ -242,7 +289,9 @@ const App: React.FC = () => {
   // Use the store's handleSearch, which uses searchUrl internally
   const onSearch = (query: string) => handleSearch(query);
 
-  if (showUrlDialog) return <UrlDialog onSubmit={handleUrlSubmit} />;
+  if (showUrlDialog) {
+    return <UrlDialog onSubmit={handleUrlSubmit} />;
+  }
   if (manifestError) {
     return (
       <ErrorDialog
@@ -288,8 +337,15 @@ const App: React.FC = () => {
   const imageWidth = selectedImage?.imageWidth ?? canvasWidth;
   const imageHeight = selectedImage?.imageHeight ?? canvasHeight;
 
+
   return (
     <div className="flex flex-col h-screen">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:p-2 focus:rounded focus:shadow"
+      >
+        Skip to content
+      </a>
       <Header
         onSearch={onSearch}
         autocompleteUrl={autocompleteUrl}
@@ -328,7 +384,17 @@ const App: React.FC = () => {
         availableLanguages={languagesForHeader}
       />
 
-      <div className="flex flex-grow">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex flex-grow"
+        ref={mainRef}
+        aria-label="IIIF Viewer content"
+      >
+        <div ref={liveNavRef} aria-live="polite" aria-atomic="true" className="sr-only" />
+        <div ref={liveErrorRef} aria-live="polite" aria-atomic="true" className="sr-only">
+          {annotationsError?.message || searchError?.message || ''}
+        </div>
         <LeftPanel
           manifestMetadata={manifestMetadata}
           collectionMetadata={collectionMetadata}
@@ -356,8 +422,10 @@ const App: React.FC = () => {
           selectedLanguage={selectedLanguage || undefined}
           pendingAnnotationId={pendingAnnotationId}
           viewerReady={viewerReady}
+      annotationsLoading={annotationsLoading}
+      searching={searching}
         />
-      </div>
+    </main>
     </div>
   );
 };

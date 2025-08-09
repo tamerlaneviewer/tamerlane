@@ -74,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({
             className="h-12 w-12"
           />
         )}
-        <span className="hidden md:inline text-lg font-semibold ml-2">{APP_NAME}</span>
+        <h1 className="hidden md:inline text-lg font-semibold ml-2">{APP_NAME}</h1>
       </div>
 
       <div className="flex-1 flex justify-center md:justify-start md:flex-initial">
@@ -96,6 +96,7 @@ const Header: React.FC<HeaderProps> = ({
           onClick={toggleLanguage}
           className="hidden md:block bg-slate-600 text-white px-2 py-1 rounded text-sm hover:bg-slate-500"
           title={currentLanguage?.name}
+          aria-label={currentLanguage ? `Language: ${currentLanguage.name} (${currentLanguage.code.toUpperCase()}). Activate to change language.` : 'Change language'}
         >
           {currentLanguage?.code?.toUpperCase()}
         </button>

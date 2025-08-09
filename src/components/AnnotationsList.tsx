@@ -29,7 +29,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     if (selectedAnnotation?.id) {
       const ref = itemRefs.current[selectedAnnotation.id];
       if (ref) {
-        ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
       }
     }
   }, [selectedAnnotation]);
@@ -93,7 +94,15 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                 }
               }}
               onClick={() => onAnnotationSelect(annotation)}
-              className={`mb-1 p-1 cursor-pointer rounded transition-all ${selectionClass} group`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onAnnotationSelect(annotation);
+                }
+              }}
+              className={`mb-1 p-1 cursor-pointer rounded transition-all ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
               {Array.isArray(annotation.body) ? (
                 annotation.body
