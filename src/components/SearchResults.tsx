@@ -24,14 +24,49 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
+  const centerIfNeeded = (target: HTMLElement) => {
+    const scroller = target.closest('[role="tabpanel"]') as HTMLElement | null;
+    if (!scroller) return;
+    const itemRect = target.getBoundingClientRect();
+    const scrollRect = scroller.getBoundingClientRect();
+    const fullyVisible = itemRect.top >= scrollRect.top && itemRect.bottom <= scrollRect.bottom;
+    if (fullyVisible) return;
+    const itemMid = itemRect.top + itemRect.height / 2;
+    const scrollMid = scrollRect.top + scrollRect.height / 2;
+    const delta = itemMid - scrollMid;
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const desired = Math.min(Math.max(0, scroller.scrollTop + delta), maxTop);
+    if (Math.abs(desired - scroller.scrollTop) <= 2) return; // ignore tiny deltas
+    scroller.scrollTop = desired;
+  };
+
+  const langMatches = (sel?: string | null, res?: string | null) => {
+    if (!sel) return true; // no user language filter
+    if (!res) return true; // result has no language -> include
+    const s = sel.toLowerCase();
+    const r = res.toLowerCase();
+    if (s === r) return true;
+    const sb = s.split('-')[0];
+    const rb = r.split('-')[0];
+    return sb === rb; // base-language match (e.g., en vs en-GB)
+  };
+
+  // Filter by language, but never hide the currently selected result.
+  // If filtering would produce an empty list, fall back to showing all results.
+  let visibleResults = searchResults.filter((result) => {
+    return result.id === selectedSearchResultId || langMatches(selectedLanguage, result.language ?? null);
+  });
+  if (searchResults.length > 0 && visibleResults.length === 0) {
+    visibleResults = searchResults;
+  }
+
   useEffect(() => {
     if (selectedSearchResultId) {
-      const ref = itemRefs.current[selectedSearchResultId];
-      if (ref) {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+    const ref = itemRefs.current[selectedSearchResultId];
+    if (ref) {
+  centerIfNeeded(ref);
   try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
-      }
+    }
     }
   }, [selectedSearchResultId]);
 
@@ -40,12 +75,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
       {searchResults.length === 0 ? (
         <p className="text-gray-500 text-center">No search results found.</p>
       ) : (
-        searchResults
-          .filter((result) => {
-            if (!selectedLanguage) return true; // No filter if no selected language
-            if (!result.language) return true; // No language on the result? Show it
-            return result.language === selectedLanguage; // Only match if explicitly matches
-          })
+        visibleResults
           .map((result: IIIFSearchSnippet) => {
             const combinedHTML = `${result.prefix ?? ''}<span class="text-blue-600 font-semibold">${result.exact}</span>${result.suffix ?? ''}`;
 
@@ -70,16 +100,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                 }}
                 onFocus={(e) => {
                   const el = e.currentTarget as HTMLElement;
-                  const scroller = el.closest('[role="tabpanel"]') as HTMLElement | null;
-                  if (!scroller) return;
-                  const itemRect = el.getBoundingClientRect();
-                  const scrollRect = scroller.getBoundingClientRect();
-                  const above = itemRect.top < scrollRect.top;
-                  const below = itemRect.bottom > scrollRect.bottom;
-                  if (above || below) {
-                    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
-                  }
+                  centerIfNeeded(el);
                 }}
                 className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 text-sm text-gray-700 leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   isSelected

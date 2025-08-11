@@ -3,6 +3,7 @@ import { BookOpen, Search } from 'lucide-react';
 import AnnotationsList from './AnnotationsList.tsx';
 import SearchResults from './SearchResults.tsx';
 import { IIIFAnnotation, IIIFSearchSnippet } from '../types/index.ts';
+import { useIIIFStore } from '../store/iiifStore.ts';
 
 interface AnnotationsPanelProps {
   annotations: IIIFAnnotation[];
@@ -51,6 +52,31 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   );
   // Track previous tab to correctly save its position when switching
   const prevTabRef = useRef<'annotations' | 'search'>(activeTab);
+  const panelScrollTop = useIIIFStore((s) => s.panelScrollTop);
+  const setPanelScrollTop = useIIIFStore((s) => s.setPanelScrollTop);
+  const ensureVisible = useIIIFStore((s) => s.ensureVisible);
+
+  // Center the target within the scroller. If always=true, force centering.
+  // Uses robust geometry to compute offset relative to scroller, avoiding offsetParent quirks.
+  const scrollTargetToCenter = (
+    scroller: HTMLElement,
+    target: HTMLElement,
+    opts?: { always?: boolean; threshold?: number }
+  ) => {
+    const { always = false, threshold = 4 } = opts || {};
+    const itemRect = target.getBoundingClientRect();
+    const scrollRect = scroller.getBoundingClientRect();
+    const fullyVisible = itemRect.top >= scrollRect.top && itemRect.bottom <= scrollRect.bottom;
+    if (!always && fullyVisible) return; // don't move if already visible
+
+    // Compute desired centered position using rects + current scrollTop
+    const itemTopInScroller = itemRect.top - scrollRect.top + scroller.scrollTop;
+    const desired = itemTopInScroller - (scroller.clientHeight - target.clientHeight) / 2;
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const clamped = Math.min(Math.max(0, desired), maxTop);
+    if (!always && Math.abs(scroller.scrollTop - clamped) <= threshold) return; // ignore tiny deltas
+    scroller.scrollTop = clamped;
+  };
 
   // Save previous tab scroll position when switching tabs
   useEffect(() => {
@@ -59,60 +85,165 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
     if (scroller) {
       const top = scroller.scrollTop;
       if (prev === 'annotations') {
-        savedScrollPositions.current.annotations = top;
+  savedScrollPositions.current.annotations = top;
+  setPanelScrollTop('annotations', top);
       } else {
-        savedScrollPositions.current.search = top;
+  savedScrollPositions.current.search = top;
+  setPanelScrollTop('search', top);
       }
     }
     prevTabRef.current = activeTab;
-  }, [activeTab]);
+  }, [activeTab, setPanelScrollTop]);
 
-  // Restore scroll position after tab change (after content paints), clamped to range
+  // Restore scroll position after tab change (after content paints), clamped to range.
+  // Skip restoring if there is a selected item or a pending ensureVisible intent for the active tab
   useEffect(() => {
     const scroller = scrollContainerRef.current;
     if (!scroller) return;
-    const savedPosition =
-      activeTab === 'annotations'
-        ? savedScrollPositions.current.annotations
-        : savedScrollPositions.current.search;
+    // If an item should be ensured visible, let that logic take over
+    const hasItemTarget =
+      (activeTab === 'annotations' && !!selectedAnnotation?.id) ||
+      (activeTab === 'search' && !!selectedSearchResultId);
+    const hasEnsureIntent = ensureVisible.tab === activeTab && !!ensureVisible.id;
+    if (hasItemTarget || hasEnsureIntent) return;
+
+    const savedPosition = activeTab === 'annotations' ? panelScrollTop.annotations : panelScrollTop.search;
     // Defer to next frame so content dimensions are accurate
     const raf = requestAnimationFrame(() => {
       const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
       scroller.scrollTop = Math.min(savedPosition || 0, maxTop);
     });
     return () => cancelAnimationFrame(raf);
-  }, [activeTab]);
+  }, [activeTab, panelScrollTop.annotations, panelScrollTop.search, selectedAnnotation?.id, selectedSearchResultId, ensureVisible]);
+
+  // Observe content size changes and clamp scrollTop to prevent overscroll blank space
+  useEffect(() => {
+    const scroller = scrollContainerRef.current;
+    if (!scroller) return;
+    const ro = new ResizeObserver(() => {
+      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      if (scroller.scrollTop > maxTop) {
+        scroller.scrollTop = maxTop;
+        setPanelScrollTop(activeTab, scroller.scrollTop);
+      }
+    });
+    ro.observe(scroller);
+    return () => ro.disconnect();
+  }, [activeTab, setPanelScrollTop]);
 
   useEffect(() => {
-    setFocusedTab(activeTab);
+  setFocusedTab(activeTab);
   }, [activeTab]);
+
+  // When switching to the Annotations tab, ensure the currently selected annotation is visible
+  useEffect(() => {
+    if (activeTab !== 'annotations' || !selectedAnnotation?.id) return;
+    const scroller = scrollContainerRef.current;
+    if (!scroller) return;
+  // Use instant, center-if-needed scroll for stability
+    let attempts = 0;
+    let rafId: number | null = null;
+    const tryFocus = () => {
+      attempts += 1;
+      let selected: HTMLElement | null = null;
+      const nodes = scroller.querySelectorAll('[data-annotation-id]');
+      for (const el of Array.from(nodes)) {
+        const e = el as HTMLElement & { dataset?: { annotationId?: string } };
+        if (e.dataset && e.dataset.annotationId === selectedAnnotation.id) {
+          selected = e as HTMLElement;
+          break;
+        }
+      }
+      if (selected) {
+        scrollTargetToCenter(scroller, selected, { always: true });
+        try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
+        const clampId = requestAnimationFrame(() => {
+          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+        });
+        rafId = clampId;
+        return;
+      }
+      if (attempts < 8) {
+        rafId = requestAnimationFrame(tryFocus);
+      }
+    };
+    rafId = requestAnimationFrame(tryFocus);
+    return () => { if (rafId) cancelAnimationFrame(rafId); };
+  }, [activeTab, selectedAnnotation?.id]);
 
   // When switching back to the Search tab, restore the selected result into view and focus it
   useEffect(() => {
     if (activeTab !== 'search') return;
     const scroller = scrollContainerRef.current;
     if (!scroller || !selectedSearchResultId) return;
-    const all = scroller.querySelectorAll('[data-result-id]');
-    let selected: HTMLElement | null = null;
-    for (const el of Array.from(all)) {
-      const e = el as HTMLElement & { dataset?: { resultId?: string } };
-      // dataset keys convert data-result-id to resultId
-      if (e.dataset && e.dataset.resultId === selectedSearchResultId) {
-        selected = e as HTMLElement;
-        break;
+  // Use instant, center-if-needed scroll for stability
+    let attempts = 0;
+    let rafId: number | null = null;
+    const tryFocus = () => {
+      attempts += 1;
+      let selected: HTMLElement | null = null;
+      const nodes = scroller.querySelectorAll('[data-result-id]');
+      for (const el of Array.from(nodes)) {
+        const e = el as HTMLElement & { dataset?: { resultId?: string } };
+        if (e.dataset && e.dataset.resultId === selectedSearchResultId) {
+          selected = e as HTMLElement;
+          break;
+        }
       }
-    }
-    if (!selected) return;
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  selected.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
-    try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
-    // Clamp after any scroll to avoid blank viewport if content is shorter
-    const raf = requestAnimationFrame(() => {
-      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-      if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
-    });
-    return () => cancelAnimationFrame(raf);
+      if (selected) {
+        scrollTargetToCenter(scroller, selected, { always: true });
+        try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
+        const clampId = requestAnimationFrame(() => {
+          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+        });
+        rafId = clampId;
+        return;
+      }
+      if (attempts < 8) {
+        rafId = requestAnimationFrame(tryFocus);
+      }
+    };
+    rafId = requestAnimationFrame(tryFocus);
+    return () => { if (rafId) cancelAnimationFrame(rafId); };
   }, [activeTab, selectedSearchResultId]);
+
+  // Store-driven ensureVisible intent (annotations or search)
+  useEffect(() => {
+    const scroller = scrollContainerRef.current;
+    if (!scroller) return;
+    const { tab, id } = ensureVisible;
+    if (!id || tab !== activeTab) return;
+    let attempts = 0;
+    let rafId: number | null = null;
+    const tryEnsure = () => {
+      attempts += 1;
+      const nodes = scroller.querySelectorAll(tab === 'annotations' ? '[data-annotation-id]' : '[data-result-id]');
+      let target: HTMLElement | null = null;
+      for (const el of Array.from(nodes)) {
+        const e = el as HTMLElement & { dataset?: { annotationId?: string; resultId?: string } };
+        const matchId = tab === 'annotations' ? e.dataset?.annotationId : e.dataset?.resultId;
+        if (matchId === id) { target = e as HTMLElement; break; }
+      }
+      if (target) {
+        scrollTargetToCenter(scroller, target, { always: true });
+        try { (target as any).focus({ preventScroll: true }); } catch { target.focus(); }
+        const clampId = requestAnimationFrame(() => {
+          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+          setPanelScrollTop(activeTab, scroller.scrollTop);
+        });
+        rafId = clampId;
+        return;
+      }
+      if (attempts < 8) {
+        rafId = requestAnimationFrame(tryEnsure);
+      }
+    };
+    rafId = requestAnimationFrame(tryEnsure);
+    return () => { if (rafId) cancelAnimationFrame(rafId); };
+  }, [ensureVisible, activeTab, setPanelScrollTop]);
 
   const handleTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const order: Array<'annotations' | 'search'> = ['annotations', 'search'];
@@ -138,14 +269,14 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
     } else if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       setActiveTab(focusedTab);
-  // When activated via keyboard, move focus into the tabpanel without scrolling the viewport
-  setTimeout(() => {
-    try {
-      (scrollContainerRef.current as any)?.focus({ preventScroll: true });
-    } catch {
-      scrollContainerRef.current?.focus();
-    }
-  }, 0);
+      // Always focus the scroller when activating a tab via keyboard
+      setTimeout(() => {
+        try {
+          (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+        } catch {
+          scrollContainerRef.current?.focus();
+        }
+      }, 0);
     }
   };
 
@@ -190,12 +321,14 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
           } hover:bg-gray-400`}
           onClick={() => {
             setActiveTab('annotations');
-            // Keep viewport stable when moving focus into panel programmatically
-            try {
-              (scrollContainerRef.current as any)?.focus({ preventScroll: true });
-            } catch {
-              scrollContainerRef.current?.focus();
-            }
+            // Always focus the scroller when clicking the tab
+            setTimeout(() => {
+              try {
+                (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+              } catch {
+                scrollContainerRef.current?.focus();
+              }
+            }, 0);
           }}
           title="Annotations"
           role="tab"
@@ -216,11 +349,14 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
           } hover:bg-gray-400`}
           onClick={() => {
             setActiveTab('search');
-            try {
-              (scrollContainerRef.current as any)?.focus({ preventScroll: true });
-            } catch {
-              scrollContainerRef.current?.focus();
-            }
+            // Always focus the scroller when clicking the tab
+            setTimeout(() => {
+              try {
+                (scrollContainerRef.current as any)?.focus({ preventScroll: true });
+              } catch {
+                scrollContainerRef.current?.focus();
+              }
+            }, 0);
           }}
           title="Search Results"
           role="tab"
@@ -244,9 +380,13 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
         tabIndex={0}
         aria-busy={activeTab === 'annotations' ? annotationsLoading : searching}
         onKeyDown={handlePanelKeyDown}
+        onScroll={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          setPanelScrollTop(activeTab, el.scrollTop);
+        }}
       >
   {/* Removed error banners for annotations and search */}
-        {activeTab === 'annotations' ? (
+  {activeTab === 'annotations' ? (
           annotations.length === 0 ? (
             <p className="text-gray-500 text-center">
               No annotations available.
@@ -262,15 +402,22 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               viewerReady={viewerReady}
             />
           )
-        ) : searchResults.length === 0 ? (
-          <p className="text-gray-500 text-center">No search results found.</p>
         ) : (
-          <SearchResults
-            searchResults={searchResults}
-            onResultClick={onResultClick}
-            selectedSearchResultId={selectedSearchResultId}
-            selectedLanguage={selectedLanguage}
-          />
+          <div className="flex flex-col gap-2">
+            {searching && (
+              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">Searching…</div>
+            )}
+            {searchResults.length === 0 ? (
+              <p className="text-gray-500 text-center">No search results found.</p>
+            ) : (
+              <SearchResults
+                searchResults={searchResults}
+                onResultClick={onResultClick}
+                selectedSearchResultId={selectedSearchResultId}
+                selectedLanguage={selectedLanguage}
+              />
+            )}
+          </div>
         )}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {activeTab === 'annotations'
@@ -279,7 +426,9 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               : ''
             : searching
               ? 'Searching…'
-              : ''}
+              : searchResults.length > 0
+                ? `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}.`
+                : 'No results.'}
         </div>
       </div>
     </div>

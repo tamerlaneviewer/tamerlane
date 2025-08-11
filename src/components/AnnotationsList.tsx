@@ -25,14 +25,37 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
 
+  const centerIfNeeded = (target: HTMLElement) => {
+    const scroller = target.closest('[role="tabpanel"]') as HTMLElement | null;
+    if (!scroller) return;
+    const itemRect = target.getBoundingClientRect();
+    const scrollRect = scroller.getBoundingClientRect();
+    const fullyVisible = itemRect.top >= scrollRect.top && itemRect.bottom <= scrollRect.bottom;
+    if (fullyVisible) return;
+    const itemMid = itemRect.top + itemRect.height / 2;
+    const scrollMid = scrollRect.top + scrollRect.height / 2;
+    const delta = itemMid - scrollMid;
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const desired = Math.min(Math.max(0, scroller.scrollTop + delta), maxTop);
+    if (Math.abs(desired - scroller.scrollTop) <= 2) return; // ignore tiny deltas
+    scroller.scrollTop = desired;
+  };
+
   useEffect(() => {
     if (selectedAnnotation?.id) {
       const ref = itemRefs.current[selectedAnnotation.id];
-      if (ref) {
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  ref.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+    if (ref) {
+  centerIfNeeded(ref);
   // Move keyboard focus to the selected item without scrolling the viewport
   try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
+  // Clamp scroller to avoid blank space under items if content shrank
+  const clampId = requestAnimationFrame(() => {
+    const scroller = ref.closest('[role="tabpanel"]') as HTMLElement | null;
+    if (!scroller) return;
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
+  });
+  return () => cancelAnimationFrame(clampId);
       }
     }
   }, [selectedAnnotation]);
@@ -121,6 +144,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
           return (
             <div
               key={annotation.id || index}
+              data-annotation-id={annotation.id || undefined}
               ref={(el) => {
                 if (annotation.id && el) {
                   itemRefs.current[annotation.id] = el;
@@ -137,16 +161,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               }}
               onFocus={(e) => {
                 const el = e.currentTarget as HTMLElement;
-                const scroller = el.closest('[role="tabpanel"]') as HTMLElement | null;
-                if (!scroller) return;
-                const itemRect = el.getBoundingClientRect();
-                const scrollRect = scroller.getBoundingClientRect();
-                const above = itemRect.top < scrollRect.top;
-                const below = itemRect.bottom > scrollRect.bottom;
-                if (above || below) {
-                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
-                }
+                centerIfNeeded(el);
               }}
               className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
