@@ -67,6 +67,7 @@ const App: React.FC = () => {
   const setSelectedAnnotation = useIIIFStore(
     (state) => state.setSelectedAnnotation,
   );
+  const setSearchError = useIIIFStore((state) => state.setSearchError);
   const setViewerReady = useIIIFStore((state) => state.setViewerReady);
   const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
   const setSearchUrl = useIIIFStore((state) => state.setSearchUrl);
@@ -320,6 +321,17 @@ const App: React.FC = () => {
     );
   }
 
+  if (searchError) {
+    return (
+      <ErrorDialog
+        message={searchError.message}
+        onDismiss={() => {
+          setSearchError(null);
+        }}
+      />
+    );
+  }
+
   if (!currentManifest) return <SplashScreen />;
 
   const totalImages = currentManifest.images.length;
@@ -406,7 +418,7 @@ const App: React.FC = () => {
       >
         <div ref={liveNavRef} aria-live="polite" aria-atomic="true" className="sr-only" />
         <div ref={liveErrorRef} aria-live="polite" aria-atomic="true" className="sr-only">
-          {annotationsError?.message || searchError?.message || ''}
+          {!searchError && !manifestError ? (annotationsError?.message || '') : ''}
         </div>
         <LeftPanel
           manifestMetadata={manifestMetadata}
