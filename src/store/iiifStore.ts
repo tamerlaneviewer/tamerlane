@@ -377,15 +377,34 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         const results = await searchAnnotations(searchEndpoint, controller.signal);
         const taggedResults = results.map((result) => {
           let manifestId = '';
+          
+          // Method 1: Direct partOf matching (most reliable)
           if (result.partOf) {
             const matchedUrl = manifestUrls.find((url) => url === result.partOf);
             if (matchedUrl) manifestId = matchedUrl;
           }
-          if (!manifestId) {
-            const matchedUrl = manifestUrls.find((url) => result.canvasTarget.startsWith(url));
-            if (matchedUrl) manifestId = matchedUrl;
+          
+          // Method 2: Handle missing partOf property
+          if (!manifestId && result.annotationId) {
+            if (manifestUrls.length === 1) {
+              // Single manifest case - safe to assume it belongs to the only available manifest
+              manifestId = manifestUrls[0];
+              logger.info(`Search result for annotation ${result.annotationId} missing 'partOf' property, but using single available manifest.`);
+            } else {
+              // Multiple manifests - cannot reliably determine which one contains this annotation
+              logger.error(`Search result for annotation ${result.annotationId} missing 'partOf' property. Cannot determine source manifest for canvas ${result.canvasTarget} across ${manifestUrls.length} manifests.`);
+              manifestId = 'UNKNOWN_MANIFEST';
+            }
           }
+          
           return { ...result, manifestId };
+        }).filter(result => {
+          // Filter out results with unknown manifests to avoid confusing the user
+          if (result.manifestId === 'UNKNOWN_MANIFEST') {
+            logger.warn(`Excluding search result for annotation ${result.annotationId} due to unknown manifest.`);
+            return false;
+          }
+          return true;
         });
         set({ searchResults: taggedResults, activePanelTab: 'search' });
         setSearchError(null);
@@ -417,6 +436,16 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
 
     // Use the new isNavigating flag
     if (state.isNavigating) return;
+
+    // Check for unknown manifest error
+    if (manifestId === 'UNKNOWN_MANIFEST') {
+      setManifestError(buildDomainError(
+        'SEARCH_MANIFEST_UNKNOWN', 
+        `Cannot navigate to search result: unable to determine which manifest contains canvas "${canvasTarget}". The search result is missing required manifest information.`, 
+        { recoverable: false }
+      ));
+      return;
+    }
 
     set({
       isNavigating: true,
