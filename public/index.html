@@ -4,10 +4,17 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    
+    <!-- Security Headers - Iframe Embedding Allowed -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    
+    <!-- App Metadata -->
+    <meta name="theme-color" content="#1e40af" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Tamerlane IIIF Viewer - A lightweight IIIF viewer prioritising user experience for annotated resources"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
