@@ -55,6 +55,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const panelScrollTop = useIIIFStore((s) => s.panelScrollTop);
   const setPanelScrollTop = useIIIFStore((s) => s.setPanelScrollTop);
   const ensureVisible = useIIIFStore((s) => s.ensureVisible);
+  const requestEnsureVisible = useIIIFStore((s) => s.requestEnsureVisible);
 
   // Center the target within the scroller. If always=true, force centering.
   // Uses robust geometry to compute offset relative to scroller, avoiding offsetParent quirks.
@@ -135,79 +136,19 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   setFocusedTab(activeTab);
   }, [activeTab]);
 
-  // When switching to the Annotations tab, ensure the currently selected annotation is visible
+  // When switching to the Annotations tab or when ensureVisible requests it, center the selected annotation
   useEffect(() => {
     if (activeTab !== 'annotations' || !selectedAnnotation?.id) return;
-    const scroller = scrollContainerRef.current;
-    if (!scroller) return;
-  // Use instant, center-if-needed scroll for stability
-    let attempts = 0;
-    let rafId: number | null = null;
-    const tryFocus = () => {
-      attempts += 1;
-      let selected: HTMLElement | null = null;
-      const nodes = scroller.querySelectorAll('[data-annotation-id]');
-      for (const el of Array.from(nodes)) {
-        const e = el as HTMLElement & { dataset?: { annotationId?: string } };
-        if (e.dataset && e.dataset.annotationId === selectedAnnotation.id) {
-          selected = e as HTMLElement;
-          break;
-        }
-      }
-      if (selected) {
-        scrollTargetToCenter(scroller, selected, { always: true });
-        try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
-        const clampId = requestAnimationFrame(() => {
-          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-          if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
-        });
-        rafId = clampId;
-        return;
-      }
-      if (attempts < 8) {
-        rafId = requestAnimationFrame(tryFocus);
-      }
-    };
-    rafId = requestAnimationFrame(tryFocus);
-    return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, [activeTab, selectedAnnotation?.id]);
+    // Use the store's ensureVisible mechanism for consistency
+    requestEnsureVisible('annotations', selectedAnnotation.id);
+  }, [activeTab, selectedAnnotation?.id, requestEnsureVisible]);
 
-  // When switching back to the Search tab, restore the selected result into view and focus it
+  // When switching back to the Search tab, restore the selected result
   useEffect(() => {
-    if (activeTab !== 'search') return;
-    const scroller = scrollContainerRef.current;
-    if (!scroller || !selectedSearchResultId) return;
-  // Use instant, center-if-needed scroll for stability
-    let attempts = 0;
-    let rafId: number | null = null;
-    const tryFocus = () => {
-      attempts += 1;
-      let selected: HTMLElement | null = null;
-      const nodes = scroller.querySelectorAll('[data-result-id]');
-      for (const el of Array.from(nodes)) {
-        const e = el as HTMLElement & { dataset?: { resultId?: string } };
-        if (e.dataset && e.dataset.resultId === selectedSearchResultId) {
-          selected = e as HTMLElement;
-          break;
-        }
-      }
-      if (selected) {
-        scrollTargetToCenter(scroller, selected, { always: true });
-        try { (selected as any).focus({ preventScroll: true }); } catch { selected.focus(); }
-        const clampId = requestAnimationFrame(() => {
-          const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-          if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
-        });
-        rafId = clampId;
-        return;
-      }
-      if (attempts < 8) {
-        rafId = requestAnimationFrame(tryFocus);
-      }
-    };
-    rafId = requestAnimationFrame(tryFocus);
-    return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, [activeTab, selectedSearchResultId]);
+    if (activeTab !== 'search' || !selectedSearchResultId) return;
+    // Use the store's ensureVisible mechanism for consistency
+    requestEnsureVisible('search', selectedSearchResultId);
+  }, [activeTab, selectedSearchResultId, requestEnsureVisible]);
 
   // Store-driven ensureVisible intent (annotations or search)
   useEffect(() => {

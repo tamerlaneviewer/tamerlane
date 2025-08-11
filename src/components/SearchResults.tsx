@@ -24,22 +24,6 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
-  const centerIfNeeded = (target: HTMLElement) => {
-    const scroller = target.closest('[role="tabpanel"]') as HTMLElement | null;
-    if (!scroller) return;
-    const itemRect = target.getBoundingClientRect();
-    const scrollRect = scroller.getBoundingClientRect();
-    const fullyVisible = itemRect.top >= scrollRect.top && itemRect.bottom <= scrollRect.bottom;
-    if (fullyVisible) return;
-    const itemMid = itemRect.top + itemRect.height / 2;
-    const scrollMid = scrollRect.top + scrollRect.height / 2;
-    const delta = itemMid - scrollMid;
-    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-    const desired = Math.min(Math.max(0, scroller.scrollTop + delta), maxTop);
-    if (Math.abs(desired - scroller.scrollTop) <= 2) return; // ignore tiny deltas
-    scroller.scrollTop = desired;
-  };
-
   const langMatches = (sel?: string | null, res?: string | null) => {
     if (!sel) return true; // no user language filter
     if (!res) return true; // result has no language -> include
@@ -58,13 +42,13 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   });
   if (searchResults.length > 0 && visibleResults.length === 0) {
     visibleResults = searchResults;
-  }
+  };
 
   useEffect(() => {
     if (selectedSearchResultId) {
     const ref = itemRefs.current[selectedSearchResultId];
     if (ref) {
-  centerIfNeeded(ref);
+  // Just focus the item - centering is handled by store ensureVisible
   try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
     }
     }
@@ -99,8 +83,8 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                   }
                 }}
                 onFocus={(e) => {
-                  const el = e.currentTarget as HTMLElement;
-                  centerIfNeeded(el);
+                  // onFocus centering is handled by the item's natural scroll behavior
+                  // No custom centering needed here
                 }}
                 className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 text-sm text-gray-700 leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                   isSelected
