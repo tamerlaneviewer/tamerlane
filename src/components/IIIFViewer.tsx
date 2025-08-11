@@ -194,9 +194,23 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   }, [selectedAnnotation, imageWidth, imageHeight]);
 
   return (
-    <div className="w-full h-full relative">
+    <div
+      className="w-full h-full relative"
+      role="region"
+      aria-label="Image viewer"
+      aria-busy={isLoading}
+    >
       {isLoading && <SplashScreen />}
-      <div ref={viewerRef} className="w-full h-full"></div>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isLoading ? 'Loading image…' : ''}
+      </div>
+      <div
+        ref={viewerRef}
+        className="w-full h-full"
+  id="iiif-viewer"
+        tabIndex={0}
+        aria-label="Zoomable image viewer"
+      ></div>
     </div>
   );
 };

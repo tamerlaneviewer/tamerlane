@@ -16,6 +16,8 @@ interface RightPanelProps {
   pendingAnnotationId?: string | null;
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
+  annotationsLoading?: boolean;
+  searching?: boolean;
 }
 
 const RightPanel: React.FC<RightPanelProps> = ({
@@ -31,9 +33,11 @@ const RightPanel: React.FC<RightPanelProps> = ({
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
+  annotationsLoading,
+  searching,
 }) => {
   return (
-    <div className="hidden md:flex md:w-1/4 border-l flex-col overflow-hidden">
+    <div className="hidden md:flex md:w-1/4 border-l flex-col min-h-0 overflow-hidden">
       <AnnotationsPanel
         annotations={annotations}
         searchResults={searchResults}
@@ -47,6 +51,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
         pendingAnnotationId={pendingAnnotationId}
         onPendingAnnotationProcessed={onPendingAnnotationProcessed}
         viewerReady={viewerReady}
+        annotationsLoading={annotationsLoading}
+        searching={searching}
       />
     </div>
   );

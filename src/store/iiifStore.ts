@@ -52,6 +52,9 @@ interface IIIFState {
   selectionLog: string[];
   searchAbortController: AbortController | null;
   searchDebounceId: any;
+  isSearchJump: boolean;
+  panelScrollTop: { annotations: number; search: number };
+  ensureVisible: { tab: 'annotations' | 'search'; id: string | null; nonce: number };
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -86,6 +89,8 @@ interface IIIFState {
   selectPendingAnnotation: () => void;
   setSelectionDebug: (debug: boolean) => void;
   clearSelectionLog: () => void;
+  setPanelScrollTop: (tab: 'annotations' | 'search', top: number) => void;
+  requestEnsureVisible: (tab: 'annotations' | 'search', id: string | null) => void;
 
   handleManifestUpdate: (
     firstManifest: IIIFManifest | null,
@@ -125,6 +130,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   selectedLanguage: 'en',
   searching: false,
   isNavigating: false,
+  // True while jumping from a search result into annotations; used to gate focus changes
+  isSearchJump: false,
+  panelScrollTop: { annotations: 0, search: 0 },
+  ensureVisible: { tab: 'annotations', id: null, nonce: 0 },
   selectionPhase: 'idle',
   selectionDebug: false,
   selectionLog: [],
@@ -211,6 +220,12 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setNavigating: (isNavigating) => set({ isNavigating }),
   setSelectionDebug: (debug) => set({ selectionDebug: debug }),
   clearSelectionLog: () => set({ selectionLog: [] }),
+  setPanelScrollTop: (tab, top) => set((state) => ({
+    panelScrollTop: { ...state.panelScrollTop, [tab]: Math.max(0, top) },
+  })),
+  requestEnsureVisible: (tab, id) => set((state) => ({
+    ensureVisible: { tab, id, nonce: state.ensureVisible.nonce + 1 },
+  })),
 
   clearPendingAnnotation: () => {
     set((state) => ({
@@ -404,6 +419,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
 
     set({
       isNavigating: true,
+      isSearchJump: true,
       selectedSearchResultId: result.id,
       selectionPhase: 'pending' // Set initial phase
     });
@@ -437,6 +453,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             activePanelTab: 'annotations',
             selectionPhase: 'pending', // Re-assert phase for clarity
           });
+          // Request the UI to ensure the selected annotation is visible/focused
+          get().requestEnsureVisible('annotations', annotationId);
         } else {
           // Otherwise, switch the image and set the pending ID.
           set({
@@ -448,6 +466,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             viewerReady: false, // This will trigger the selection logic later
             selectionPhase: 'pending',
           });
+          get().requestEnsureVisible('annotations', annotationId);
           // No setTimeout needed; logic is now correctly triggered by setAnnotations/setViewerReady.
         }
       };
@@ -473,7 +492,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       console.error('Failed to handle search result click:', err);
       setManifestError(buildDomainError('PARSING_MANIFEST', toUserMessage(err) || 'Could not jump to the selected search result.', { recoverable: true }));
     } finally {
-      set({ isNavigating: false });
+      set({ isNavigating: false, isSearchJump: false });
     }
   },
 

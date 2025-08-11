@@ -30,6 +30,9 @@ const SearchBar = ({
     'keyboard',
   );
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listboxId = 'search-suggestions';
+  const inputId = 'search-input';
+  const [statusMsg, setStatusMsg] = useState('');
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -43,8 +46,9 @@ const SearchBar = ({
       }
 
       try {
+        const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : '';
         const res = await fetch(
-          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}${langParam}`,
         );
         const data = await res.json();
 
@@ -55,12 +59,19 @@ const SearchBar = ({
           })
           .map((item: any) => item.value);
 
-        setSuggestions(items.slice(0, 5));
+        const next = items.slice(0, 5);
+        setSuggestions(next);
         setHighlightedIndex(-1);
+        setStatusMsg(
+          next.length > 0
+            ? `${next.length} suggestion${next.length === 1 ? '' : 's'} available.`
+            : 'No suggestions.',
+        );
       } catch (err) {
         console.error('Autocomplete failed', err);
         setSuggestions([]);
         setHighlightedIndex(-1);
+        setStatusMsg('Autocomplete failed.');
       }
     };
 
@@ -73,6 +84,7 @@ const SearchBar = ({
     if (query.trim()) {
       onSearch(query.trim());
       setShowSuggestions(false);
+      setStatusMsg('Searching…');
     }
   };
 
@@ -82,7 +94,7 @@ const SearchBar = ({
     const updatedQuery = terms.join(' ').trim();
 
     setQuery(updatedQuery);
-    setSuggestions([]);
+  setSuggestions([]);
     setHighlightedIndex(-1);
     setShowSuggestions(false);
     inputRef.current?.focus();
@@ -101,7 +113,7 @@ const SearchBar = ({
       setHighlightedIndex((prev) =>
         prev <= 0 ? suggestions.length - 1 : prev - 1,
       );
-    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+  } else if (e.key === 'Enter' && highlightedIndex >= 0) {
       e.preventDefault();
       handleSelect(suggestions[highlightedIndex]);
     } else if (e.key === 'Escape') {
@@ -114,6 +126,7 @@ const SearchBar = ({
   return (
     <div className="relative w-full sm:w-auto">
       <form onSubmit={handleSubmit} className="p-1 flex gap-1">
+        <label htmlFor={inputId} className="sr-only">Search keywords</label>
         <input
           ref={inputRef}
           type="text"
@@ -127,6 +140,14 @@ const SearchBar = ({
           onFocus={() => setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           onBlur={() => setShowSuggestions(false)}
+          role="combobox"
+          aria-controls={listboxId}
+          aria-expanded={showSuggestions && suggestions.length > 0}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            highlightedIndex >= 0 ? `autocomplete-option-${highlightedIndex}` : undefined
+          }
+          id={inputId}
         />
         <button
           type="submit"
@@ -135,7 +156,17 @@ const SearchBar = ({
           }`}
           disabled={searching}
         >
-          Search
+          {searching ? (
+            <span className="inline-flex items-center gap-1">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              Searching…
+            </span>
+          ) : (
+            'Search'
+          )}
         </button>
       </form>
 
@@ -143,6 +174,7 @@ const SearchBar = ({
         <ul
           className="absolute z-10 mt-1 w-full sm:w-60 bg-white border border-gray-300 rounded-lg shadow-lg text-sm text-gray-800 ring-1 ring-black/10"
           role="listbox"
+          id={listboxId}
           onMouseLeave={() => {
             if (inputMethod === 'mouse') {
               setHighlightedIndex(-1);
@@ -180,6 +212,9 @@ const SearchBar = ({
           })}
         </ul>
       )}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {statusMsg}
+      </div>
     </div>
   );
 };

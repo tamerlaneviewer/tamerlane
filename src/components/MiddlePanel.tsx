@@ -26,7 +26,7 @@ const MiddlePanel: React.FC<MiddlePanelProps> = ({
   onImageLoadError,
 }) => {
   return (
-    <div className="flex-grow relative">
+    <div className="flex-grow relative min-h-0 overflow-hidden">
       <IIIFViewer
         imageUrl={imageUrl}
         imageType={imageType}
