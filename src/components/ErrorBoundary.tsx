@@ -1,4 +1,5 @@
 import React from 'react';
+import { logger } from '../utils/logger.ts';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: any, info: any) {
     // In production, replace with logger abstraction
-    console.error('[ErrorBoundary] Uncaught error:', error, info);
+    logger.error('[ErrorBoundary] Uncaught error:', error, info);
   }
 
   handleReload = () => {

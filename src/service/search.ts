@@ -3,6 +3,7 @@ import { Maniiifest } from 'maniiifest';
 import { IIIFSearchSnippet } from '../types/index.ts'; // Adjust the import path
 import { maxSearchPages } from '../config/appConfig.ts'; // Import the max pages limit
 import { createError } from '../errors/structured.ts';
+import { logger } from '../utils/logger.ts';
 
 /**
  * Fetch annotations and extract snippets.
@@ -94,13 +95,13 @@ function buildSnippetFromAnnotation(
   // The hit's target source is the ID of the base annotation with the geometry.
   const baseAnnotationId = hitAnnotation.target.source;
   if (typeof baseAnnotationId !== 'string') {
-    console.warn('Search hit has no target source string.', hitAnnotation);
+    logger.warn('Search hit has no target source string.', hitAnnotation);
     return null;
   }
 
   const baseAnnotation = annotationLookup.get(baseAnnotationId);
   if (!baseAnnotation) {
-    console.warn(
+    logger.warn(
       `Could not find base annotation with ID: ${baseAnnotationId} in the lookup map.`,
     );
     return null;
@@ -124,7 +125,7 @@ function buildSnippetFromAnnotation(
 
   const cleanCanvasTarget = canvasTarget.split('#')[0];
   if (!cleanCanvasTarget) {
-    console.warn(
+    logger.warn(
       'Could not determine canvasTarget from base annotation:',
       baseAnnotation,
     );
@@ -153,7 +154,7 @@ function buildSnippetFromAnnotation(
   }
 
   if (!exact) {
-    console.warn('Could not find TextQuoteSelector on hit:', hitAnnotation);
+    logger.warn('Could not find TextQuoteSelector on hit:', hitAnnotation);
     return null;
   }
 

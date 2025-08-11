@@ -8,6 +8,7 @@ import {
 import { createError } from '../errors/structured.ts';
 import { fetchResource } from './resource.ts';
 import { getImage } from './image.ts';
+import { logger } from '../utils/logger.ts';
 
 async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   const parser = new Maniiifest(jsonData);
@@ -21,7 +22,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   const metadata = Array.from(parser.iterateManifestMetadata());
   const provider = Array.from(parser.iterateManifestProvider());
   const homepage = Array.from(parser.iterateManifestHomepage());
-  console.log("homepage:", homepage);
+  logger.debug("homepage:", homepage);
   const requiredStatement: any = parser.getManifestRequiredStatement();
 
   const canvases: IIIFCanvas[] = [];

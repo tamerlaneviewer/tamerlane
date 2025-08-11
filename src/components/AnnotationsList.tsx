@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { ClipboardCopy } from 'lucide-react';
 import { IIIFAnnotation } from '../types';
+import { logger } from '../utils/logger.ts';
 
 interface AnnotationsListProps {
   annotations: IIIFAnnotation[];
@@ -61,7 +62,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     navigator.clipboard
       .writeText(text)
       .then(() => setCopied(true))
-      .catch((err) => console.error('Clipboard write failed:', err));
+      .catch((err) => logger.error('Clipboard write failed:', err));
   };
 
   // Normalize IIIF body value which may be a string or a language map

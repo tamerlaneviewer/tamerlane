@@ -13,6 +13,7 @@ import { useIIIFStore } from './store/iiifStore.ts';
 import { getAnnotationsForTarget } from './service/annotation.ts';
 import { toUserMessage } from './errors/structured.ts';
 import { parseResource } from './service/parser.ts';
+import { logger } from './utils/logger.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
 import { availableLanguages as configLanguages } from './config/appConfig.ts';
 
@@ -147,7 +148,7 @@ const App: React.FC = () => {
       })
       .catch((err: any) => {
         if (err?.name === 'AbortError') return; // silent on navigation
-        console.error('Error fetching annotations:', err);
+        logger.error('Error fetching annotations:', err);
     setAnnotations([], canvasId);
     setAnnotationsError({ code: 'NETWORK_ANNOTATION_FETCH', message: toUserMessage(err) || 'Unable to load annotations for this canvas.', at: Date.now(), recoverable: true });
       });
@@ -341,7 +342,7 @@ const App: React.FC = () => {
       canvasHeight = canvas.canvasHeight ?? 1000;
     }
   } catch (error) {
-    console.warn('Error retrieving canvas dimensions:', error);
+    logger.warn('Error retrieving canvas dimensions:', error);
   }
 
   const imageUrl = selectedImage?.imageUrl ?? '';
