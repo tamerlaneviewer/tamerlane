@@ -1,8 +1,19 @@
 {
   "name": "tamerlane",
   "version": "0.3.6",
+  "description": "A lightweight IIIF viewer for exploring, navigating, and searching annotated IIIF Presentation 3.0 resources",
   "private": true,
-  "homepage": "https://jptmoore.github.io/tamerlane",
+  "homepage": "https://tamerlaneviewer.github.io/tamerlane",
+  "keywords": ["iiif", "viewer", "annotations", "react", "typescript", "accessibility"],
+  "author": "Tamerlane IIIF Viewer Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tamerlaneviewer/tamerlane.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tamerlaneviewer/tamerlane/issues"
+  },
   "dependencies": {
     "dompurify": "^3.2.4",
     "lucide-react": "^0.395.0",
