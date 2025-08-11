@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
+import { logger } from '../utils/logger.ts';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -68,7 +69,7 @@ const SearchBar = ({
             : 'No suggestions.',
         );
       } catch (err) {
-        console.error('Autocomplete failed', err);
+        logger.error('Autocomplete failed', err);
         setSuggestions([]);
         setHighlightedIndex(-1);
         setStatusMsg('Autocomplete failed.');

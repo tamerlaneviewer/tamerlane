@@ -8,6 +8,7 @@ import {
 import { searchAnnotations } from '../service/search.ts';
 import { toUserMessage } from '../errors/structured.ts';
 import { networkConfig } from '../config/appConfig.ts';
+import { logger } from '../utils/logger.ts';
 
 interface DomainError {
   code: string;
@@ -489,7 +490,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         jumpToResult(); // Jump within the current manifest
       }
     } catch (err) {
-      console.error('Failed to handle search result click:', err);
+      logger.error('Failed to handle search result click:', err);
       setManifestError(buildDomainError('PARSING_MANIFEST', toUserMessage(err) || 'Could not jump to the selected search result.', { recoverable: true }));
     } finally {
       set({ isNavigating: false, isSearchJump: false });
@@ -553,7 +554,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
         });
       });
     } catch (err) {
-      console.error('Failed to fetch manifest by index:', err);
+      logger.error('Failed to fetch manifest by index:', err);
       setManifestError(buildDomainError('NETWORK_MANIFEST_FETCH', toUserMessage(err) || 'Failed to load selected manifest.', { recoverable: true }));
     }
   },

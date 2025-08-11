@@ -4,6 +4,7 @@ import SplashScreen from './SplashScreen.tsx';
 import { IIIFAnnotation } from '../types/index';
 import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
 import { ensureHttps } from '../utils/ensureHttps.ts';
+import { logger } from '../utils/logger.ts';
 
 interface IIIFViewerProps {
   imageUrl: string;
@@ -169,7 +170,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
               });
             }
           } catch (err) {
-            console.warn('Skipped unsafe SVG annotation:', err);
+            logger.warn('Skipped unsafe SVG annotation:', err);
           }
         }
       }

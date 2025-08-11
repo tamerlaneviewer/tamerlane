@@ -2,6 +2,7 @@ import { IIIFResource } from '../types/index.ts';
 import { createError } from '../errors/structured.ts';
 import { withRetry } from '../utils/retry.ts';
 import { networkConfig } from '../config/appConfig.ts';
+import { logger } from '../utils/logger.ts';
 
 const CACHE_TIMEOUT = 1 * 60 * 1000; // 1 minute
 const FETCH_TIMEOUT_MS_FALLBACK = 15_000; // Fallback if config missing
@@ -17,15 +18,15 @@ export async function fetchResource(url: string, opts: FetchOpts = {}): Promise<
   if (resourceCache.has(url)) {
     const cachedEntry = resourceCache.get(url)!;
     if (currentTime - cachedEntry.timestamp < CACHE_TIMEOUT) {
-      console.log(`🔄 Using cached resource: ${url}`);
+      logger.debug(`Using cached resource: ${url}`);
       return cachedEntry.resource;
     }
-    console.log(`🗑 Cache expired for: ${url}, refetching...`);
+    logger.debug(`Cache expired for: ${url}, refetching...`);
     resourceCache.delete(url);
   }
 
   const attemptFetch = async (): Promise<IIIFResource> => {
-    console.log(`📥 Fetching new IIIF resource from: ${url}`);
+    logger.info(`Fetching new IIIF resource from: ${url}`);
 
     // Combine external signal with internal timeout controller
     const controller = new AbortController();
@@ -86,10 +87,10 @@ export async function fetchResource(url: string, opts: FetchOpts = {}): Promise<
     });
   } catch (error: any) {
     if (error?.name === 'AbortError') {
-      console.warn(`⛔ Fetch aborted for: ${url}`);
+      logger.warn(`Fetch aborted for: ${url}`);
       throw error;
     }
-    console.error('❌ Error fetching IIIF resource:', error);
+    logger.error('Error fetching IIIF resource:', error);
     if (error?.code) throw error; // already structured
     throw createError('NETWORK_MANIFEST_FETCH', 'Error fetching IIIF resource', { cause: error, recoverable: true });
   }

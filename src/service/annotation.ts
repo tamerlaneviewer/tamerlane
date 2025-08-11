@@ -2,6 +2,7 @@ import { Maniiifest } from 'maniiifest';
 import { fetchResource } from './resource.ts';
 import { createError } from '../errors/structured.ts';
 import { IIIFAnnotation } from '../types/index.ts';
+import { logger } from '../utils/logger.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
@@ -116,10 +117,10 @@ export async function getAnnotationsForTarget(
   let parser: Maniiifest;
 
   if (manifestCache[manifestUrl]) {
-    console.log(`🔄 Using cached manifest for: ${manifestUrl}`);
+    logger.debug(`Using cached manifest for: ${manifestUrl}`);
     parser = manifestCache[manifestUrl];
   } else {
-    console.log(`📥 Fetching new manifest from: ${manifestUrl}`);
+    logger.info(`Fetching new manifest from: ${manifestUrl}`);
   const resource = await fetchResource(manifestUrl, { signal });
     if (!resource.type || resource.type !== 'Manifest') {
       throw createError('NETWORK_MANIFEST_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
@@ -138,7 +139,7 @@ export async function getAnnotationsForTarget(
 
   for (const canvas of parser.iterateManifestCanvas()) {
     if (canvas.id === targetUrl) {
-      console.log(`Processing canvas: ${canvas.id}`);
+      logger.debug(`Processing canvas: ${canvas.id}`);
 
       const annotations = canvas.annotations;
 
@@ -154,7 +155,7 @@ export async function getAnnotationsForTarget(
               signal,
             );
           } else {
-            console.warn(
+            logger.warn(
               `Invalid annotation format in canvas ${canvas.id}:`,
               annotationPage,
             );
@@ -162,14 +163,14 @@ export async function getAnnotationsForTarget(
           allAnnotations = allAnnotations.concat(result);
         }
       } else {
-        console.warn(`Canvas ${canvas.id} has no valid annotations.`);
+        logger.warn(`Canvas ${canvas.id} has no valid annotations.`);
       }
 
       return allAnnotations;
     }
   }
 
-  console.warn(`No matching canvas found for target: ${targetUrl}`);
+  logger.warn(`No matching canvas found for target: ${targetUrl}`);
   return [];
 }
 
