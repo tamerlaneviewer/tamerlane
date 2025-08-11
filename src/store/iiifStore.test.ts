@@ -6,6 +6,14 @@ import { act } from '@testing-library/react';
 // Mock services
 jest.mock('../service/parser');
 jest.mock('../service/search');
+jest.mock('../utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
 
 const mockParseResource = parser.parseResource as jest.Mock;
 const mockSearchAnnotations = search.searchAnnotations as jest.Mock;
@@ -137,12 +145,13 @@ describe('useIIIFStore', () => {
       expect(state.searchResults[0].manifestId).toBe('url1');
     });
 
-    it('should correctly tag results using canvasTarget prefix as a fallback', async () => {
+    it('should filter out results with missing partOf when multiple manifests exist', async () => {
       const mockResults = [
         {
           id: 'res1',
           partOf: 'invalid_url',
           canvasTarget: 'url2/canvas/2',
+          annotationId: 'anno1',
         },
       ];
       mockSearchAnnotations.mockResolvedValue(mockResults);
@@ -150,7 +159,7 @@ describe('useIIIFStore', () => {
       act(() => {
         useIIIFStore.setState({
           searchUrl: 'https://example.com/search',
-          manifestUrls: ['url1', 'url2'],
+          manifestUrls: ['url1', 'url2'], // Multiple manifests
         });
       });
 
@@ -159,7 +168,35 @@ describe('useIIIFStore', () => {
       });
 
       const state = useIIIFStore.getState();
-      expect(state.searchResults[0].manifestId).toBe('url2');
+      // Result should be filtered out due to ambiguous manifest
+      expect(state.searchResults).toHaveLength(0);
+    });
+
+    it('should use single manifest as fallback when partOf is missing', async () => {
+      const mockResults = [
+        {
+          id: 'res1',
+          partOf: 'invalid_url',
+          canvasTarget: 'url1/canvas/1',
+          annotationId: 'anno1',
+        },
+      ];
+      mockSearchAnnotations.mockResolvedValue(mockResults);
+
+      act(() => {
+        useIIIFStore.setState({
+          searchUrl: 'https://example.com/search',
+          manifestUrls: ['url1'], // Single manifest
+        });
+      });
+
+      await act(async () => {
+        await useIIIFStore.getState().handleSearch('test');
+      });
+
+      const state = useIIIFStore.getState();
+      expect(state.searchResults).toHaveLength(1);
+      expect(state.searchResults[0].manifestId).toBe('url1');
     });
 
     it('should set an error if search fails', async () => {
