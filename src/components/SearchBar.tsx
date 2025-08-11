@@ -152,22 +152,20 @@ const SearchBar = ({
         />
         <button
           type="submit"
-          className={`bg-blue-500 text-white p-0.5 rounded text-sm transition-opacity duration-200 ${
-            searching ? 'opacity-50 cursor-not-allowed' : ''
+          className={`bg-blue-500 text-white p-0.5 rounded text-sm transition-opacity duration-200 min-w-[60px] relative ${
+            searching ? 'opacity-75 cursor-not-allowed' : ''
           }`}
           disabled={searching}
         >
-          {searching ? (
-            <span className="inline-flex items-center gap-1">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-              </svg>
-              Searching…
-            </span>
-          ) : (
-            'Search'
+          {searching && (
+            <svg className="animate-spin h-4 w-4 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
           )}
+          <span className={searching ? 'opacity-0' : 'opacity-100'}>
+            Search
+          </span>
         </button>
       </form>
 
