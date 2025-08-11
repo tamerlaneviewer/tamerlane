@@ -40,12 +40,23 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               {this.state.errorInfo.message}
             </pre>
           )}
-          <button
-            onClick={this.handleReload}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
-          >
-            Reload
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, errorInfo: undefined });
+                window.location.href = window.location.pathname; // Clear URL params
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
+            >
+              Try Different URL
+            </button>
+            <button
+              onClick={this.handleReload}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+            >
+              Reload Page
+            </button>
+          </div>
         </div>
       );
     }
