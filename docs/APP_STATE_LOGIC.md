@@ -17,7 +17,9 @@
 | `manifestMetadata`            | Metadata for the `currentManifest` (label, provider, etc.).                                   | LeftPanel               |
 | `collectionMetadata`          | Metadata for the parent collection, if one exists.                                            | LeftPanel               |
 | `searchResults`               | The list of results from a content search.                                                    | RightPanel              |
-| `error`                       | An error message for user feedback. Triggers the error dialog.                                | ErrorDialog             |
+| `manifestError`               | Domain-specific error for manifest loading/parsing issues.                                    | ErrorBoundary           |
+| `annotationsError`            | Domain-specific error for annotation fetching issues.                                         | ErrorBoundary           |
+| `searchError`                 | Domain-specific error for search service issues.                                              | ErrorBoundary           |
 | `showUrlDialog`               | A flag to control the visibility of the IIIF URL input dialog.                                | UrlDialog               |
 | `selectedAnnotation`          | The annotation object that is currently selected by the user.                                 | MiddlePanel, RightPanel |
 | `pendingAnnotationId`         | An annotation ID queued for selection. The store's subscription logic will automatically attempt to select it once all conditions are met. | App, RightPanel         |
@@ -33,6 +35,11 @@
 | `selectionPhase`              | Tracks the state of the annotation selection process (`idle`, `pending`, `waiting_viewer`, `waiting_annotations`, `selected`, `failed`). | iiifStore               |
 | `selectionDebug`              | A boolean flag that enables detailed logging of the selection process.                        | iiifStore               |
 | `selectionLog`                | An array of debug messages tracking selection attempts (when `selectionDebug` is enabled).   | iiifStore               |
+| `searchAbortController`       | AbortController for cancelling active search requests.                                        | iiifStore               |
+| `searchDebounceId`            | Timeout ID for search input debouncing.                                                       | iiifStore               |
+| `isSearchJump`                | Flag indicating navigation originated from search result click.                                | iiifStore               |
+| `panelScrollTop`              | Persisted scroll positions for annotations and search panels.                                 | RightPanel              |
+| `ensureVisible`               | UI focus management for ensuring selected items are visible.                                  | RightPanel              |
 
 > **All state is accessed and updated via the `useIIIFStore` hook.**
 
@@ -93,15 +100,48 @@ Annotation fetches are now cancellable at the network layer:
 * This prevents wasted bandwidth / CPU on deep pagination of prior canvases during rapid navigation and removes the need for ad-hoc `isStale` guards.
 * Cache entries are only populated for successful (non-aborted) responses; aborted requests do not poison the cache.
 
+Search requests are similarly cancellable:
+* Each search query creates a new `AbortController` and cancels any previous search in progress.
+* Debounced search input prevents excessive network requests during typing.
+* Search results are properly tagged with manifest IDs using `partOf` property or single-manifest fallback logic.
+
+### Production Error Handling
+
+The application uses structured domain errors with specific error codes:
+* **NETWORK_MANIFEST_FETCH**: Manifest loading failures
+* **NETWORK_SEARCH_FETCH**: Search service failures  
+* **PARSING_MANIFEST**: Manifest parsing/structure issues
+* **SEARCH_MANIFEST_UNKNOWN**: Search results with unknown manifest sources
+* **SEARCH_UNSUPPORTED**: Resources without search capabilities
+
+Each error type has:
+* Specific error codes for programmatic handling
+* User-friendly messages
+* Recoverable vs non-recoverable classification
+* Structured logging for debugging
+
+### Enhanced Search Logic
+
+Search result processing includes robust manifest matching:
+1. **Primary**: Direct `partOf` property matching against known manifest URLs
+2. **Fallback**: Single manifest assumption when `partOf` is missing
+3. **Multi-manifest safety**: Results without identifiable manifests are filtered out
+4. **Error handling**: Clear user feedback for navigation failures
+
+This prevents broken search result navigation while maintaining IIIF standard compliance.
+
 ---
 
 ## 🧭 Core Logic Functions (Store Actions)
 
 - **`handleManifestUpdate(...)`**: Updates manifest, collection, and related metadata in the store.
 - **`fetchManifestByIndex(index, preserveSearchResults?)`**: Loads a manifest by its index. The optional `preserveSearchResults` flag keeps the search context when navigating between manifests from a search result.
-- **`handleSearch(query)`**: Performs a content search, tags results with their parent manifest ID, and updates `searchResults` in the store.
-- **`handleSearchResultClick(result)`**: Handles intra- or cross-manifest navigation. After any manifest switch it re-establishes the selection intent (`pendingAnnotationId`) and the subscription completes the process.
-- **`handleViewerReady()`**: A simple handler passed to the viewer component, which calls `setViewerReady(true)` in the store.
+- **`handleSearch(query)`**: Performs a content search with debouncing, tags results with their parent manifest ID using robust matching logic, and updates `searchResults` in the store.
+- **`handleSearchResultClick(result)`**: Handles intra- or cross-manifest navigation with proper error handling for unknown manifests. After any manifest switch it re-establishes the selection intent (`pendingAnnotationId`) and the subscription completes the process.
+- **`selectPendingAnnotation()`**: Core selection state machine that evaluates prerequisites and attempts annotation selection. Handles all timing and race conditions automatically.
+- **`buildDomainError(code, message, opts?)`**: Creates structured domain errors with specific codes, user messages, and metadata for debugging.
+- **`clearAllErrors()`**: Resets all domain-specific error states.
+- **`requestEnsureVisible(tab, id)`**: Requests UI to scroll and focus on specific annotation or search result.
 
 ---
 
