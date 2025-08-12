@@ -1,7 +1,6 @@
 import { IIIFImage } from '../types/index.ts';
 import { TamerlaneParseError } from '../errors/index.ts';
 import { IIIFImageResource } from '../types/index.ts';
-import { ensureHttps } from '../utils/ensureHttps.ts';
 
 // --- Constants for IIIF types and profiles ---
 const IIIF_IMAGE_SERVICE_3 = 'ImageService3';
@@ -21,10 +20,10 @@ function shouldForceInfoJson(url: string): boolean {
  * Ensures the IIIF image service URL is safe and normalized for OpenSeadragon.
  */
 function normalizeIiifUrl(baseUrl: string): string {
-  const safeBase = ensureHttps(baseUrl).replace(/\/+$/, '');
+  const safeBase = baseUrl.replace(/\/+$/, '');
   return shouldForceInfoJson(safeBase)
     ? `${safeBase}/info.json`
-    : `${safeBase}/`;
+    : safeBase;
 }
 
 /**
@@ -70,11 +69,11 @@ export function getImage(resource: IIIFImageResource, canvasTarget: string): III
   } else {
     // Fallback to resource.id or resource.body.id
     if (typeof resource.id === 'string') {
-      url = ensureHttps(resource.id);
+      url = resource.id;
       imageWidth = resource.width;
       imageHeight = resource.height;
     } else if (resource.body && typeof resource.body.id === 'string') {
-      url = ensureHttps(resource.body.id);
+      url = resource.body.id;
       imageWidth = resource.body.width;
       imageHeight = resource.body.height;
 

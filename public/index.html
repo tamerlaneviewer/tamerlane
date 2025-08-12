@@ -5,8 +5,8 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     
-    <!-- Security Headers - Iframe Embedding Allowed, Docker Network Support -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://172.16.0.0/12 http://192.168.0.0/16 http://10.0.0.0/8;">
+    <!-- Security Headers - Iframe Embedding Allowed, Docker Network Support -->    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https: http://localhost:* http://127.0.0.1:* http://172.16.0.0/12 http://192.168.0.0/16 http://10.0.0.0/8; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: http://localhost:* http://127.0.0.1:* http://172.16.0.0/12 http://192.168.0.0/16 http://10.0.0.0/8;">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     

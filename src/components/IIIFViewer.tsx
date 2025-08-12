@@ -34,9 +34,8 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   useEffect(() => {
     if (!viewerRef.current) return;
 
-    // Safely upgrade imageUrl to HTTPS if needed
-    const safeImageUrl =
-      window.location.protocol === 'https:' ? ensureHttps(imageUrl) : imageUrl;
+    // Apply HTTPS upgrade based on configuration, not just page protocol
+    const safeImageUrl = ensureHttps(imageUrl);
 
     const tileSource: string | OpenSeadragon.TileSourceOptions =
       imageType === 'iiif'
