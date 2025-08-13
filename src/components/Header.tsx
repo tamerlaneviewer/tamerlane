@@ -65,12 +65,12 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-gray-800 text-white p-2 flex items-center justify-between md:justify-between">
+    <header className="bg-gray-800 text-white p-2 flex items-center justify-between md:justify-between" role="banner">
       <div className="flex items-center">
         {SHOW_LOGO && (
           <img
             src={`${process.env.PUBLIC_URL}/logo.svg`}
-            alt="Logo"
+            alt="Tamerlane IIIF Viewer logo"
             className="h-12 w-12"
           />
         )}
@@ -94,12 +94,16 @@ const Header: React.FC<HeaderProps> = ({
       <div className="hidden md:flex items-center space-x-2">
         <button
           onClick={toggleLanguage}
-          className="hidden md:block bg-slate-600 text-white px-3 py-2 rounded text-sm hover:bg-slate-500 min-w-[44px] min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="hidden md:block bg-slate-600 text-white px-3 py-2 rounded text-sm hover:bg-slate-500 min-w-[44px] min-h-[44px]"
           title={currentLanguage?.name}
-          aria-label={currentLanguage ? `Language: ${currentLanguage.name} (${currentLanguage.code.toUpperCase()}). Activate to change language.` : 'Change language'}
+          aria-label={currentLanguage ? `Current language: ${currentLanguage.name}. Click to change language.` : 'Change language'}
+          aria-describedby="language-help"
         >
           {currentLanguage?.code?.toUpperCase()}
         </button>
+        <span id="language-help" className="sr-only">
+          Filters annotations and search results by language
+        </span>
         <div className="hidden md:block">
           <SearchBar
             onSearch={onSearch}

@@ -15,3 +15,34 @@ body {
 .gutter-stable {
 	scrollbar-gutter: stable;
 }
+
+/* GOV.UK Design System Compliance - Mandatory Focus Indicators */
+/* GOV.UK requires ALL focusable elements to show yellow focus, not just keyboard */
+*:focus {
+	outline: 3px solid #ffdd00 !important; /* GOV.UK mandated yellow */
+	outline-offset: 0 !important;
+	box-shadow: none !important;
+}
+
+/* GOV.UK focus style must be consistent across all backgrounds */
+.bg-gray-800 *:focus,
+.bg-gray-900 *:focus {
+	outline-color: #ffdd00 !important;
+}
+
+/* Skip link styling */
+.govuk-skip-link {
+	position: absolute;
+	left: -9999px;
+	color: #0b0c0c;
+	background: #ffdd00;
+	padding: 8px 16px;
+	text-decoration: none;
+	font-weight: 700;
+	z-index: 9999;
+}
+
+.govuk-skip-link:focus {
+	left: 0;
+	top: 0;
+}
