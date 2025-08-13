@@ -20,7 +20,7 @@ describe('getImage', () => {
     };
 
     const expected: IIIFImage = {
-      imageUrl: 'https://example.com/iiif/image/',
+      imageUrl: 'https://example.com/iiif/image',
       imageType: 'iiif',
       imageWidth: 1024,
       imageHeight: 768,
@@ -43,7 +43,7 @@ describe('getImage', () => {
     };
 
     const expected: IIIFImage = {
-      imageUrl: 'https://example.com/iiif/image_at_id/',
+      imageUrl: 'https://example.com/iiif/image_at_id',
       imageType: 'iiif',
       imageWidth: 800,
       imageHeight: 600,
@@ -80,7 +80,7 @@ describe('getImage', () => {
     };
 
     const expected: IIIFImage = {
-      imageUrl: 'https://example.com/standard/image.jpg',
+      imageUrl: 'http://example.com/standard/image.jpg',
       imageType: 'standard',
       imageWidth: 640,
       imageHeight: 480,

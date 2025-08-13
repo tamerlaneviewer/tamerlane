@@ -47,9 +47,8 @@ const SearchBar = ({
       }
 
       try {
-        const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : '';
         const res = await fetch(
-          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}${langParam}`,
+          `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
         );
         const data = await res.json();
 

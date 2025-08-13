@@ -24,25 +24,19 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
-  const langMatches = (sel?: string | null, res?: string | null) => {
-    if (!sel) return true; // no user language filter
-    if (!res) return true; // result has no language -> include
-    const s = sel.toLowerCase();
-    const r = res.toLowerCase();
-    if (s === r) return true;
-    const sb = s.split('-')[0];
-    const rb = r.split('-')[0];
-    return sb === rb; // base-language match (e.g., en vs en-GB)
+  // Simple language matching function that matches the AnnotationsList approach
+  const matchesLanguage = (resultLanguage?: string | null): boolean => {
+    if (!selectedLanguage) return true;
+    if (!resultLanguage) return true; // No language specified - show for any language
+    
+    // Exact match
+    return resultLanguage === selectedLanguage;
   };
 
-  // Filter by language, but never hide the currently selected result.
-  // If filtering would produce an empty list, fall back to showing all results.
-  let visibleResults = searchResults.filter((result) => {
-    return result.id === selectedSearchResultId || langMatches(selectedLanguage, result.language ?? null);
+  // Filter by language consistently
+  const visibleResults = searchResults.filter((result) => {
+    return matchesLanguage(result.language ?? null);
   });
-  if (searchResults.length > 0 && visibleResults.length === 0) {
-    visibleResults = searchResults;
-  };
 
   useEffect(() => {
     if (selectedSearchResultId) {

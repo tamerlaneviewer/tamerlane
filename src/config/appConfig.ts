@@ -16,6 +16,7 @@ export const maxSearchPages = 10;
 
 // Network configuration
 export const networkConfig = {
+  forceHttps: false,             // Automatically upgrade all HTTP URLs to HTTPS
   fetchTimeoutMs: 15_000,        // Global per-request timeout
   fetchRetries: 3,               // Total attempts including first
   retryBaseDelayMs: 150,         // Initial backoff delay
