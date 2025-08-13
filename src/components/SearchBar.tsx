@@ -24,9 +24,19 @@ const SearchBar = ({
   searching = false,
 }: SearchBarProps) => {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [rawSuggestions, setRawSuggestions] = useState<Array<{value: string, language?: string}>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  
+  // Filter suggestions based on selected language
+  const suggestions = rawSuggestions
+    .filter((item) => {
+      if (!selectedLanguage) return true;
+      return !item.language || item.language === selectedLanguage;
+    })
+    .map((item) => item.value)
+    .slice(0, 5);
+
   const [inputMethod, setInputMethod] = useState<'mouse' | 'keyboard'>(
     'keyboard',
   );
@@ -36,40 +46,34 @@ const SearchBar = ({
   const [statusMsg, setStatusMsg] = useState('');
 
   useEffect(() => {
+    const terms = query.split(/\s+/);
+    const lastTerm = terms[terms.length - 1];
+
+    // Clear suggestions immediately if query is too short
+    if (!autocompleteService || lastTerm.length < 3) {
+      setRawSuggestions([]);
+      setHighlightedIndex(-1);
+      return;
+    }
+
     const fetchSuggestions = async () => {
-      const terms = query.split(/\s+/);
-      const lastTerm = terms[terms.length - 1];
-
-      if (!autocompleteService || lastTerm.length < 3) {
-        setSuggestions([]);
-        setHighlightedIndex(-1);
-        return;
-      }
-
       try {
         const res = await fetch(
           `${autocompleteService}?q=${encodeURIComponent(lastTerm)}`,
         );
         const data = await res.json();
 
-        const items = data.items
-          .filter((item: any) => {
-            if (!selectedLanguage) return true;
-            return !item.language || item.language === selectedLanguage;
-          })
-          .map((item: any) => item.value);
+        const items = data.items.map((item: any) => ({
+          value: item.value,
+          language: item.language
+        }));
 
-        const next = items.slice(0, 5);
-        setSuggestions(next);
+        setRawSuggestions(items);
         setHighlightedIndex(-1);
-        setStatusMsg(
-          next.length > 0
-            ? `${next.length} suggestion${next.length === 1 ? '' : 's'} available.`
-            : 'No suggestions.',
-        );
+        // Note: Status message will be updated by useEffect below
       } catch (err) {
         logger.error('Autocomplete failed', err);
-        setSuggestions([]);
+        setRawSuggestions([]);
         setHighlightedIndex(-1);
         setStatusMsg('Autocomplete failed.');
       }
@@ -77,7 +81,21 @@ const SearchBar = ({
 
     const delay = setTimeout(fetchSuggestions, 250);
     return () => clearTimeout(delay);
-  }, [query, autocompleteService, selectedLanguage]);
+  }, [query, autocompleteService]);
+
+  // Update status message when filtered suggestions change
+  useEffect(() => {
+    if (suggestions.length > 0) {
+      setStatusMsg(
+        `${suggestions.length} suggestion${suggestions.length === 1 ? '' : 's'} available.`
+      );
+    } else if (rawSuggestions.length > 0) {
+      // Have raw suggestions but none match language filter
+      setStatusMsg('No suggestions for selected language.');
+    } else {
+      setStatusMsg('No suggestions.');
+    }
+  }, [suggestions.length, rawSuggestions.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +112,7 @@ const SearchBar = ({
     const updatedQuery = terms.join(' ').trim();
 
     setQuery(updatedQuery);
-  setSuggestions([]);
+    setRawSuggestions([]);
     setHighlightedIndex(-1);
     setShowSuggestions(false);
     inputRef.current?.focus();
