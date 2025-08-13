@@ -213,8 +213,8 @@ const App: React.FC = () => {
       : 0;
     if (total <= 0) return;
     const imagePosition = selectedImageIndex + 1;
-    const titleBase = currentManifest?.info?.name || 'Viewer';
-    document.title = `${titleBase} – Image ${imagePosition} of ${total}`;
+    const titleBase = currentManifest?.info?.name || 'IIIF Resource';
+    document.title = `${titleBase} – Image ${imagePosition} of ${total} – Tamerlane IIIF Viewer`;
     // Focus main region for SRs after navigation unless user is interacting in the panel or viewer
     const active = document.activeElement as HTMLElement | null;
     const panel = document.getElementById('panel-tabs');
@@ -367,9 +367,9 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen min-h-0">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:p-2 focus:rounded focus:shadow"
+        className="govuk-skip-link"
       >
-        Skip to content
+        Skip to main content
       </a>
       <Header
         onSearch={onSearch}

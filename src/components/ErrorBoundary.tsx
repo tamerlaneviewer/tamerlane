@@ -31,15 +31,27 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen text-center p-6 space-y-4">
-          <h1 className="text-2xl font-semibold text-red-600">Something went wrong</h1>
-          <p className="text-gray-600 max-w-md">
-            An unexpected error occurred while rendering the viewer. You can try reloading the page.
-          </p>
-          {this.state.errorInfo?.message && (
-            <pre className="text-xs bg-gray-100 p-3 rounded border border-gray-200 max-w-md overflow-auto">
-              {this.state.errorInfo.message}
-            </pre>
-          )}
+          {/* GOV.UK Error Summary */}
+          <div role="alert" aria-labelledby="error-summary-title" className="border-l-4 border-red-600 bg-red-50 p-4 max-w-2xl">
+            <h1 id="error-summary-title" className="text-xl font-semibold text-red-800 mb-2">
+              There is a problem
+            </h1>
+            <p className="text-red-700 mb-3">
+              An unexpected error occurred while rendering the viewer. You can try one of the following options:
+            </p>
+            <ul className="list-disc list-inside text-red-700 space-y-1 mb-4">
+              <li>Try a different IIIF resource URL</li>
+              <li>Reload the page to reset the application</li>
+            </ul>
+            {this.state.errorInfo?.message && (
+              <details className="text-left">
+                <summary className="text-red-800 font-medium cursor-pointer">Technical details</summary>
+                <pre className="text-xs bg-red-100 p-3 rounded border border-red-200 mt-2 overflow-auto">
+                  {this.state.errorInfo.message}
+                </pre>
+              </details>
+            )}
+          </div>
           <div className="flex gap-3">
             <button
               onClick={() => {
