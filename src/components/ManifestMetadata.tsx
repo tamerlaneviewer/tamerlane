@@ -7,7 +7,7 @@ const ManifestMetadata = ({ manifestMetadata }) => {
   }
 
   return (
-    <div className="flex flex-col flex-grow h-full overflow-auto p-4 bg-white">
+    <div className="flex flex-col flex-grow h-full bg-white">
       {/* Manifest Label */}
       {manifestMetadata.label && (
         <div className="mb-4">

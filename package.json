@@ -1,6 +1,6 @@
 {
   "name": "tamerlane",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "A lightweight IIIF viewer for exploring, navigating, and searching annotated IIIF Presentation 3.0 resources",
   "private": true,
   "homepage": "https://tamerlaneviewer.github.io/tamerlane",

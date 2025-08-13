@@ -31,7 +31,7 @@ const MetadataPanel = ({ manifestMetadata, collectionMetadata }) => {
       </div>
 
       {/* Scrollable Content Section */}
-  <div className="flex-grow min-h-0 overflow-auto p-3 overscroll-contain">
+      <div className="flex-grow min-h-0 overflow-y-scroll p-3 overscroll-contain gutter-stable touch-pan-y">
         {activeTab === "manifest" ? (
           <ManifestMetadata manifestMetadata={manifestMetadata} />
         ) : (
