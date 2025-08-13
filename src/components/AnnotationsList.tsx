@@ -21,7 +21,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   selectedLanguage,
   pendingAnnotationId,
   onPendingAnnotationProcessed,
-  viewerReady = true,
+  viewerReady,
 }) => {
   const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
@@ -65,33 +65,55 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
       .catch((err) => logger.error('Clipboard write failed:', err));
   };
 
-  // Normalize IIIF body value which may be a string or a language map
-  const getText = (value: any, preferredLang?: string): string | null => {
-    if (typeof value === 'string') {
-      const v = value.trim();
-      return v ? v : null;
+  // Simple helper to get text from IIIF annotation body
+  const getTextValue = (item: any): string | null => {
+    if (!item.value) return null;
+    
+    // T1: Simple string
+    if (typeof item.value === 'string') {
+      return item.value.trim() || null;
     }
-    if (value && typeof value === 'object') {
-      // Language map like { en: ["text"], de: ["text"] }
-      if (preferredLang && Array.isArray(value[preferredLang]) && value[preferredLang].length > 0) {
-        const v = String(value[preferredLang][0]).trim();
-        return v ? v : null;
-      }
-      const keys = Object.keys(value);
-      for (const k of keys) {
-        const arr = (value as any)[k];
-        if (Array.isArray(arr) && arr.length > 0) {
-          const v = String(arr[0]).trim();
-          if (v) return v;
-        }
-      }
+    
+    // T2: Array of strings
+    if (Array.isArray(item.value)) {
+      return item.value[0]?.trim() || null;
     }
+    
     return null;
+  };
+
+  // Check if an item matches the selected language
+  const matchesLanguage = (item: any): boolean => {
+    if (!selectedLanguage) return true;
+    
+    // Handle language as string or array
+    if (item.language) {
+      // T1: language is a string
+      if (typeof item.language === 'string') {
+        return item.language === selectedLanguage;
+      }
+      // T2: language is an array of strings
+      if (Array.isArray(item.language)) {
+        return item.language.includes(selectedLanguage);
+      }
+    }
+    
+    // No language specified - show for any language
+    return true;
   };
 
   return (
     <div className="relative">
       {annotations
+        .filter((annotation: IIIFAnnotation) => {
+          if (!selectedLanguage) return true;
+
+          if (Array.isArray(annotation.body)) {
+            return annotation.body.some((item) => matchesLanguage(item));
+          }
+
+          return matchesLanguage(annotation.body);
+        })
         .map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
           const isTagging =
@@ -105,17 +127,6 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               ? 'bg-red-200 border-l-4 border-red-500'
               : 'bg-blue-200 border-l-4 border-blue-500'
             : 'hover:bg-gray-100';
-
-          // Pre-compute items to render when annotation.body is an array
-          let itemsToRender: any[] | null = null;
-          if (Array.isArray(annotation.body)) {
-            const base = annotation.body.filter((item) => !!getText(item.value, selectedLanguage));
-            if (isSelected) {
-              itemsToRender = base; // Always show content for the selected annotation
-            } else {
-              itemsToRender = base;
-            }
-          }
 
           return (
             <div
@@ -135,22 +146,29 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                   onAnnotationSelect(annotation);
                 }
               }}
-              onFocus={(e) => {
-                // onFocus centering is handled by the item's natural scroll behavior
+              onFocus={() => {
                 // No custom centering needed here
               }}
               className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
               {Array.isArray(annotation.body) ? (
-                itemsToRender && itemsToRender.length > 0 ? (
-                  itemsToRender.map((item, itemIndex) => {
-                    const text = getText(item.value, selectedLanguage);
+                annotation.body
+                  .filter((item) => {
+                    const text = getTextValue(item);
+                    if (!text) return false;
+                    
+                    // Always filter by language, even for selected annotations
+                    return matchesLanguage(item);
+                  })
+                  .map((item, itemIndex) => {
+                    const text = getTextValue(item);
                     if (!text) return null;
+                    
                     return (
-            <div key={itemIndex} className="flex items-start gap-2">
+                      <div key={itemIndex} className="flex items-start gap-2">
                         <p
                           className="text-sm text-gray-700 leading-tight flex-1"
-              dangerouslySetInnerHTML={renderHTML(text)}
+                          dangerouslySetInnerHTML={renderHTML(text)}
                         />
                         {annotation.id && (
                           <div
@@ -167,33 +185,32 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                       </div>
                     );
                   })
-                ) : (
-                  <p className="text-sm text-gray-700 leading-tight">No text available</p>
-                )
               ) : (
-                <div className="flex items-start gap-2">
-                  {(() => {
-                    const text = getText((annotation.body as any).value, selectedLanguage) || '';
-                    return (
+                (() => {
+                  const text = getTextValue(annotation.body);
+                  return text ? (
+                    <div className="flex items-start gap-2">
                       <p
                         className="text-sm text-gray-700 leading-tight flex-1"
-                        dangerouslySetInnerHTML={renderHTML(text, 'No text available')}
+                        dangerouslySetInnerHTML={renderHTML(text)}
                       />
-                    );
-                  })()}
-                  {annotation.id && (
-                    <div
-                      title="Copy ID"
-                      className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(annotation.id!);
-                      }}
-                    >
-                      <ClipboardCopy size={14} />
+                      {annotation.id && (
+                        <div
+                          title="Copy ID"
+                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(annotation.id!);
+                          }}
+                        >
+                          <ClipboardCopy size={14} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  ) : (
+                    <p className="text-sm text-gray-700 leading-tight">No text available</p>
+                  );
+                })()
               )}
             </div>
           );

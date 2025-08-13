@@ -446,9 +446,10 @@ const App: React.FC = () => {
           selectedSearchResultId={selectedSearchResultId || undefined}
           selectedLanguage={selectedLanguage || undefined}
           pendingAnnotationId={pendingAnnotationId}
+          onPendingAnnotationProcessed={() => {}} // Store handles this automatically now
           viewerReady={viewerReady}
-      annotationsLoading={annotationsLoading}
-      searching={searching}
+          annotationsLoading={annotationsLoading}
+          searching={searching}
         />
     </main>
     </div>
