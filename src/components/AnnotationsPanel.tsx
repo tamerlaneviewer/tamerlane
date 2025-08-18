@@ -328,9 +328,13 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       >
   {/* Removed error banners for annotations and search */}
   {activeTab === 'annotations' ? (
-          annotations.length === 0 ? (
-            <p className="text-gray-500 text-center">
-              No annotations available.
+          annotationsLoading ? (
+            <p className="text-gray-500 text-center p-4">
+              Loading annotations...
+            </p>
+          ) : annotations.length === 0 ? (
+            <p className="text-gray-500 text-center p-4">
+              No annotations found for this canvas.
             </p>
           ) : (
             <AnnotationsList

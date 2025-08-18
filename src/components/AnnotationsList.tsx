@@ -102,19 +102,30 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     return true;
   };
 
+  const filteredAnnotations = annotations.filter((annotation: IIIFAnnotation) => {
+    if (!selectedLanguage) return true;
+
+    if (Array.isArray(annotation.body)) {
+      return annotation.body.some((item) => matchesLanguage(item));
+    }
+
+    return matchesLanguage(annotation.body);
+  });
+
+  // Show language filtering message if we have annotations but none match the language
+  if (selectedLanguage && annotations.length > 0 && filteredAnnotations.length === 0) {
+    return (
+      <div className="relative">
+        <p className="text-gray-500 text-center p-4">
+          No annotations match the selected language.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
-      {annotations
-        .filter((annotation: IIIFAnnotation) => {
-          if (!selectedLanguage) return true;
-
-          if (Array.isArray(annotation.body)) {
-            return annotation.body.some((item) => matchesLanguage(item));
-          }
-
-          return matchesLanguage(annotation.body);
-        })
-        .map((annotation: IIIFAnnotation, index: number) => {
+      {filteredAnnotations.map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
           const isTagging =
             isSelected &&
