@@ -310,15 +310,6 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     if (match) {
       debug(`Selected annotation ${pendingAnnotationId}`);
       
-      // Check if we need to switch languages to show this annotation
-      const currentState = get();
-      const annotationLanguage = currentState.getAnnotationLanguage(match);
-      if (annotationLanguage && annotationLanguage !== currentState.selectedLanguage) {
-        // Switch to the annotation's language to ensure it's visible
-        set({ selectedLanguage: annotationLanguage });
-        debug(`Switched language to ${annotationLanguage} for annotation ${pendingAnnotationId}`);
-      }
-      
       set({
         selectedAnnotation: match,
         pendingAnnotationId: null,
@@ -519,28 +510,12 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
           return;
         }
 
-        // Try to find the target annotation and switch to its language
-        const trySetLanguageForAnnotation = () => {
-          const currentState = get();
-          const annotations = currentState.annotations;
-          const targetAnnotation = annotations.find(a => a.id === annotationId);
-          
-          if (targetAnnotation) {
-            const annotationLanguage = currentState.getAnnotationLanguage(targetAnnotation);
-            if (annotationLanguage && annotationLanguage !== currentState.selectedLanguage) {
-              // Switch to the annotation's language to ensure it's visible
-              set({ selectedLanguage: annotationLanguage });
-            }
-          }
-        };
-
         // If we are already on the correct image, just set the pending ID.
         if (
           newImageIndex === get().selectedImageIndex &&
           get().canvasId === canvasTarget
         ) {
-          // Check if we need to switch languages
-          trySetLanguageForAnnotation();
+          // Don't change language - preserve the search filter language
           
           set({
             pendingAnnotationId: annotationId,
@@ -562,7 +537,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
             selectionPhase: 'pending',
           });
           get().requestEnsureVisible('annotations', annotationId);
-          // Language switching will happen when annotations are loaded
+          // Don't change language when coming from search results
           // No setTimeout needed; logic is now correctly triggered by setAnnotations/setViewerReady.
         }
       };
