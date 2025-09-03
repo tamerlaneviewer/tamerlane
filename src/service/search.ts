@@ -48,20 +48,17 @@ export async function searchAnnotations(
           annotationLookup.set(annotation.id, annotation);
         }
         // A "hit" is an annotation with motivation "highlighting" or "contextualizing"
+        // Per IIIF Content Search 2.0 spec: only exact matching for these motivations
         const motivation = annotation.motivation;
         let isSearchResult = false;
 
         if (typeof motivation === 'string') {
-          isSearchResult = (motivation as string).includes('highlighting') || (motivation as string).includes('contextualizing');
+          isSearchResult = motivation === 'highlighting' || motivation === 'contextualizing';
         } else if (Array.isArray(motivation)) {
           isSearchResult = motivation.some(m => {
             const motStr = String(m);
-            return motStr.includes('highlighting') || motStr.includes('contextualizing');
+            return motStr === 'highlighting' || motStr === 'contextualizing';
           });
-        } else if (motivation) {
-          // Handle other types by converting to string
-          const motStr = String(motivation);
-          isSearchResult = motStr.includes('highlighting') || motStr.includes('contextualizing');
         }
 
         if (isSearchResult) {
