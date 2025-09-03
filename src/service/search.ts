@@ -47,20 +47,21 @@ export async function searchAnnotations(
         if (annotation.id) {
           annotationLookup.set(annotation.id, annotation);
         }
-        // A "hit" is an annotation with motivation "highlighting"
+        // A "hit" is an annotation with motivation "highlighting" or "contextualizing"
+        // Per IIIF Content Search 2.0 spec: only exact matching for these motivations
         const motivation = annotation.motivation;
-        let isHighlighting = false;
+        let isSearchResult = false;
 
         if (typeof motivation === 'string') {
-          isHighlighting = (motivation as string).includes('highlighting');
+          isSearchResult = motivation === 'highlighting' || motivation === 'contextualizing';
         } else if (Array.isArray(motivation)) {
-          isHighlighting = motivation.some(m => String(m).includes('highlighting'));
-        } else if (motivation) {
-          // Handle other types by converting to string
-          isHighlighting = String(motivation).includes('highlighting');
+          isSearchResult = motivation.some(m => {
+            const motStr = String(m);
+            return motStr === 'highlighting' || motStr === 'contextualizing';
+          });
         }
 
-        if (isHighlighting) {
+        if (isSearchResult) {
           hits.push(annotation);
         }
       }
@@ -74,26 +75,51 @@ export async function searchAnnotations(
 
   // Build snippets from all collected hits after processing all pages
   for (const hit of hits) {
-    const snippet = buildSnippetFromAnnotation(hit, annotationLookup);
-    if (snippet) {
-      snippets.push(snippet);
-    }
+    const snippets_from_hit = buildSnippetsFromAnnotation(hit, annotationLookup);
+    snippets.push(...snippets_from_hit);
   }
 
   return snippets;
 }
 
 /**
- * Converts a "hit" annotation object to an IIIFSearchSnippet.
+ * Converts a search result annotation to one or more IIIFSearchSnippets.
+ * Handles both single targets and array targets.
  */
-function buildSnippetFromAnnotation(
+function buildSnippetsFromAnnotation(
   hitAnnotation: any,
   annotationLookup: Map<string, any>,
-): IIIFSearchSnippet | null {
-  if (!hitAnnotation?.target || hitAnnotation.type !== 'Annotation') return null;
+): IIIFSearchSnippet[] {
+  if (!hitAnnotation?.target || hitAnnotation.type !== 'Annotation') return [];
 
+  // Handle array targets - create multiple snippets
+  if (Array.isArray(hitAnnotation.target)) {
+    const snippets: IIIFSearchSnippet[] = [];
+    for (let i = 0; i < hitAnnotation.target.length; i++) {
+      const snippet = buildSnippetFromSingleTarget(hitAnnotation, hitAnnotation.target[i], annotationLookup, i);
+      if (snippet) {
+        snippets.push(snippet);
+      }
+    }
+    return snippets;
+  }
+
+  // Handle single target
+  const snippet = buildSnippetFromSingleTarget(hitAnnotation, hitAnnotation.target, annotationLookup, 0);
+  return snippet ? [snippet] : [];
+}
+
+/**
+ * Converts a single target from a search result annotation to an IIIFSearchSnippet.
+ */
+function buildSnippetFromSingleTarget(
+  hitAnnotation: any,
+  targetObj: any,
+  annotationLookup: Map<string, any>,
+  targetIndex: number = 0,
+): IIIFSearchSnippet | null {
   // The hit's target source is the ID of the base annotation with the geometry.
-  const baseAnnotationId = hitAnnotation.target.source;
+  const baseAnnotationId = targetObj.source;
   if (typeof baseAnnotationId !== 'string') {
     logger.warn('Search hit has no target source string.', hitAnnotation);
     return null;
@@ -134,10 +160,10 @@ function buildSnippetFromAnnotation(
 
   const partOf = getPartOf(baseTarget);
 
-  // --- Extract text snippet from the "hit" annotation ---
+  // --- Extract text snippet from the search result annotation ---
 
   let prefix, exact, suffix;
-  const hitSelector = hitAnnotation.target.selector;
+  const hitSelector = targetObj.selector;
   if (hitSelector && Array.isArray(hitSelector)) {
     const textSelector = hitSelector.find(
       (sel: any) => sel.type === 'TextQuoteSelector',
@@ -154,7 +180,7 @@ function buildSnippetFromAnnotation(
   }
 
   if (!exact) {
-    logger.warn('Could not find TextQuoteSelector on hit:', hitAnnotation);
+    logger.warn('Could not find TextQuoteSelector on search result target:', targetObj);
     return null;
   }
 
@@ -168,8 +194,11 @@ function buildSnippetFromAnnotation(
     motivationString = String(hitAnnotation.motivation);
   }
 
+  // Create unique ID for multiple targets
+  const snippetId = targetIndex > 0 ? `${hitAnnotation.id}-${targetIndex}` : hitAnnotation.id;
+
   return {
-    id: hitAnnotation.id,
+    id: snippetId,
     annotationId: baseAnnotation.id,
     motivation: motivationString,
     prefix,
@@ -177,7 +206,7 @@ function buildSnippetFromAnnotation(
     suffix,
     canvasTarget: cleanCanvasTarget,
     partOf,
-    language: hitAnnotation.target.language || undefined,
+    language: targetObj.language || undefined,
   };
 }
 
