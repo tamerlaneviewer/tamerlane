@@ -436,4 +436,107 @@ describe('searchAnnotations', () => {
     expect(snippets.map(s => s.exact)).toEqual(['highlight', 'context']);
   });
 
+  it('should handle array motivations with exact matching', async () => {
+    // Arrange: Mock data with array motivations
+    const mockAnnotationPage = {
+      type: 'AnnotationPage',
+      id: MOCK_URL,
+      items: [
+        { id: 'http://example.org/anno/1', type: 'Annotation', target: { id: 'http://example.org/canvas/1' } },
+      ],
+      annotations: [
+        {
+          type: 'AnnotationPage',
+          items: [
+            {
+              id: 'http://example.org/anno/array-highlight',
+              type: 'Annotation',
+              motivation: ['highlighting', 'tagging'], // Array with highlighting (should match)
+              target: {
+                source: 'http://example.org/anno/1',
+                selector: [{ type: 'TextQuoteSelector', exact: 'array-highlight' }],
+              },
+            },
+            {
+              id: 'http://example.org/anno/array-context',
+              type: 'Annotation',
+              motivation: ['contextualizing', 'supplementing'], // Array with contextualizing (should match)
+              target: {
+                source: 'http://example.org/anno/1',
+                selector: [{ type: 'TextQuoteSelector', exact: 'array-context' }],
+              },
+            },
+            {
+              id: 'http://example.org/anno/array-both',
+              type: 'Annotation',
+              motivation: ['highlighting', 'contextualizing'], // Array with both (should match)
+              target: {
+                source: 'http://example.org/anno/1',
+                selector: [{ type: 'TextQuoteSelector', exact: 'array-both' }],
+              },
+            },
+            {
+              id: 'http://example.org/anno/array-none',
+              type: 'Annotation',
+              motivation: ['painting', 'commenting'], // Array without search motivations (should not match)
+              target: {
+                source: 'http://example.org/anno/1',
+                selector: [{ type: 'TextQuoteSelector', exact: 'array-none' }],
+              },
+            },
+            {
+              id: 'http://example.org/anno/array-compound',
+              type: 'Annotation',
+              motivation: ['supplementing highlighting', 'tagging'], // Array with compound motivation (should not match with exact matching)
+              target: {
+                source: 'http://example.org/anno/1',
+                selector: [{ type: 'TextQuoteSelector', exact: 'array-compound' }],
+              },
+            },
+          ],
+        },
+      ],
+      next: null,
+    };
+
+    mockFetchResource.mockResolvedValue({
+      type: 'AnnotationPage',
+      data: mockAnnotationPage,
+    });
+
+    mockManiiifest.mockImplementation((data, type) => {
+      if (type === 'AnnotationPage' && data.id === MOCK_URL) {
+        return {
+          iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
+          getAnnotationPage: () => ({ next: null }),
+        };
+      }
+      if (type === 'AnnotationPage' && data.items) {
+        return {
+          iterateAnnotationPageAnnotation: () => data.items,
+        };
+      }
+      return {
+        iterateAnnotationPageAnnotation: () => [],
+        getAnnotationPage: () => ({ next: null }),
+      };
+    });
+
+    // Act
+    const snippets = await searchAnnotations(MOCK_URL);
+
+    // Assert
+    expect(snippets).toHaveLength(3); // Only exact matches for highlighting/contextualizing
+    expect(snippets.map(s => s.exact)).toEqual(['array-highlight', 'array-context', 'array-both']);
+    
+    // Verify that non-search motivations and compound motivations are ignored
+    expect(snippets.some(s => s.exact === 'array-none')).toBe(false);
+    expect(snippets.some(s => s.exact === 'array-compound')).toBe(false);
+    
+    // Verify motivation strings are properly joined for arrays
+    expect(snippets[0].motivation).toBe('highlighting, tagging');
+    expect(snippets[1].motivation).toBe('contextualizing, supplementing');
+    expect(snippets[2].motivation).toBe('highlighting, contextualizing');
+  });
+
 });
