@@ -1,5 +1,3 @@
-import { availableLanguages } from '../config/appConfig.ts';
-
 // Utility to extract available languages from IIIF annotations
 export function extractLanguagesFromAnnotations(
   annotations: Array<any>,
@@ -11,7 +9,7 @@ export function extractLanguagesFromAnnotations(
     if (anno && anno.body) {
       // If body is an array, check each item
       const bodies = Array.isArray(anno.body) ? anno.body : [anno.body];
-      bodies.forEach((body) => {
+      bodies.forEach((body: any) => {
         // IIIF language map: { en: ["text"], de: ["text"] }
         if (typeof body.value === 'object' && body.value !== null) {
           Object.keys(body.value).forEach((lang) => langSet.add(lang));
@@ -28,14 +26,9 @@ export function extractLanguagesFromAnnotations(
     }
   });
 
-  // Build language code-to-name map from config
-  const langNameMap: Record<string, string> = {};
-  availableLanguages.forEach((lang) => {
-    langNameMap[lang.code] = lang.name;
-  });
-
+  // Just return codes with placeholder names (name not used in UI)
   return Array.from(langSet).map((code) => ({
     code,
-    name: langNameMap[code] || code,
+    name: code.toUpperCase(), // Simple placeholder since UI only shows codes
   }));
 }
