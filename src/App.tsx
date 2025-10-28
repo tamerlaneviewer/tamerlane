@@ -15,7 +15,7 @@ import { toUserMessage } from './errors/structured.ts';
 import { parseResource } from './service/parser.ts';
 import { logger } from './utils/logger.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
-import { availableLanguages as configLanguages } from './config/appConfig.ts';
+import { DEFAULT_LANGUAGE } from './config/appConfig.ts';
 
 const App: React.FC = () => {
   // Granular selectors for state
@@ -236,7 +236,6 @@ const App: React.FC = () => {
   }, [currentManifest, selectedImageIndex, isSearchJump]);
 
   // --- Language extraction and selection logic ---
-  const DEFAULT_LANGUAGE = configLanguages[0]?.code || 'en';
   const availableLanguages = React.useMemo(() => {
     // This correctly returns [] if no languages are found, which drives our logic.
     return extractLanguagesFromAnnotations(annotations);
@@ -259,7 +258,6 @@ const App: React.FC = () => {
     availableLanguages,
     selectedLanguage,
     setSelectedLanguage,
-    DEFAULT_LANGUAGE,
   ]);
 
   // Create a safe list to pass to the Header component. It will never be empty.
@@ -269,7 +267,7 @@ const App: React.FC = () => {
       : [
           {
             code: DEFAULT_LANGUAGE,
-            name: configLanguages[0]?.name || 'English',
+            name: DEFAULT_LANGUAGE.toUpperCase(),
           },
         ];
   // --- End language logic ---
