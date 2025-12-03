@@ -9,21 +9,17 @@ const IIIF_IMAGE_API_MARKER = 'iiif.io/api/image';
 
 
 /**
- * Determines whether the given IIIF Image Service URL needs an explicit /info.json appended
- * due to broken redirects or CORS behavior.
- */
-function shouldForceInfoJson(url: string): boolean {
-  return url.includes('iiif.io/api/image/3.0/example/');
-}
-
-/**
  * Ensures the IIIF image service URL is safe and normalized for OpenSeadragon.
+ * Always appends /info.json as required by IIIF Image API specification.
  */
 function normalizeIiifUrl(baseUrl: string): string {
   const safeBase = baseUrl.replace(/\/+$/, '');
-  return shouldForceInfoJson(safeBase)
-    ? `${safeBase}/info.json`
-    : safeBase;
+  // Check if /info.json is already present to avoid double-appending
+  if (safeBase.endsWith('/info.json')) {
+    return safeBase;
+  }
+  // IIIF spec requires /info.json suffix for Image Service metadata requests
+  return `${safeBase}/info.json`;
 }
 
 /**
