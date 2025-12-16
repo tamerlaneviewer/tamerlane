@@ -98,6 +98,10 @@ Create an HTML file with the following content, and the viewer will be embedded 
 
 You can replace the `iiif-content` URL with any IIIF manifest you wish to display.
 
+## 🔗 Compatibility
+
+Tamerlane is built using the [maniiifest parser](https://github.com/jptmoore/maniiifest). To test your manifest or collection with this parser use the following [online validator](https://maniiifest.onrender.com/).
+
 ## 💬 Feedback
 
 Encountered a bug or have a feature request? Please [raise an issue](https://github.com/tamerlaneviewer/tamerlane/issues) on the GitHub repository.
