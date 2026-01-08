@@ -55,7 +55,21 @@ const SearchResults: React.FC<SearchResultsProps> = ({
       ) : (
         visibleResults
           .map((result: IIIFSearchSnippet) => {
-            const combinedHTML = `${result.prefix ?? ''}<span class="text-blue-600 font-semibold">${result.exact}</span>${result.suffix ?? ''}`;
+            // Ensure proper spacing between prefix/exact/suffix
+            let prefix = result.prefix ?? '';
+            let suffix = result.suffix ?? '';
+            
+            // Add trailing space to prefix if missing and prefix is not empty
+            if (prefix && !prefix.endsWith(' ')) {
+              prefix += ' ';
+            }
+            
+            // Add leading space to suffix if missing and suffix is not empty
+            if (suffix && !suffix.startsWith(' ')) {
+              suffix = ' ' + suffix;
+            }
+            
+            const combinedHTML = `${prefix}<span class="text-blue-600 font-semibold">${result.exact}</span>${suffix}`;
 
             // We now check against the result's own unique ID.
             const isSelected = selectedSearchResultId === result.id;
