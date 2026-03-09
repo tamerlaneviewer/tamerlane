@@ -4,13 +4,14 @@ FROM node:20-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
-# COPY .env ./
 RUN npm install
 
 COPY . .
 
 # Set the public URL so React builds paths with /viewer
-ENV PUBLIC_URL=/viewer
+# Can be overridden via build arg: docker build --build-arg PUBLIC_URL=/custom-path
+ARG PUBLIC_URL=/viewer
+ENV PUBLIC_URL=${PUBLIC_URL}
 
 # Run the React production build
 RUN npm run build
@@ -20,12 +21,8 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# will remove this
-RUN npm config set strict-ssl false
-
 # Install only production deps (if needed)
 COPY package*.json ./
-COPY .env ./
 RUN npm install --omit=dev
 
 # Copy built static files from build stage
