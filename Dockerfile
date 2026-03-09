@@ -21,10 +21,6 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install only production deps (if needed)
-COPY package*.json ./
-RUN npm install --omit=dev
-
 # Copy built static files from build stage
 COPY --from=build /app/build ./build
 

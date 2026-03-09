@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+.next/
+out/
+
+# Testing
+coverage/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Misc
+.eslintcache
+.prettierignore
+.prettierrc
+assets/
