@@ -55,6 +55,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       tileSources: [tileSource],
       showNavigator: true,
       crossOriginPolicy: 'Anonymous',
+      maxZoomPixelRatio: 10,
     });
 
     osdViewerRef.current.addHandler('open', () => {
