@@ -18,7 +18,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
   }
 
   const labelData: any = parser.getManifestLabel();
-  const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled manifest';
+  const label: string = (Object.values(labelData) as any[])?.[0]?.[0] ?? 'Untitled manifest';
   const metadata = Array.from(parser.iterateManifestMetadata());
   const provider = Array.from(parser.iterateManifestProvider());
   const homepage = Array.from(parser.iterateManifestHomepage());
@@ -35,7 +35,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
 
   const images: IIIFImage[] = [];
   for (const anno of parser.iterateManifestCanvasAnnotation()) {
-    const annoParser = new Maniiifest(anno, 'Annotation');
+    const annoParser = Maniiifest.parseAnnotation(anno);
     const targets = Array.from(annoParser.iterateAnnotationTarget());
     if (targets.length !== 1) {
   throw createError('PARSING_MANIFEST', 'Expected a single canvas target');
@@ -55,7 +55,7 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
 
   const service = parser.getManifestService();
   if (Array.isArray(service)) {
-    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
+    const searchService: any = service.find((svc: any) => svc.type === 'SearchService2');
 
     if (searchService) {
       manifestSearch = {
@@ -80,7 +80,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
   let firstManifest: IIIFManifest | null = null;
 
   const labelData: any = parser.getCollectionLabel();
-  const label: string = Object.values(labelData)?.[0]?.[0] ?? 'Untitled collection';
+  const label: string = (Object.values(labelData) as any[])?.[0]?.[0] ?? 'Untitled collection';
   // these will return the nested collections also so need to think how to best handle this 
   const metadata = Array.from(parser.iterateCollectionMetadata());
   const provider = Array.from(parser.iterateCollectionProvider());
@@ -91,7 +91,7 @@ async function parseCollection(jsonData: any): Promise<TamerlaneResource> {
 
   const service = parser.getCollectionService();
   if (Array.isArray(service)) {
-    const searchService = service.find((svc: any) => svc.type === 'SearchService2');
+    const searchService: any = service.find((svc: any) => svc.type === 'SearchService2');
 
     if (searchService) {
       collectionSearch = {
