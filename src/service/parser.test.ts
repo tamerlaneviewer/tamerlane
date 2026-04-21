@@ -12,6 +12,7 @@ jest.mock('maniiifest');
 const mockFetchResource = resource.fetchResource as jest.Mock;
 const mockGetImage = image.getImage as jest.Mock;
 const mockManiiifest = Maniiifest as jest.Mock;
+const mockParseAnnotation = Maniiifest.parseAnnotation as jest.Mock;
 
 describe('parseResource', () => {
   beforeEach(() => {
@@ -40,10 +41,12 @@ describe('parseResource', () => {
       getManifestRequiredStatement: () => null,
       iterateManifestCanvas: () => [{ id: 'canvas1' }],
       iterateManifestCanvasAnnotation: () => [{ id: 'anno1' }],
-      iterateAnnotationTarget: () => ['canvas1'],
-      iterateAnnotationResourceBody: () => [{ id: 'image1' }],
       getManifestService: () => null,
     }));
+    mockParseAnnotation.mockReturnValue({
+      iterateAnnotationTarget: () => ['canvas1'],
+      iterateAnnotationResourceBody: () => [{ id: 'image1' }],
+    });
 
     // Act
     const result = await parseResource('manifest-url');

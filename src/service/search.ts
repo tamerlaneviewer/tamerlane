@@ -41,7 +41,7 @@ export async function searchAnnotations(
 
     // Second Pass: Collect search hits from nested annotation pages
     for (const annotationPage of resource.data.annotations || []) {
-      const nestedParser = new Maniiifest(annotationPage, 'AnnotationPage');
+      const nestedParser = Maniiifest.parseAnnotationPage(annotationPage);
       for (const annotation of nestedParser.iterateAnnotationPageAnnotation()) {
         // Add nested annotations to lookup as well (in case they're referenced)
         if (annotation.id) {
@@ -68,8 +68,8 @@ export async function searchAnnotations(
     }
 
     // Get the next page (if applicable)
-    const mainParser = new Maniiifest(resource.data, 'AnnotationPage');
-    nextPageUrl = mainParser.getAnnotationPage()?.next ?? null;
+    const mainParser = Maniiifest.parseAnnotationPage(resource.data);
+    nextPageUrl = mainParser.getAnnotationPageNext() ?? null;
     pageCount++;
   }
 

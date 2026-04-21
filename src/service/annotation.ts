@@ -1,4 +1,4 @@
-import { Maniiifest } from 'maniiifest';
+import { Maniiifest, ManiiifestAnnotationPage } from 'maniiifest';
 import { fetchResource } from './resource.ts';
 import { createError } from '../errors/structured.ts';
 import { IIIFAnnotation } from '../types/index.ts';
@@ -8,7 +8,7 @@ const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
 
 async function processAnnotationsWorker(
-  manifest: Maniiifest,
+  manifest: ManiiifestAnnotationPage,
   targetUrl: string,
 ): Promise<IIIFAnnotation[]> {
   const resultsMap: Map<string, IIIFAnnotation> = new Map();
@@ -18,7 +18,7 @@ async function processAnnotationsWorker(
     const rawMotivation = annotation.motivation;
     const motivation = Array.isArray(rawMotivation) ? rawMotivation[0] : rawMotivation || '';
 
-    const annotationParser = new Maniiifest(annotation, 'Annotation');
+    const annotationParser = Maniiifest.parseAnnotation(annotation);
 
     for (const target of annotationParser.iterateAnnotationTarget()) {
       const normalizedTargets = normalizeAnnotationTargets(target);
@@ -54,11 +54,11 @@ async function processAnnotationsWorker(
 
 
 async function processAnnotations(
-  parser: any,
+  parser: ManiiifestAnnotationPage,
   targetUrl: string,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
-  let currentParser = parser;
+  let currentParser: ManiiifestAnnotationPage | null = parser;
   let allAnnotations: IIIFAnnotation[] = [];
 
   while (currentParser) {
@@ -70,13 +70,13 @@ async function processAnnotations(
 
     allAnnotations = allAnnotations.concat(result);
 
-    const nextPageUrl = currentParser.getAnnotationPage().next;
+    const nextPageUrl = currentParser.getAnnotationPageNext();
     if (nextPageUrl) {
   const resource = await fetchResource(nextPageUrl, { signal });
       if (!resource.type || resource.type !== 'AnnotationPage') {
         throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
       }
-      currentParser = new Maniiifest(resource.data, 'AnnotationPage');
+      currentParser = Maniiifest.parseAnnotationPage(resource.data);
     } else {
       currentParser = null;
     }
@@ -96,7 +96,7 @@ async function processAnnotationPageRef(
   if (!resource.type || resource.type !== 'AnnotationPage') {
     throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
   }
-  const parser = new Maniiifest(resource.data, 'AnnotationPage');
+  const parser = Maniiifest.parseAnnotationPage(resource.data);
   return processAnnotations(parser, targetUrl, signal);
 }
 
@@ -105,7 +105,7 @@ async function processAnnotationPage(
   targetUrl: string,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
-  const parser = new Maniiifest(page, 'AnnotationPage');
+  const parser = Maniiifest.parseAnnotationPage(page);
   return processAnnotations(parser, targetUrl, signal);
 }
 
