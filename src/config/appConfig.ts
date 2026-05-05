@@ -8,6 +8,24 @@ export const SHOW_LOGO = true;
 
 export const maxSearchPages = 10;
 
+export const MOTIVATIONS = [
+  'bookmarking',
+  'classifying',
+  'commenting',
+  'describing',
+  'transcribing',
+  'editing',
+  'highlighting',
+  'contextualizing',
+  'identifying',
+  'linking',
+  'moderating',
+  'questioning',
+  'replying',
+  'supplementing',
+  'tagging',
+];
+
 // Network configuration
 export const networkConfig = {
   forceHttps: false,             // Automatically upgrade all HTTP URLs to HTTPS

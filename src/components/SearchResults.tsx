@@ -8,6 +8,7 @@ interface SearchResultsProps {
   // This ID should now be the unique ID of the search result snippet itself.
   selectedSearchResultId?: string | null;
   selectedLanguage?: string | null;
+  selectedMotivation?: string | null;
 }
 
 // Function to sanitize annotation text
@@ -21,6 +22,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   onResultClick,
   selectedSearchResultId,
   selectedLanguage,
+  selectedMotivation = null,
 }) => {
   const itemRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
@@ -38,6 +40,14 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     return matchesLanguage(result.language ?? null);
   });
 
+  const motivationFilteredResults = selectedMotivation
+    ? visibleResults.filter((result) => {
+        const m = result.motivation;
+        if (Array.isArray(m)) return m.includes(selectedMotivation);
+        return m === selectedMotivation;
+      })
+    : visibleResults;
+
   useEffect(() => {
     if (selectedSearchResultId) {
     const ref = itemRefs.current[selectedSearchResultId];
@@ -52,8 +62,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     <div className="relative">
       {searchResults.length === 0 ? (
         <p className="text-gray-500 text-center">No search results found.</p>
+      ) : selectedMotivation && visibleResults.length > 0 && motivationFilteredResults.length === 0 ? (
+        <p className="text-gray-500 text-center">No results match the selected motivation filter.</p>
       ) : (
-        visibleResults
+        motivationFilteredResults
           .map((result: IIIFSearchSnippet) => {
             // Ensure proper spacing between prefix/exact/suffix
             let prefix = result.prefix ?? '';

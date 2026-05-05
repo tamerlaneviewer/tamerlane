@@ -46,6 +46,7 @@ interface IIIFState {
   autocompleteUrl: string;
   searchUrl: string;
   selectedLanguage: string | null;
+  selectedMotivation: string | null;
   searching: boolean;
   isNavigating: boolean;
   selectionPhase: 'idle' | 'pending' | 'waiting_viewer' | 'waiting_annotations' | 'selected' | 'failed';
@@ -84,6 +85,7 @@ interface IIIFState {
   setAutocompleteUrl: (url: string) => void;
   setSearchUrl: (url: string) => void;
   setSelectedLanguage: (language: string | null) => void;
+  setSelectedMotivation: (motivation: string | null) => void;
   setSearching: (searching: boolean) => void;
   setNavigating: (isNavigating: boolean) => void;
   clearPendingAnnotation: () => void;
@@ -130,6 +132,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   autocompleteUrl: '',
   searchUrl: '',
   selectedLanguage: 'en',
+  selectedMotivation: null,
   searching: false,
   isNavigating: false,
   // True while jumping from a search result into annotations; used to gate focus changes
@@ -222,6 +225,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setAutocompleteUrl: (url) => set({ autocompleteUrl: url }),
   setSearchUrl: (url) => set({ searchUrl: url }),
   setSelectedLanguage: (language) => set({ selectedLanguage: language }),
+  setSelectedMotivation: (motivation) => set({ selectedMotivation: motivation }),
   setSearching: (searching) => set({ searching: searching }),
   setNavigating: (isNavigating) => set({ isNavigating }),
   setSelectionDebug: (debug) => set({ selectionDebug: debug }),
@@ -379,7 +383,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       const controller = new AbortController();
       set({ searchAbortController: controller, searching: true });
       try {
-        const searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
+        const { selectedMotivation } = get();
+        let searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
+        if (selectedMotivation) {
+          searchEndpoint += `&motivation=${encodeURIComponent(selectedMotivation)}`;
+        }
         const results = await searchAnnotations(searchEndpoint, controller.signal);
         const taggedResults = results.map((result) => {
           let manifestId = '';

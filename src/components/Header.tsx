@@ -1,6 +1,7 @@
 import React from 'react';
 import SearchBar from './SearchBar.tsx';
 import IIIFControls from './IIIFControls.tsx';
+import FilterPanel from './FilterPanel.tsx';
 import { APP_NAME, SHOW_LOGO } from '../config/appConfig.ts';
 
 interface HeaderProps {
@@ -19,6 +20,8 @@ interface HeaderProps {
   selectedLanguage: string | null;
   searching: boolean;
   availableLanguages: Array<{ code: string; name: string }>;
+  selectedMotivation: string | null;
+  onMotivationSelect: (motivation: string | null) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -37,6 +40,8 @@ const Header: React.FC<HeaderProps> = ({
   selectedLanguage,
   searching = false,
   availableLanguages,
+  selectedMotivation,
+  onMotivationSelect,
 }) => {
 
   return (
@@ -66,28 +71,21 @@ const Header: React.FC<HeaderProps> = ({
         />
       </div>
 
-      <div className="hidden md:flex items-center space-x-2">
-        <select
-          value={selectedLanguage || ''}
-          onChange={(e) => onLanguageChange(e.target.value)}
-          className="bg-slate-600 text-white px-3 py-2 rounded text-sm hover:bg-slate-500 border-0 min-w-[60px] min-h-[44px] cursor-pointer"
-          aria-label="Select annotation language"
-          title="Filters annotations and search results by language"
-        >
-          {availableLanguages.map((lang) => (
-            <option key={lang.code} value={lang.code} className="bg-slate-700 text-white">
-              {lang.code.toUpperCase()}
-            </option>
-          ))}
-        </select>
-        <div className="hidden md:block">
-          <SearchBar
-            onSearch={onSearch}
-            autocompleteService={autocompleteUrl}
-            searching={searching}
-            selectedLanguage={selectedLanguage ?? undefined}
-          />
-        </div>
+      <div className="hidden md:flex items-center gap-2">
+        <FilterPanel
+          availableLanguages={availableLanguages}
+          selectedLanguage={selectedLanguage}
+          onLanguageChange={onLanguageChange}
+          selectedMotivation={selectedMotivation}
+          onMotivationSelect={onMotivationSelect}
+        />
+        <div className="w-px h-5 bg-slate-500" aria-hidden="true" />
+        <SearchBar
+          onSearch={onSearch}
+          autocompleteService={autocompleteUrl}
+          searching={searching}
+          selectedLanguage={selectedLanguage ?? undefined}
+        />
       </div>
     </header>
   );
