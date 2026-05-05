@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/tamerlane/static/css/main.2381a9b3.css",
-    "main.js": "/tamerlane/static/js/main.72f1424e.js",
+    "main.css": "/tamerlane/static/css/main.7dfd013b.css",
+    "main.js": "/tamerlane/static/js/main.e139043a.js",
     "index.html": "/tamerlane/index.html",
-    "main.2381a9b3.css.map": "/tamerlane/static/css/main.2381a9b3.css.map",
-    "main.72f1424e.js.map": "/tamerlane/static/js/main.72f1424e.js.map"
+    "main.7dfd013b.css.map": "/tamerlane/static/css/main.7dfd013b.css.map",
+    "main.e139043a.js.map": "/tamerlane/static/js/main.e139043a.js.map"
   },
   "entrypoints": [
-    "static/css/main.2381a9b3.css",
-    "static/js/main.72f1424e.js"
+    "static/css/main.7dfd013b.css",
+    "static/js/main.e139043a.js"
   ]
 }
