@@ -184,15 +184,15 @@ function buildSnippetFromSingleTarget(
     return null;
   }
 
-  // Extract motivation as string for the snippet
-  let motivationString = '';
-  if (typeof hitAnnotation.motivation === 'string') {
-    motivationString = hitAnnotation.motivation;
-  } else if (Array.isArray(hitAnnotation.motivation)) {
-    motivationString = hitAnnotation.motivation.join(', ');
-  } else if (hitAnnotation.motivation) {
-    motivationString = String(hitAnnotation.motivation);
-  }
+  // Extract motivation from the base annotation (the actual content annotation),
+  // not the hit annotation which always has 'highlighting'/'contextualizing'.
+  // Preserve raw type (string or string[]) so consumers can match without string splitting.
+  const motivationSource = baseAnnotation.motivation;
+  const motivation: string | string[] = Array.isArray(motivationSource)
+    ? motivationSource
+    : typeof motivationSource === 'string'
+      ? motivationSource
+      : '';
 
   // Create unique ID for multiple targets
   const snippetId = targetIndex > 0 ? `${hitAnnotation.id}-${targetIndex}` : hitAnnotation.id;
@@ -200,7 +200,7 @@ function buildSnippetFromSingleTarget(
   return {
     id: snippetId,
     annotationId: baseAnnotation.id,
-    motivation: motivationString,
+    motivation,
     prefix,
     exact,
     suffix,

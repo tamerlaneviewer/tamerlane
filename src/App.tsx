@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const isSearchJump = useIIIFStore((state) => state.isSearchJump);
   const autocompleteUrl = useIIIFStore((state) => state.autocompleteUrl);
   const selectedLanguage = useIIIFStore((state) => state.selectedLanguage);
+  const selectedMotivation = useIIIFStore((state) => state.selectedMotivation);
   const searching = useIIIFStore((state) => state.searching);
   const annotationsLoading = useIIIFStore((state) => state.annotationsLoading);
   const annotationsError = useIIIFStore((state) => state.annotationsError);
@@ -73,6 +74,9 @@ const App: React.FC = () => {
   const setSearchUrl = useIIIFStore((state) => state.setSearchUrl);
   const setSelectedLanguage = useIIIFStore(
     (state) => state.setSelectedLanguage,
+  );
+  const setSelectedMotivation = useIIIFStore(
+    (state) => state.setSelectedMotivation,
   );
   const handleManifestUpdate = useIIIFStore(
     (state) => state.handleManifestUpdate,
@@ -405,6 +409,8 @@ const App: React.FC = () => {
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
         availableLanguages={languagesForHeader}
+        selectedMotivation={selectedMotivation}
+        onMotivationSelect={setSelectedMotivation}
       />
 
       <main
@@ -443,6 +449,7 @@ const App: React.FC = () => {
           selectedAnnotation={selectedAnnotation || undefined}
           selectedSearchResultId={selectedSearchResultId || undefined}
           selectedLanguage={selectedLanguage || undefined}
+          selectedMotivation={selectedMotivation}
           pendingAnnotationId={pendingAnnotationId}
           onPendingAnnotationProcessed={() => {}} // Store handles this automatically now
           viewerReady={viewerReady}

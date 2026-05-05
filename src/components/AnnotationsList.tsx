@@ -9,6 +9,7 @@ interface AnnotationsListProps {
   onAnnotationSelect: (annotation: IIIFAnnotation) => void;
   selectedAnnotation?: IIIFAnnotation;
   selectedLanguage?: string;
+  selectedMotivation?: string | null;
   pendingAnnotationId?: string | null;
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
@@ -19,6 +20,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   onAnnotationSelect,
   selectedAnnotation,
   selectedLanguage,
+  selectedMotivation = null,
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
@@ -112,6 +114,14 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     return matchesLanguage(annotation.body);
   });
 
+  const motivationFilteredAnnotations = selectedMotivation
+    ? filteredAnnotations.filter((annotation: IIIFAnnotation) => {
+        const m = annotation.motivation;
+        if (Array.isArray(m)) return m.includes(selectedMotivation);
+        return m === selectedMotivation;
+      })
+    : filteredAnnotations;
+
   // Show language filtering message if we have annotations but none match the language
   if (selectedLanguage && annotations.length > 0 && filteredAnnotations.length === 0) {
     return (
@@ -123,9 +133,20 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     );
   }
 
+  // Show motivation filtering message if we have language-filtered annotations but none match the motivation
+  if (selectedMotivation && filteredAnnotations.length > 0 && motivationFilteredAnnotations.length === 0) {
+    return (
+      <div className="relative">
+        <p className="text-gray-500 text-center p-4">
+          No annotations match the selected motivation filter.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
-      {filteredAnnotations.map((annotation: IIIFAnnotation, index: number) => {
+      {motivationFilteredAnnotations.map((annotation: IIIFAnnotation, index: number) => {
           const isSelected = selectedAnnotation?.id === annotation.id;
           const isTagging =
             isSelected &&

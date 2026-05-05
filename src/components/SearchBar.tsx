@@ -142,48 +142,50 @@ const SearchBar = ({
 
   // ...existing code...
   return (
-    <div className="relative w-full sm:w-auto">
-      <form onSubmit={handleSubmit} className="p-1 flex gap-1">
-        <label htmlFor={inputId} className="sr-only">Search keywords</label>
-        <input
-          ref={inputRef}
-          type="text"
-          className="border rounded p-0.5 w-full sm:w-40 text-sm text-black bg-white"
-          placeholder="Keywords..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setShowSuggestions(true);
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onKeyDown={handleKeyDown}
-          onBlur={() => setShowSuggestions(false)}
-          role="combobox"
-          aria-controls={listboxId}
-          aria-expanded={showSuggestions && suggestions.length > 0}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            highlightedIndex >= 0 ? `autocomplete-option-${highlightedIndex}` : undefined
-          }
-          id={inputId}
-        />
-        <button
-          type="submit"
-          className={`bg-blue-500 text-white p-0.5 rounded text-sm transition-opacity duration-200 min-w-[60px] relative ${
-            searching ? 'opacity-75 cursor-not-allowed' : ''
-          }`}
-          disabled={searching}
-        >
-          {searching && (
-            <svg className="animate-spin h-4 w-4 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
-          )}
-          <span className={searching ? 'opacity-0' : 'opacity-100'}>
-            Search
-          </span>
-        </button>
+    <div className="relative">
+      <form onSubmit={handleSubmit}>
+        <div className="flex items-center gap-2">
+          <label htmlFor={inputId} className="sr-only">Search keywords</label>
+          <input
+            ref={inputRef}
+            type="text"
+            className="h-9 px-3 text-sm text-black bg-white border border-gray-300 rounded min-w-0 w-32 sm:w-44 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Keywords..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => setShowSuggestions(false)}
+            role="combobox"
+            aria-controls={listboxId}
+            aria-expanded={showSuggestions && suggestions.length > 0}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              highlightedIndex >= 0 ? `autocomplete-option-${highlightedIndex}` : undefined
+            }
+            id={inputId}
+          />
+          <button
+            type="submit"
+            className={`h-9 bg-blue-500 text-white px-3 text-sm rounded transition-opacity duration-200 min-w-[60px] relative focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+              searching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-600'
+            }`}
+            disabled={searching}
+          >
+            {searching && (
+              <svg className="animate-spin h-4 w-4 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            <span className={searching ? 'opacity-0' : 'opacity-100'}>
+              Search
+            </span>
+          </button>
+        </div>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (

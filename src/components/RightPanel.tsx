@@ -13,6 +13,7 @@ interface RightPanelProps {
   selectedAnnotation?: IIIFAnnotation;
   selectedSearchResultId?: string;
   selectedLanguage?: string;
+  selectedMotivation?: string | null;
   pendingAnnotationId?: string | null;
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
@@ -30,6 +31,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
   selectedAnnotation,
   selectedSearchResultId,
   selectedLanguage,
+  selectedMotivation,
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
@@ -48,6 +50,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
         selectedAnnotation={selectedAnnotation}
         selectedSearchResultId={selectedSearchResultId}
         selectedLanguage={selectedLanguage}
+        selectedMotivation={selectedMotivation}
         pendingAnnotationId={pendingAnnotationId}
         onPendingAnnotationProcessed={onPendingAnnotationProcessed}
         viewerReady={viewerReady}

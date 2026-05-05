@@ -16,6 +16,7 @@ interface AnnotationsPanelProps {
   selectedSearchResultId?: string;
   onResultClick: (result: IIIFSearchSnippet) => void;
   selectedLanguage?: string;
+  selectedMotivation?: string | null;
   pendingAnnotationId?: string | null;
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
@@ -33,6 +34,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   selectedAnnotation,
   selectedSearchResultId,
   selectedLanguage,
+  selectedMotivation,
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
@@ -342,6 +344,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               onAnnotationSelect={onAnnotationSelect}
               selectedAnnotation={selectedAnnotation}
               selectedLanguage={selectedLanguage || undefined}
+              selectedMotivation={selectedMotivation ?? null}
               pendingAnnotationId={pendingAnnotationId}
               onPendingAnnotationProcessed={onPendingAnnotationProcessed}
               viewerReady={viewerReady}
@@ -360,6 +363,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
                 onResultClick={onResultClick}
                 selectedSearchResultId={selectedSearchResultId}
                 selectedLanguage={selectedLanguage}
+                selectedMotivation={selectedMotivation ?? null}
               />
             )}
           </div>

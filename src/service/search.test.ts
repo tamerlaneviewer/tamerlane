@@ -36,7 +36,7 @@ describe('searchAnnotations', () => {
       type: 'AnnotationPage',
       id: MOCK_URL,
       items: [
-        { id: 'http://example.org/anno/1', type: 'Annotation', target: { id: 'http://example.org/canvas/1' } },
+        { id: 'http://example.org/anno/1', type: 'Annotation', motivation: 'supplementing', target: { id: 'http://example.org/canvas/1' } },
       ],
       annotations: [
         {
@@ -100,7 +100,7 @@ describe('searchAnnotations', () => {
     expect(snippets[0]).toEqual({
       id: 'http://example.org/anno/2',
       annotationId: 'http://example.org/anno/1',
-      motivation: 'highlighting',
+      motivation: 'supplementing',
       prefix: '... for a ',
       exact: 'test',
       suffix: ' case ...',
@@ -188,7 +188,7 @@ describe('searchAnnotations', () => {
       type: 'AnnotationPage',
       id: MOCK_URL,
       items: [
-        { id: 'http://example.org/anno/1', type: 'Annotation', target: { id: 'http://example.org/canvas/1' } },
+        { id: 'http://example.org/anno/1', type: 'Annotation', motivation: 'supplementing', target: { id: 'http://example.org/canvas/1' } },
       ],
       annotations: [
         {
@@ -247,7 +247,7 @@ describe('searchAnnotations', () => {
     expect(snippets[0]).toEqual({
       id: 'http://example.org/anno/contextual',
       annotationId: 'http://example.org/anno/1',
-      motivation: 'contextualizing',
+      motivation: 'supplementing',
       prefix: 'There are two ',
       exact: 'birds',
       suffix: ' in the bush',
@@ -263,8 +263,8 @@ describe('searchAnnotations', () => {
       type: 'AnnotationPage',
       id: MOCK_URL,
       items: [
-        { id: 'http://example.org/anno/hand', type: 'Annotation', target: { id: 'http://example.org/canvas/1#xywh=200,100,150,30' } },
-        { id: 'http://example.org/anno/is', type: 'Annotation', target: { id: 'http://example.org/canvas/1#xywh=200,140,170,30' } },
+        { id: 'http://example.org/anno/hand', type: 'Annotation', motivation: 'describing', target: { id: 'http://example.org/canvas/1#xywh=200,100,150,30' } },
+        { id: 'http://example.org/anno/is', type: 'Annotation', motivation: 'describing', target: { id: 'http://example.org/canvas/1#xywh=200,140,170,30' } },
       ],
       annotations: [
         {
@@ -336,7 +336,7 @@ describe('searchAnnotations', () => {
     expect(snippets[0]).toEqual({
       id: 'http://example.org/anno/multi-match',
       annotationId: 'http://example.org/anno/hand',
-      motivation: 'highlighting',
+      motivation: 'describing',
       prefix: 'bird in the ',
       exact: 'hand',
       suffix: undefined,
@@ -349,7 +349,7 @@ describe('searchAnnotations', () => {
     expect(snippets[1]).toEqual({
       id: 'http://example.org/anno/multi-match-1',
       annotationId: 'http://example.org/anno/is',
-      motivation: 'highlighting',
+      motivation: 'describing',
       prefix: undefined,
       exact: 'is',
       suffix: ' worth two in the',
@@ -365,7 +365,7 @@ describe('searchAnnotations', () => {
       type: 'AnnotationPage',
       id: MOCK_URL,
       items: [
-        { id: 'http://example.org/anno/1', type: 'Annotation', target: { id: 'http://example.org/canvas/1' } },
+        { id: 'http://example.org/anno/1', type: 'Annotation', motivation: 'commenting', target: { id: 'http://example.org/canvas/1' } },
       ],
       annotations: [
         {
@@ -432,7 +432,7 @@ describe('searchAnnotations', () => {
 
     // Assert
     expect(snippets).toHaveLength(2); // Only highlighting and contextualizing, not commenting
-    expect(snippets.map(s => s.motivation)).toEqual(['highlighting', 'contextualizing']);
+    expect(snippets.map(s => s.motivation)).toEqual(['commenting', 'commenting']);
     expect(snippets.map(s => s.exact)).toEqual(['highlight', 'context']);
   });
 
@@ -442,6 +442,9 @@ describe('searchAnnotations', () => {
       type: 'AnnotationPage',
       id: MOCK_URL,
       items: [
+        { id: 'http://example.org/anno/base-arr-1', type: 'Annotation', motivation: ['tagging', 'describing'], target: { id: 'http://example.org/canvas/1' } },
+        { id: 'http://example.org/anno/base-arr-2', type: 'Annotation', motivation: ['supplementing', 'linking'], target: { id: 'http://example.org/canvas/1' } },
+        { id: 'http://example.org/anno/base-arr-3', type: 'Annotation', motivation: ['tagging', 'linking'], target: { id: 'http://example.org/canvas/1' } },
         { id: 'http://example.org/anno/1', type: 'Annotation', target: { id: 'http://example.org/canvas/1' } },
       ],
       annotations: [
@@ -451,27 +454,27 @@ describe('searchAnnotations', () => {
             {
               id: 'http://example.org/anno/array-highlight',
               type: 'Annotation',
-              motivation: ['highlighting', 'tagging'], // Array with highlighting (should match)
+              motivation: 'highlighting', // Qualifies as a search hit
               target: {
-                source: 'http://example.org/anno/1',
+                source: 'http://example.org/anno/base-arr-1',
                 selector: [{ type: 'TextQuoteSelector', exact: 'array-highlight' }],
               },
             },
             {
               id: 'http://example.org/anno/array-context',
               type: 'Annotation',
-              motivation: ['contextualizing', 'supplementing'], // Array with contextualizing (should match)
+              motivation: 'contextualizing', // Qualifies as a search hit
               target: {
-                source: 'http://example.org/anno/1',
+                source: 'http://example.org/anno/base-arr-2',
                 selector: [{ type: 'TextQuoteSelector', exact: 'array-context' }],
               },
             },
             {
               id: 'http://example.org/anno/array-both',
               type: 'Annotation',
-              motivation: ['highlighting', 'contextualizing'], // Array with both (should match)
+              motivation: 'highlighting', // Qualifies as a search hit
               target: {
-                source: 'http://example.org/anno/1',
+                source: 'http://example.org/anno/base-arr-3',
                 selector: [{ type: 'TextQuoteSelector', exact: 'array-both' }],
               },
             },
@@ -533,10 +536,19 @@ describe('searchAnnotations', () => {
     expect(snippets.some(s => s.exact === 'array-none')).toBe(false);
     expect(snippets.some(s => s.exact === 'array-compound')).toBe(false);
     
-    // Verify motivation strings are properly joined for arrays
-    expect(snippets[0].motivation).toBe('highlighting, tagging');
-    expect(snippets[1].motivation).toBe('contextualizing, supplementing');
-    expect(snippets[2].motivation).toBe('highlighting, contextualizing');
+    // Verify motivation values are preserved as raw types from the base annotation
+    expect(snippets[0].motivation).toEqual(['tagging', 'describing']);
+    expect(snippets[1].motivation).toEqual(['supplementing', 'linking']);
+    expect(snippets[2].motivation).toEqual(['tagging', 'linking']);
+
+    // Verify that each individual motivation can be matched by Array.isArray check
+    // (as done in SearchResults / AnnotationsList filtering)
+    expect((snippets[0].motivation as string[]).includes('tagging')).toBe(true);
+    expect((snippets[0].motivation as string[]).includes('describing')).toBe(true);
+    expect((snippets[1].motivation as string[]).includes('supplementing')).toBe(true);
+    expect((snippets[1].motivation as string[]).includes('linking')).toBe(true);
+    expect((snippets[2].motivation as string[]).includes('tagging')).toBe(true);
+    expect((snippets[2].motivation as string[]).includes('linking')).toBe(true);
   });
 
 });
