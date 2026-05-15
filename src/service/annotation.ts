@@ -32,6 +32,7 @@ async function processAnnotationsWorker(
             id,
             motivation,
             target: [],
+            generator: (annotation as any).generator,
             body: Array.from(annotationParser.iterateAnnotationTextualBody()).map((bodyItem: any) => ({
               ...bodyItem,
               language:

@@ -181,7 +181,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               onFocus={() => {
                 // No custom centering needed here
               }}
-              className={`mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
+              className={`relative mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
               {Array.isArray(annotation.body) ? (
                 annotation.body
@@ -244,6 +244,31 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                   );
                 })()
               )}
+              {annotation.motivation && (() => {
+                const isTranscribing = Array.isArray(annotation.motivation)
+                  ? annotation.motivation.includes('transcribing')
+                  : annotation.motivation === 'transcribing';
+                const motivationText = Array.isArray(annotation.motivation)
+                  ? annotation.motivation.join(', ')
+                  : annotation.motivation;
+                const generatorName =
+                  isTranscribing &&
+                  annotation.generator &&
+                  typeof annotation.generator === 'object'
+                    ? annotation.generator.name
+                    : null;
+                const toneClass = isTranscribing
+                  ? 'text-red-700 ring-red-300'
+                  : 'text-gray-600 ring-gray-200';
+                return (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute bottom-0.5 right-1 z-20 text-[11px] italic bg-white rounded px-1.5 py-0.5 shadow ring-1 opacity-0 group-hover:animate-motivation-hint pointer-events-none whitespace-nowrap ${toneClass}`}
+                  >
+                    {generatorName ? `${motivationText}: ${generatorName}` : motivationText}
+                  </span>
+                );
+              })()}
             </div>
           );
         })}

@@ -30,6 +30,7 @@ export interface IIIFAnnotation {
   motivation: string | string[];
   target: string[];
   body: AnnotationBody | AnnotationBody[]
+  generator?: string | { id?: string; type?: string; name?: string; homepage?: string };
 }
 
 export interface IIIFSearchSnippet {
