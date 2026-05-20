@@ -336,6 +336,34 @@ const App: React.FC = () => {
 
   if (!currentManifest) return <SplashScreen />;
 
+  // Active canvas sequence: if the manifest declares one or more meaningful
+  // ranges (already filtered by the parser to exclude empty ranges and those
+  // matching default order), follow the first. The viewer only supports
+  // linear navigation, so additional ranges are ignored.
+  const defaultCanvasIds = currentManifest.canvases.map((c) => c.id);
+  const manifestRanges = currentManifest.ranges ?? [];
+  const activeRange = manifestRanges[0] ?? null;
+  if (manifestRanges.length > 1) {
+    logger.debug(
+      `Manifest has ${manifestRanges.length} ranges; using first ("${activeRange?.label ?? activeRange?.id}") and ignoring the rest.`,
+    );
+  }
+  const activeCanvasIds = activeRange ? activeRange.canvasIds : defaultCanvasIds;
+  const activePosition = (() => {
+    const i = activeCanvasIds.indexOf(canvasId);
+    return i >= 0 ? i : 0;
+  })();
+  const activeLength = activeCanvasIds.length;
+  const goToActivePosition = (pos: number) => {
+    if (activeLength === 0) return;
+    const wrapped = ((pos % activeLength) + activeLength) % activeLength;
+    const targetCanvasId = activeCanvasIds[wrapped];
+    const imgIndex = currentManifest.images.findIndex(
+      (img) => img.canvasTarget === targetCanvasId,
+    );
+    if (imgIndex >= 0) setSelectedImageIndex(imgIndex);
+  };
+
   const totalImages = currentManifest.images.length;
   if (totalImages === 0) {
     return (
@@ -377,20 +405,12 @@ const App: React.FC = () => {
         onSearch={onSearch}
         autocompleteUrl={autocompleteUrl}
         searching={searching}
-        currentIndex={selectedImageIndex}
-        totalImages={totalImages}
+        currentIndex={activePosition}
+        totalImages={activeLength}
         totalManifests={totalManifests}
         selectedManifestIndex={selectedManifestIndex}
-        onPreviousImage={() =>
-          setSelectedImageIndex(
-            selectedImageIndex > 0 ? selectedImageIndex - 1 : totalImages - 1,
-          )
-        }
-        onNextImage={() =>
-          setSelectedImageIndex(
-            selectedImageIndex < totalImages - 1 ? selectedImageIndex + 1 : 0,
-          )
-        }
+        onPreviousImage={() => goToActivePosition(activePosition - 1)}
+        onNextImage={() => goToActivePosition(activePosition + 1)}
         onPreviousManifest={() =>
           fetchManifestByIndex(
             selectedManifestIndex > 0

@@ -79,11 +79,18 @@ export interface IIIFinfo {
   requiredStatement?: { label: any; value: any };
 }
 
+export interface CanvasSequence {
+  id: string;
+  label?: string;
+  canvasIds: string[];
+}
+
 export interface IIIFManifest {
   info: IIIFinfo;
   canvases: IIIFCanvas[];
   images: IIIFImage[];
   manifestSearch?: { service: string; autocomplete?: string };
+  ranges?: CanvasSequence[];
 }
 
 export interface IIIFCollection {
