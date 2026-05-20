@@ -318,6 +318,7 @@ describe('parseResource', () => {
           {
             id: 'r-toc',
             type: 'Range',
+            behavior: ['sequence'],
             label: { en: ['ToC'] },
             items: [
               { id: 'c1', type: 'Canvas' },
@@ -343,6 +344,7 @@ describe('parseResource', () => {
           {
             id: 'r-reverse',
             type: 'Range',
+            behavior: ['sequence'],
             label: { en: ['Reverse'] },
             items: [
               { id: 'c3', type: 'Canvas' },
@@ -362,7 +364,7 @@ describe('parseResource', () => {
       ]);
     });
 
-    it('exposes ranges that are a subset of the default order', async () => {
+    it('exposes opt-in sequence ranges that are a subset of the default order', async () => {
       const m: ManifestFixture = {
         id: 'm1',
         canvases: ['c1', 'c2', 'c3'],
@@ -370,6 +372,7 @@ describe('parseResource', () => {
           {
             id: 'r-subset',
             type: 'Range',
+            behavior: ['sequence'],
             label: { en: ['Subset'] },
             items: [
               { id: 'c1', type: 'Canvas' },
@@ -388,6 +391,39 @@ describe('parseResource', () => {
       ]);
     });
 
+    it('ignores structural ranges without behavior:sequence (regression)', async () => {
+      // Wellcome-style: top-level structures are ToC sections (e.g. "Cover")
+      // each containing a single Canvas. Treating them as nav sequences
+      // collapsed the manifest to one canvas.
+      const m: ManifestFixture = {
+        id: 'm1',
+        canvases: ['c1', 'c2', 'c3'],
+        ranges: [
+          {
+            id: 'r-cover',
+            type: 'Range',
+            label: { en: ['Cover'] },
+            items: [{ id: 'c1', type: 'Canvas' }],
+          },
+          {
+            id: 'r-body',
+            type: 'Range',
+            label: { en: ['Body'] },
+            items: [
+              { id: 'c2', type: 'Canvas' },
+              { id: 'c3', type: 'Canvas' },
+            ],
+          },
+        ],
+      };
+      installFetchMock([m], []);
+      installManiiifestMock({ manifests: [m] });
+
+      const result = await parseResource('m1');
+
+      expect(result.firstManifest?.ranges).toBeUndefined();
+    });
+
     it('flattens sub-ranges depth-first', async () => {
       const m: ManifestFixture = {
         id: 'm1',
@@ -396,6 +432,7 @@ describe('parseResource', () => {
           {
             id: 'r-top',
             type: 'Range',
+            behavior: ['sequence'],
             label: { en: ['Top'] },
             items: [
               {
@@ -439,6 +476,7 @@ describe('parseResource', () => {
           {
             id: 'r-frag',
             type: 'Range',
+            behavior: ['sequence'],
             label: { en: ['Frag'] },
             items: [
               { id: 'c2#xywh=0,0,10,10', type: 'Canvas' },
@@ -463,7 +501,13 @@ describe('parseResource', () => {
         id: 'm1',
         canvases: ['c1'],
         ranges: [
-          { id: 'r-empty', type: 'Range', label: { en: ['Empty'] }, items: [] },
+          {
+            id: 'r-empty',
+            type: 'Range',
+            behavior: ['sequence'],
+            label: { en: ['Empty'] },
+            items: [],
+          },
         ],
       };
       installFetchMock([m], []);

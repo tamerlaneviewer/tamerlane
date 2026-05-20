@@ -24,7 +24,7 @@
   "dependencies": {
     "dompurify": "^3.2.4",
     "lucide-react": "^0.395.0",
-    "maniiifest": "^2.1.0",
+    "maniiifest": "^2.1.1",
     "openseadragon": "^5.0.1",
     "postcss-preset-env": "^10.2.4",
     "react": "^18.2.0",

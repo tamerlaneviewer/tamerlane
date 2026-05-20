@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
 import { getCanvasDimensions } from './service/canvas.ts';
-import { IIIFAnnotation } from './types/index.ts';
+import { IIIFAnnotation, IIIFManifest } from './types/index.ts';
 import UrlDialog from './components/UrlDialog.tsx';
 import ErrorDialog from './components/ErrorDialog.tsx';
 import LeftPanel from './components/LeftPanel.tsx';
@@ -131,6 +131,25 @@ const App: React.FC = () => {
       setShowUrlDialog(false);
     }
   };
+
+  // If the manifest declares a CanvasSequence (Range with behavior:sequence),
+  // start the viewer on the first canvas of that sequence rather than the
+  // first physical canvas. Runs once per manifest load — keyed on the manifest
+  // identity — so it does not fight the user navigating back to image[0].
+  const jumpedForManifestRef = useRef<IIIFManifest | null>(null);
+  useEffect(() => {
+    if (!currentManifest) return;
+    if (jumpedForManifestRef.current === currentManifest) return;
+    jumpedForManifestRef.current = currentManifest;
+    const firstSequence = currentManifest.ranges?.[0];
+    if (!firstSequence || firstSequence.canvasIds.length === 0) return;
+    const firstSequenceCanvasId = firstSequence.canvasIds[0];
+    if (currentManifest.images[0]?.canvasTarget === firstSequenceCanvasId) return;
+    const targetIndex = currentManifest.images.findIndex(
+      (img) => img.canvasTarget === firstSequenceCanvasId,
+    );
+    if (targetIndex > 0) setSelectedImageIndex(targetIndex);
+  }, [currentManifest, setSelectedImageIndex]);
 
   // Guarded canvasId update to avoid redundant resets in store
   useEffect(() => {

@@ -67,14 +67,25 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return true;
 }
 
-function extractRanges(parser: Maniiifest, defaultOrder: string[]): CanvasSequence[] {
+// Per IIIF Presentation 3.0, Range is primarily a structural construct
+// (table of contents). A Range may only be used as an alternate reading
+// order when it explicitly opts in with `behavior: ["sequence"]`. Without
+// that opt-in, structural ranges like "Cover" or "Chapter 1" must not
+// replace the default canvas order — doing so collapses navigation to a
+// section of the manifest.
+function extractRanges(
+  parser: Maniiifest,
+  defaultOrder: string[],
+): CanvasSequence[] {
   const sequences: CanvasSequence[] = [];
   for (const range of parser.iterateManifestRange()) {
+    if (typeof range.id !== 'string') continue;
+    const behavior = range.behavior;
+    if (!Array.isArray(behavior) || !behavior.includes('sequence')) continue;
     const canvasIds: string[] = [];
     flattenRangeCanvases(range, canvasIds);
     if (canvasIds.length === 0) continue;
     if (arraysEqual(canvasIds, defaultOrder)) continue; // adds no nav value
-    if (typeof range.id !== 'string') continue;
     sequences.push({
       id: range.id,
       label: pickLabel(range.label),
