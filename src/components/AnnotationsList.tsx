@@ -231,8 +231,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         {annotation.id && (
                           <button
                             type="button"
-                            aria-label="Copy annotation ID"
-                            title="Copy ID"
+                            aria-label="Copy annotation URI to clipboard"
+                            title="Copy annotation URI"
                             className={actionButtonClass}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -245,8 +245,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         {manifestUrl && annotation.target?.[0] && (
                           <button
                             type="button"
-                            aria-label="Copy annotation share link"
-                            title="Copy share link"
+                            aria-label="Copy deep link that opens this annotation in the viewer"
+                            title="Copy deep link to this annotation"
                             className={actionButtonClass}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -271,8 +271,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                       {annotation.id && (
                         <button
                           type="button"
-                          aria-label="Copy annotation ID"
-                          title="Copy ID"
+                          aria-label="Copy annotation URI to clipboard"
+                          title="Copy annotation URI"
                           className={actionButtonClass}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -285,8 +285,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                       {manifestUrl && annotation.target?.[0] && (
                         <button
                           type="button"
-                          aria-label="Copy annotation share link"
-                          title="Copy share link"
+                          aria-label="Copy deep link that opens this annotation in the viewer"
+                          title="Copy deep link to this annotation"
                           className={actionButtonClass}
                           onClick={(e) => {
                             e.stopPropagation();
