@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
@@ -16,6 +16,7 @@ import { parseResource } from './service/parser.ts';
 import { logger } from './utils/logger.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
 import { DEFAULT_LANGUAGE } from './config/appConfig.ts';
+import { decodeContentState, isSafeHttpUrl, sanitizeIiifUrlParam } from './utils/contentState.ts';
 
 const App: React.FC = () => {
   // Granular selectors for state
@@ -68,6 +69,9 @@ const App: React.FC = () => {
   const setSelectedAnnotation = useIIIFStore(
     (state) => state.setSelectedAnnotation,
   );
+  const setPendingAnnotationId = useIIIFStore(
+    (state) => state.setPendingAnnotationId,
+  );
   const setSearchError = useIIIFStore((state) => state.setSearchError);
   const setViewerReady = useIIIFStore((state) => state.setViewerReady);
   const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
@@ -77,6 +81,9 @@ const App: React.FC = () => {
   );
   const setSelectedMotivation = useIIIFStore(
     (state) => state.setSelectedMotivation,
+  );
+  const resetResourceContext = useIIIFStore(
+    (state) => state.resetResourceContext,
   );
   const handleManifestUpdate = useIIIFStore(
     (state) => state.handleManifestUpdate,
@@ -91,15 +98,145 @@ const App: React.FC = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
+  const iiifResourceUrlFromParams = sanitizeIiifUrlParam(
+    searchParams.get('iiif-resource'),
+  );
+  const iiifManifestUrlFromParams = sanitizeIiifUrlParam(
+    searchParams.get('iiif-manifest'),
+  );
+  // Pending content-state restoration tracked as a single object so the three
+  // fields are always set/cleared together. `null` means “no restoration in
+  // progress”.
+  type PendingContentState = {
+    target: string | null;
+    annotationId: string | null;
+    manifestUrl: string | null;
+  };
+  const [pendingContentState, setPendingContentState] =
+    useState<PendingContentState | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const liveNavRef = useRef<HTMLDivElement | null>(null);
   const liveErrorRef = useRef<HTMLDivElement | null>(null);
+  const previousResourceUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (iiifContentUrlFromParams) {
-      setIiifContentUrl(iiifContentUrlFromParams);
+      const decoded = decodeContentState(iiifContentUrlFromParams);
+      const nextResourceUrl =
+        iiifResourceUrlFromParams ??
+        decoded?.resourceUrl ??
+        decoded?.manifestUrl ??
+        iiifContentUrlFromParams;
+      if (
+        previousResourceUrlRef.current &&
+        previousResourceUrlRef.current !== nextResourceUrl
+      ) {
+        resetResourceContext();
+      }
+      previousResourceUrlRef.current = nextResourceUrl;
+      if (decoded) {
+        setIiifContentUrl(nextResourceUrl);
+        setPendingContentState({
+          target: decoded.canvasTarget,
+          annotationId: decoded.annotationId ?? null,
+          manifestUrl: iiifManifestUrlFromParams ?? decoded.manifestUrl,
+        });
+      } else if (isSafeHttpUrl(iiifContentUrlFromParams)) {
+        setIiifContentUrl(iiifContentUrlFromParams);
+        setPendingContentState(null);
+      } else {
+        // Reject non-http(s) schemes (javascript:, data:, file:, …) so we never
+        // hand a hostile URL to fetchResource or surface it in the UI.
+        setPendingContentState(null);
+        setManifestError({
+          code: 'NETWORK_MANIFEST_FETCH',
+          message: 'Unsupported IIIF content URL. Only http(s) URLs are allowed.',
+          at: Date.now(),
+          recoverable: true,
+        });
+      }
     }
-  }, [iiifContentUrlFromParams, setIiifContentUrl]);
+  }, [
+    iiifContentUrlFromParams,
+    iiifResourceUrlFromParams,
+    iiifManifestUrlFromParams,
+    resetResourceContext,
+    setIiifContentUrl,
+    setManifestError,
+  ]);
+
+  useEffect(() => {
+    const pendingManifestUrl = pendingContentState?.manifestUrl ?? null;
+    if (!pendingManifestUrl || manifestUrls.length === 0) return;
+    const currentManifestUrl = manifestUrls[selectedManifestIndex] ?? null;
+    if (currentManifestUrl === pendingManifestUrl) return;
+    const targetIndex = manifestUrls.findIndex(
+      (url) => url === pendingManifestUrl,
+    );
+    if (targetIndex >= 0) {
+      fetchManifestByIndex(targetIndex);
+    }
+  }, [
+    pendingContentState,
+    manifestUrls,
+    selectedManifestIndex,
+    fetchManifestByIndex,
+  ]);
+
+  useEffect(() => {
+    const pendingTarget = pendingContentState?.target ?? null;
+    const pendingManifestUrl = pendingContentState?.manifestUrl ?? null;
+    if (!currentManifest || !pendingTarget) return;
+    // If a specific manifest was requested, wait until it's the current one
+    // before resolving the canvas index — otherwise a same-named canvas in a
+    // sibling manifest could grab focus during the in-between fetch.
+    if (
+      pendingManifestUrl &&
+      manifestUrls.length > 0 &&
+      manifestUrls[selectedManifestIndex] !== pendingManifestUrl
+    ) {
+      return;
+    }
+    const targetCanvasId = pendingTarget.split('#')[0];
+    const targetIndex = currentManifest.images.findIndex(
+      (img) => img.canvasTarget === targetCanvasId,
+    );
+    if (targetIndex >= 0) {
+      setSelectedImageIndex(targetIndex);
+    }
+  }, [
+    currentManifest,
+    pendingContentState,
+    manifestUrls,
+    selectedManifestIndex,
+    setSelectedImageIndex,
+  ]);
+
+  useEffect(() => {
+    const pendingTarget = pendingContentState?.target ?? null;
+    const pendingAnnotationIdFromContent =
+      pendingContentState?.annotationId ?? null;
+    if (!pendingTarget || !viewerReady) return;
+    const targetCanvasId = pendingTarget.split('#')[0];
+    if (canvasId !== targetCanvasId) return;
+
+    setActivePanelTab('annotations');
+    if (pendingAnnotationIdFromContent) {
+      setPendingAnnotationId(pendingAnnotationIdFromContent);
+    }
+    // When no annotationId is supplied we deliberately do NOT synthesize a
+    // selectedAnnotation: setAnnotations() prunes selections not in the loaded
+    // list, so any synthetic entry would disappear as soon as real annotations
+    // arrive. The canvas#xywh portion of the target is already handled by the
+    // viewer via the URL state.
+    setPendingContentState(null);
+  }, [
+    pendingContentState,
+    viewerReady,
+    canvasId,
+    setPendingAnnotationId,
+    setActivePanelTab,
+  ]);
 
   useEffect(() => {
     if (iiifContentUrl && manifestUrls.length === 0) {
@@ -115,19 +252,48 @@ const App: React.FC = () => {
             collection ?? null,
           );
         })
-        .catch((err) =>
-          setManifestError({ code: 'NETWORK_MANIFEST_FETCH', message: 'Failed to load IIIF content. Please check the URL.', at: Date.now(), recoverable: true }),
-        );
+        .catch((err) => {
+          logger.error('Failed to parse IIIF content:', err);
+          setManifestError({ code: 'NETWORK_MANIFEST_FETCH', message: 'Failed to load IIIF content. Please check the URL.', at: Date.now(), recoverable: true });
+        });
     }
   }, [iiifContentUrl, manifestUrls.length, handleManifestUpdate, setManifestError]);
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const url = formData.get('iiifContentUrl') as string;
-    if (url !== iiifContentUrl) {
-      setIiifContentUrl(url);
-      setSearchParams({ 'iiif-content': url });
+    const input = (formData.get('iiifContentUrl') as string).trim();
+
+    try {
+      const parsed = new URL(input);
+      if (parsed.origin === window.location.origin) {
+        const content = parsed.searchParams.get('iiif-content');
+        const resource = parsed.searchParams.get('iiif-resource');
+        const manifest = parsed.searchParams.get('iiif-manifest');
+        if (content) {
+          const nextParams = new URLSearchParams({ 'iiif-content': content });
+          if (resource) nextParams.set('iiif-resource', resource);
+          if (manifest) nextParams.set('iiif-manifest', manifest);
+          setSearchParams(nextParams);
+          setShowUrlDialog(false);
+          return;
+        }
+      }
+    } catch {}
+
+    if (input !== iiifContentUrl) {
+      if (!isSafeHttpUrl(input)) {
+        setManifestError({
+          code: 'NETWORK_MANIFEST_FETCH',
+          message: 'Unsupported IIIF content URL. Only http(s) URLs are allowed.',
+          at: Date.now(),
+          recoverable: true,
+        });
+        return;
+      }
+      resetResourceContext();
+      setIiifContentUrl(input);
+      setSearchParams({ 'iiif-content': input });
       setShowUrlDialog(false);
     }
   };

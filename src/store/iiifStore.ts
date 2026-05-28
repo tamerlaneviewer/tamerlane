@@ -88,6 +88,7 @@ interface IIIFState {
   setSelectedMotivation: (motivation: string | null) => void;
   setSearching: (searching: boolean) => void;
   setNavigating: (isNavigating: boolean) => void;
+  resetResourceContext: () => void;
   clearPendingAnnotation: () => void;
   selectPendingAnnotation: () => void;
   setSelectionDebug: (debug: boolean) => void;
@@ -228,6 +229,36 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSelectedMotivation: (motivation) => set({ selectedMotivation: motivation }),
   setSearching: (searching) => set({ searching: searching }),
   setNavigating: (isNavigating) => set({ isNavigating }),
+  resetResourceContext: () =>
+    set({
+      currentManifest: null,
+      currentCollection: null,
+      canvasId: '',
+      annotationsLoading: false,
+      manifestUrls: [],
+      totalManifests: 0,
+      selectedManifestIndex: 0,
+      selectedImageIndex: 0,
+      annotations: [],
+      annotationsForCanvasId: null,
+      manifestMetadata: {},
+      collectionMetadata: {},
+      searchResults: [],
+      selectedAnnotation: null,
+      pendingAnnotationId: null,
+      selectedSearchResultId: null,
+      viewerReady: false,
+      autocompleteUrl: '',
+      searchUrl: '',
+      searching: false,
+      isNavigating: false,
+      isSearchJump: false,
+      selectionPhase: 'idle',
+      manifestError: null,
+      annotationsError: null,
+      searchError: null,
+      ensureVisible: { tab: 'annotations', id: null, nonce: 0 },
+    }),
   setSelectionDebug: (debug) => set({ selectionDebug: debug }),
   clearSelectionLog: () => set({ selectionLog: [] }),
   setPanelScrollTop: (tab, top) => set((state) => ({

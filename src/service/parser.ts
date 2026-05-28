@@ -122,6 +122,11 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
 
   const images: IIIFImage[] = [];
   for (const anno of parser.iterateManifestCanvasAnnotation()) {
+    const motivation = Array.isArray((anno as any).motivation)
+      ? (anno as any).motivation[0]
+      : (anno as any).motivation;
+    if (motivation && motivation !== 'painting') continue;
+
     const annoParser = Maniiifest.parseAnnotation(anno);
     const targets = Array.from(annoParser.iterateAnnotationTarget());
     if (targets.length !== 1) {
@@ -132,7 +137,11 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
       throw createError('PARSING_MANIFEST', 'Expected canvas target to be a string');
     }
     for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
-      images.push(getImage(resourceBody, canvasTarget));
+      try {
+        images.push(getImage(resourceBody, canvasTarget));
+      } catch (error) {
+        logger.debug('Skipping non-image annotation body while parsing manifest', error);
+      }
     }
   }
 
@@ -229,6 +238,7 @@ async function parseCollection(
     manifestUrls,
     total: manifestUrls.length,
     collection: {
+      id: rootUrl,
       info: { name: label, metadata, provider, homepage, requiredStatement },
       collectionSearch,
     },

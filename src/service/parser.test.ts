@@ -11,13 +11,16 @@ jest.mock('maniiifest');
 
 const mockFetchResource = resource.fetchResource as jest.Mock;
 const mockGetImage = image.getImage as jest.Mock;
-const mockManiiifest = Maniiifest as jest.Mock;
+const mockManiiifest = Maniiifest as unknown as jest.Mock;
+// Production code uses `Maniiifest.parseAnnotation(anno)` (v2 static factory).
+// jest.mock auto-mocks the static method as a jest.fn().
 const mockParseAnnotation = Maniiifest.parseAnnotation as jest.Mock;
 
 type ManifestFixture = {
   id: string;
   label?: string;
   canvases?: string[];
+  annotations?: any[];
   ranges?: any[]; // raw range objects to be yielded by iterateManifestRange
 };
 
@@ -72,7 +75,7 @@ function manifestMockFor(fx: ManifestFixture) {
     iterateManifestHomepage: () => [],
     getManifestRequiredStatement: () => null,
     iterateManifestCanvas: () => canvases,
-    iterateManifestCanvasAnnotation: () => [],
+    iterateManifestCanvasAnnotation: () => fx.annotations ?? [],
     getManifestService: () => null,
     iterateManifestRange: () => fx.ranges ?? [],
   };
@@ -140,6 +143,68 @@ describe('parseResource', () => {
     expect(result.total).toBe(1);
     expect(result.collection).toBeUndefined();
     expect(result.firstManifest?.ranges).toBeUndefined();
+  });
+
+  it('ignores non-painting canvas annotations when extracting images', async () => {
+    const canvasId = 'https://example.com/canvas/1';
+    const paintingAnno = { id: 'painting-1', motivation: 'painting' };
+    const commentingAnno = { id: 'comment-1', motivation: 'commenting' };
+    const m: ManifestFixture = {
+      id: 'm1',
+      label: 'M1',
+      canvases: [canvasId],
+      annotations: [paintingAnno, commentingAnno],
+    };
+    installFetchMock([m], []);
+    installManiiifestMock({ manifests: [m] });
+    mockGetImage.mockImplementation((body: any, canvasTarget: string) => {
+      if (body?.type !== 'Image') {
+        throw new Error('Not an image body');
+      }
+      return {
+        imageUrl: body.id,
+        imageType: 'standard',
+        imageWidth: body.width,
+        imageHeight: body.height,
+        canvasTarget,
+      };
+    });
+    mockParseAnnotation.mockImplementation((annotation: any) => {
+      if (annotation.id === 'painting-1') {
+        return {
+          iterateAnnotationTarget: () => [canvasId],
+          iterateAnnotationResourceBody: () => [
+            {
+              id: 'https://example.com/image/full/full/0/default.jpg',
+              type: 'Image',
+              width: 100,
+              height: 100,
+            },
+          ],
+        };
+      }
+      return {
+        iterateAnnotationTarget: () => [canvasId],
+        iterateAnnotationResourceBody: () => [
+          {
+            type: 'TextualBody',
+            value: 'A full canvas note',
+          },
+        ],
+      };
+    });
+
+    const result = await parseResource('m1');
+
+    expect(result.firstManifest?.images).toEqual([
+      {
+        imageUrl: 'https://example.com/image/full/full/0/default.jpg',
+        imageType: 'standard',
+        imageWidth: 100,
+        imageHeight: 100,
+        canvasTarget: canvasId,
+      },
+    ]);
   });
 
   it('parses a flat collection', async () => {

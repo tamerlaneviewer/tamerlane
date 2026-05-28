@@ -8,6 +8,11 @@ export const SHOW_LOGO = true;
 
 export const maxSearchPages = 10;
 
+// DoS guard for annotation pagination: caps how many AnnotationPage fetches
+// a single canvas can trigger. Without this, a manifest pointing at an
+// annotation server that always returns a `next` URL would loop forever.
+export const maxAnnotationPages = 20;
+
 export const MOTIVATIONS = [
   'bookmarking',
   'classifying',

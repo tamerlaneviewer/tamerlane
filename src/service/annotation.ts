@@ -1,14 +1,15 @@
-import { Maniiifest, ManiiifestAnnotationPage } from 'maniiifest';
+import { Maniiifest } from 'maniiifest';
 import { fetchResource } from './resource.ts';
 import { createError } from '../errors/structured.ts';
 import { IIIFAnnotation } from '../types/index.ts';
 import { logger } from '../utils/logger.ts';
+import { maxAnnotationPages } from '../config/appConfig.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
 
 async function processAnnotationsWorker(
-  manifest: ManiiifestAnnotationPage,
+  manifest: Maniiifest,
   targetUrl: string,
 ): Promise<IIIFAnnotation[]> {
   const resultsMap: Map<string, IIIFAnnotation> = new Map();
@@ -55,12 +56,14 @@ async function processAnnotationsWorker(
 
 
 async function processAnnotations(
-  parser: ManiiifestAnnotationPage,
+  parser: Maniiifest,
   targetUrl: string,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
-  let currentParser: ManiiifestAnnotationPage | null = parser;
+  let currentParser: Maniiifest | null = parser;
   let allAnnotations: IIIFAnnotation[] = [];
+  const visited = new Set<string>();
+  let pageCount = 0;
 
   while (currentParser) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -71,9 +74,22 @@ async function processAnnotations(
 
     allAnnotations = allAnnotations.concat(result);
 
-    const nextPageUrl = currentParser.getAnnotationPageNext();
+    const nextPage = currentParser.getAnnotationPage()?.next as any;
+    const nextPageUrl = typeof nextPage === 'string' ? nextPage : nextPage?.id;
+    pageCount += 1;
+    if (nextPageUrl && pageCount >= maxAnnotationPages) {
+      logger.warn(
+        `Annotation pagination cap reached (${maxAnnotationPages}); stopping at ${nextPageUrl}`,
+      );
+      break;
+    }
+    if (nextPageUrl && visited.has(nextPageUrl)) {
+      logger.warn(`Annotation pagination cycle detected at ${nextPageUrl}`);
+      break;
+    }
     if (nextPageUrl) {
-  const resource = await fetchResource(nextPageUrl, { signal });
+      visited.add(nextPageUrl);
+      const resource = await fetchResource(nextPageUrl, { signal });
       if (!resource.type || resource.type !== 'AnnotationPage') {
         throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
       }
