@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
@@ -16,7 +16,8 @@ import { parseResource } from './service/parser.ts';
 import { logger } from './utils/logger.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
 import { DEFAULT_LANGUAGE } from './config/appConfig.ts';
-import { decodeContentState, isSafeHttpUrl, sanitizeIiifUrlParam } from './utils/contentState.ts';
+import { isSafeHttpUrl } from './utils/contentState.ts';
+import { useContentStateRestoration } from './components/useContentStateRestoration.ts';
 
 const App: React.FC = () => {
   // Granular selectors for state
@@ -38,6 +39,7 @@ const App: React.FC = () => {
   const manifestError = useIIIFStore((state) => state.manifestError);
   const showUrlDialog = useIIIFStore((state) => state.showUrlDialog);
   const selectedAnnotation = useIIIFStore((state) => state.selectedAnnotation);
+  const contentStateRegion = useIIIFStore((state) => state.contentStateRegion);
   const pendingAnnotationId = useIIIFStore(
     (state) => state.pendingAnnotationId,
   );
@@ -69,9 +71,6 @@ const App: React.FC = () => {
   const setSelectedAnnotation = useIIIFStore(
     (state) => state.setSelectedAnnotation,
   );
-  const setPendingAnnotationId = useIIIFStore(
-    (state) => state.setPendingAnnotationId,
-  );
   const setSearchError = useIIIFStore((state) => state.setSearchError);
   const setViewerReady = useIIIFStore((state) => state.setViewerReady);
   const setAutocompleteUrl = useIIIFStore((state) => state.setAutocompleteUrl);
@@ -98,145 +97,13 @@ const App: React.FC = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
-  const iiifResourceUrlFromParams = sanitizeIiifUrlParam(
-    searchParams.get('iiif-resource'),
-  );
-  const iiifManifestUrlFromParams = sanitizeIiifUrlParam(
-    searchParams.get('iiif-manifest'),
-  );
-  // Pending content-state restoration tracked as a single object so the three
-  // fields are always set/cleared together. `null` means “no restoration in
-  // progress”.
-  type PendingContentState = {
-    target: string | null;
-    annotationId: string | null;
-    manifestUrl: string | null;
-  };
-  const [pendingContentState, setPendingContentState] =
-    useState<PendingContentState | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const liveNavRef = useRef<HTMLDivElement | null>(null);
   const liveErrorRef = useRef<HTMLDivElement | null>(null);
-  const previousResourceUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (iiifContentUrlFromParams) {
-      const decoded = decodeContentState(iiifContentUrlFromParams);
-      const nextResourceUrl =
-        iiifResourceUrlFromParams ??
-        decoded?.resourceUrl ??
-        decoded?.manifestUrl ??
-        iiifContentUrlFromParams;
-      if (
-        previousResourceUrlRef.current &&
-        previousResourceUrlRef.current !== nextResourceUrl
-      ) {
-        resetResourceContext();
-      }
-      previousResourceUrlRef.current = nextResourceUrl;
-      if (decoded) {
-        setIiifContentUrl(nextResourceUrl);
-        setPendingContentState({
-          target: decoded.canvasTarget,
-          annotationId: decoded.annotationId ?? null,
-          manifestUrl: iiifManifestUrlFromParams ?? decoded.manifestUrl,
-        });
-      } else if (isSafeHttpUrl(iiifContentUrlFromParams)) {
-        setIiifContentUrl(iiifContentUrlFromParams);
-        setPendingContentState(null);
-      } else {
-        // Reject non-http(s) schemes (javascript:, data:, file:, …) so we never
-        // hand a hostile URL to fetchResource or surface it in the UI.
-        setPendingContentState(null);
-        setManifestError({
-          code: 'NETWORK_MANIFEST_FETCH',
-          message: 'Unsupported IIIF content URL. Only http(s) URLs are allowed.',
-          at: Date.now(),
-          recoverable: true,
-        });
-      }
-    }
-  }, [
-    iiifContentUrlFromParams,
-    iiifResourceUrlFromParams,
-    iiifManifestUrlFromParams,
-    resetResourceContext,
-    setIiifContentUrl,
-    setManifestError,
-  ]);
-
-  useEffect(() => {
-    const pendingManifestUrl = pendingContentState?.manifestUrl ?? null;
-    if (!pendingManifestUrl || manifestUrls.length === 0) return;
-    const currentManifestUrl = manifestUrls[selectedManifestIndex] ?? null;
-    if (currentManifestUrl === pendingManifestUrl) return;
-    const targetIndex = manifestUrls.findIndex(
-      (url) => url === pendingManifestUrl,
-    );
-    if (targetIndex >= 0) {
-      fetchManifestByIndex(targetIndex);
-    }
-  }, [
-    pendingContentState,
-    manifestUrls,
-    selectedManifestIndex,
-    fetchManifestByIndex,
-  ]);
-
-  useEffect(() => {
-    const pendingTarget = pendingContentState?.target ?? null;
-    const pendingManifestUrl = pendingContentState?.manifestUrl ?? null;
-    if (!currentManifest || !pendingTarget) return;
-    // If a specific manifest was requested, wait until it's the current one
-    // before resolving the canvas index — otherwise a same-named canvas in a
-    // sibling manifest could grab focus during the in-between fetch.
-    if (
-      pendingManifestUrl &&
-      manifestUrls.length > 0 &&
-      manifestUrls[selectedManifestIndex] !== pendingManifestUrl
-    ) {
-      return;
-    }
-    const targetCanvasId = pendingTarget.split('#')[0];
-    const targetIndex = currentManifest.images.findIndex(
-      (img) => img.canvasTarget === targetCanvasId,
-    );
-    if (targetIndex >= 0) {
-      setSelectedImageIndex(targetIndex);
-    }
-  }, [
-    currentManifest,
-    pendingContentState,
-    manifestUrls,
-    selectedManifestIndex,
-    setSelectedImageIndex,
-  ]);
-
-  useEffect(() => {
-    const pendingTarget = pendingContentState?.target ?? null;
-    const pendingAnnotationIdFromContent =
-      pendingContentState?.annotationId ?? null;
-    if (!pendingTarget || !viewerReady) return;
-    const targetCanvasId = pendingTarget.split('#')[0];
-    if (canvasId !== targetCanvasId) return;
-
-    setActivePanelTab('annotations');
-    if (pendingAnnotationIdFromContent) {
-      setPendingAnnotationId(pendingAnnotationIdFromContent);
-    }
-    // When no annotationId is supplied we deliberately do NOT synthesize a
-    // selectedAnnotation: setAnnotations() prunes selections not in the loaded
-    // list, so any synthetic entry would disappear as soon as real annotations
-    // arrive. The canvas#xywh portion of the target is already handled by the
-    // viewer via the URL state.
-    setPendingContentState(null);
-  }, [
-    pendingContentState,
-    viewerReady,
-    canvasId,
-    setPendingAnnotationId,
-    setActivePanelTab,
-  ]);
+  // Restore viewer state (manifest → canvas → annotation) from the
+  // self-contained iiif-content query parameter.
+  useContentStateRestoration();
 
   useEffect(() => {
     if (iiifContentUrl && manifestUrls.length === 0) {
@@ -262,19 +129,16 @@ const App: React.FC = () => {
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const input = (formData.get('iiifContentUrl') as string).trim();
+    const rawInput = formData.get('iiifContentUrl');
+    const input = (typeof rawInput === 'string' ? rawInput : '').trim();
+    if (!input) return;
 
     try {
       const parsed = new URL(input);
       if (parsed.origin === window.location.origin) {
         const content = parsed.searchParams.get('iiif-content');
-        const resource = parsed.searchParams.get('iiif-resource');
-        const manifest = parsed.searchParams.get('iiif-manifest');
         if (content) {
-          const nextParams = new URLSearchParams({ 'iiif-content': content });
-          if (resource) nextParams.set('iiif-resource', resource);
-          if (manifest) nextParams.set('iiif-manifest', manifest);
-          setSearchParams(nextParams);
+          setSearchParams({ 'iiif-content': content });
           setShowUrlDialog(false);
           return;
         }
@@ -641,6 +505,7 @@ const App: React.FC = () => {
           imageWidth={imageWidth}
           imageHeight={imageHeight}
           selectedAnnotation={selectedAnnotation}
+          regionTarget={contentStateRegion}
           onViewerReady={handleViewerReady}
           onImageLoadError={handleImageLoadError}
         />

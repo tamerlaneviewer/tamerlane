@@ -41,6 +41,9 @@ interface IIIFState {
   showUrlDialog: boolean;
   selectedAnnotation: IIIFAnnotation | null;
   pendingAnnotationId: string | null;
+  // Canvas region (canvas#xywh / #svg) shared via a Content State link, drawn
+  // in the viewer independently of annotation selection. Cleared on navigation.
+  contentStateRegion: string | null;
   selectedSearchResultId: string | null;
   viewerReady: boolean;
   autocompleteUrl: string;
@@ -80,6 +83,7 @@ interface IIIFState {
   setShowUrlDialog: (show: boolean) => void;
   setSelectedAnnotation: (annotation: IIIFAnnotation | null) => void;
   setPendingAnnotationId: (id: string | null) => void;
+  setContentStateRegion: (target: string | null) => void;
   setSelectedSearchResultId: (id: string | null) => void;
   setViewerReady: (ready: boolean) => void;
   setAutocompleteUrl: (url: string) => void;
@@ -128,6 +132,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   showUrlDialog: false,
   selectedAnnotation: null,
   pendingAnnotationId: null,
+  contentStateRegion: null,
   selectedSearchResultId: null,
   viewerReady: false,
   autocompleteUrl: '',
@@ -176,6 +181,8 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       annotationsLoading: true,
       // pendingAnnotationId preserved (search navigation may have set it already)
       selectedAnnotation: null,
+      // Region overlay from a Content State link is canvas-specific; drop it.
+      contentStateRegion: null,
       // Keep phase 'pending' if there is a pending selection, else idle
       selectionPhase: pendingAnnotationId ? 'pending' : 'idle',
     });
@@ -191,6 +198,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
     set({
       selectedImageIndex: index,
       selectedAnnotation: null,
+      contentStateRegion: null,
       annotations: [],
       annotationsForCanvasId: null,
       viewerReady: false,
@@ -218,6 +226,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   setSelectedAnnotation: (annotation) =>
     set({ selectedAnnotation: annotation }),
   setPendingAnnotationId: (id) => set({ pendingAnnotationId: id }),
+  setContentStateRegion: (target) => set({ contentStateRegion: target }),
   setSelectedSearchResultId: (id) => set({ selectedSearchResultId: id }),
   setViewerReady: (ready) => {
     set({ viewerReady: ready });
@@ -246,6 +255,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       searchResults: [],
       selectedAnnotation: null,
       pendingAnnotationId: null,
+      contentStateRegion: null,
       selectedSearchResultId: null,
       viewerReady: false,
       autocompleteUrl: '',

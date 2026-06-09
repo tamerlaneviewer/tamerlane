@@ -34,26 +34,44 @@ function base64urlDecode(encoded: string): string {
 }
 
 /**
- * Encodes a canvas target URI (with optional #xywh fragment) and manifest URL
- * into a IIIF Content State 1.0 base64url string for use in ?iiif-content=.
+ * Encodes a canvas target URI (with optional #xywh fragment) plus its manifest
+ * and an optional parent collection into a IIIF Content State 1.0 base64url
+ * string for use in ?iiif-content=.
+ *
+ * Everything is expressed with standard IIIF Presentation properties so the
+ * payload is self-contained and portable to any other Content State-aware
+ * viewer: the target is the canvas region, and the parent collection (if any)
+ * is nested via the manifest's `partOf`.
+ *
+ * Note: there is no spec-defined way to encode "this specific annotation is
+ * selected". We deliberately encode only the canvas region (`#xywh`); on
+ * restore the region is drawn as an overlay in the viewer (see
+ * useContentStateRestoration), and sharing a specific annotation's identity is
+ * handled separately by the "Copy Annotation ID" action.
  */
 export function encodeContentState(
   canvasTarget: string,
   manifestUrl: string,
-  annotationId?: string,
-  resourceUrl?: string,
+  collectionUrl?: string,
 ): string {
+  const manifestNode: {
+    id: string;
+    type: 'Manifest';
+    partOf?: { id: string; type: 'Collection' }[];
+  } = { id: manifestUrl, type: 'Manifest' };
+  if (collectionUrl) {
+    manifestNode.partOf = [{ id: collectionUrl, type: 'Collection' }];
+  }
+
   const annotation = {
     '@context': 'http://iiif.io/api/presentation/3/context.json',
     id: `${window.location.href.split('?')[0]}#content-state`,
     type: 'Annotation',
     motivation: ['contentState'],
-    annotationId,
-    resourceUrl,
     target: {
       id: canvasTarget,
       type: 'Canvas',
-      partOf: [{ id: manifestUrl, type: 'Manifest' }],
+      partOf: [manifestNode],
     },
   };
   return base64urlEncode(JSON.stringify(annotation));
@@ -62,13 +80,15 @@ export function encodeContentState(
 export interface DecodedContentState {
   manifestUrl: string;
   canvasTarget: string;
-  annotationId?: string;
-  resourceUrl?: string;
+  collectionUrl?: string;
 }
 
 /**
  * Attempts to decode a ?iiif-content= value as a IIIF Content State annotation.
  * Returns null if the value is a plain URL or otherwise not a valid content state.
+ *
+ * The selected annotation is intentionally not read here — on restore the canvas
+ * region is drawn as an overlay in the viewer.
  */
 export function decodeContentState(value: string): DecodedContentState | null {
   if (!value) return null;
@@ -84,33 +104,35 @@ export function decodeContentState(value: string): DecodedContentState | null {
     if (obj?.type !== 'Annotation') return null;
     const target = obj.target;
     if (!target || typeof target.id !== 'string') return null;
-    const partOf = Array.isArray(target.partOf) ? target.partOf[0] : null;
-    const manifestUrl = partOf && typeof partOf.id === 'string' ? partOf.id : null;
-    if (!isSafeHttpUrl(manifestUrl)) return null;
     if (!isSafeHttpUrl(target.id)) return null;
-    const resourceUrl =
-      typeof obj.resourceUrl === 'string' && isSafeHttpUrl(obj.resourceUrl)
-        ? obj.resourceUrl
+
+    const manifestNode = Array.isArray(target.partOf) ? target.partOf[0] : null;
+    const manifestUrl =
+      manifestNode && typeof manifestNode.id === 'string'
+        ? manifestNode.id
+        : null;
+    if (!isSafeHttpUrl(manifestUrl)) return null;
+
+    // Collection context is nested under the manifest's partOf.
+    const nestedCollection =
+      manifestNode && Array.isArray(manifestNode.partOf)
+        ? manifestNode.partOf[0]
+        : null;
+    const collectionCandidate =
+      nestedCollection && typeof nestedCollection.id === 'string'
+        ? nestedCollection.id
         : undefined;
+    const collectionUrl =
+      collectionCandidate && isSafeHttpUrl(collectionCandidate)
+        ? collectionCandidate
+        : undefined;
+
     return {
       manifestUrl: manifestUrl as string,
       canvasTarget: target.id,
-      annotationId:
-        typeof obj.annotationId === 'string' ? obj.annotationId : undefined,
-      resourceUrl,
+      collectionUrl,
     };
   } catch {
     return null;
   }
-}
-
-/**
- * Validates that a URL-bearing query param is a safe http(s) URL. Returns the
- * trimmed value or null. Use this before treating any raw URL query parameter
- * (e.g. `iiif-resource`, `iiif-manifest`) as a fetch target.
- */
-export function sanitizeIiifUrlParam(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return isSafeHttpUrl(trimmed) ? trimmed : null;
 }

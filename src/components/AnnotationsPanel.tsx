@@ -60,10 +60,11 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const requestEnsureVisible = useIIIFStore((s) => s.requestEnsureVisible);
   const manifestUrls = useIIIFStore((s) => s.manifestUrls);
   const selectedManifestIndex = useIIIFStore((s) => s.selectedManifestIndex);
-  const iiifContentUrl = useIIIFStore((s) => s.iiifContentUrl);
   const currentCollection = useIIIFStore((s) => s.currentCollection);
   const currentManifestUrl = manifestUrls[selectedManifestIndex] ?? '';
-  const currentResourceUrl = currentCollection?.id ?? iiifContentUrl ?? currentManifestUrl;
+  // Only a genuine parent collection is shared; for a manifest loaded directly
+  // there is no collection context to encode.
+  const currentCollectionUrl = currentCollection?.id;
 
   // Center the target within the scroller. If always=true, force centering.
   // Uses robust geometry to compute offset relative to scroller, avoiding offsetParent quirks.
@@ -360,7 +361,7 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               onPendingAnnotationProcessed={onPendingAnnotationProcessed}
               viewerReady={viewerReady}
               manifestUrl={currentManifestUrl}
-              resourceUrl={currentResourceUrl}
+              collectionUrl={currentCollectionUrl}
             />
           )
         ) : (

@@ -243,4 +243,87 @@ describe('useIIIFStore', () => {
       expect(state.searchUrl).toBe('collection-search'); // Preserve collection search URL
     });
   });
+
+  describe('resetResourceContext', () => {
+    it('clears all resource-derived state back to defaults', () => {
+      act(() => {
+        useIIIFStore.setState({
+          currentManifest: { info: {}, images: [] } as any,
+          currentCollection: { id: 'c1', info: {} } as any,
+          canvasId: 'https://example.com/canvas/1',
+          annotationsLoading: true,
+          manifestUrls: ['https://example.com/m1', 'https://example.com/m2'],
+          totalManifests: 2,
+          selectedManifestIndex: 1,
+          selectedImageIndex: 3,
+          annotations: [{ id: 'a1' } as any],
+          annotationsForCanvasId: 'https://example.com/canvas/1',
+          searchResults: [{ id: 's1' }],
+          selectedAnnotation: { id: 'a1' } as any,
+          pendingAnnotationId: 'a1',
+          selectedSearchResultId: 's1',
+          viewerReady: true,
+          autocompleteUrl: 'https://example.com/ac',
+          searchUrl: 'https://example.com/search',
+          searching: true,
+          isNavigating: true,
+          isSearchJump: true,
+          selectionPhase: 'selected',
+          manifestError: { code: 'X', message: 'x', at: 1 } as any,
+          annotationsError: { code: 'Y', message: 'y', at: 2 } as any,
+          searchError: { code: 'Z', message: 'z', at: 3 } as any,
+          ensureVisible: { tab: 'search', id: 'a1', nonce: 5 },
+        });
+      });
+
+      act(() => {
+        useIIIFStore.getState().resetResourceContext();
+      });
+
+      const state = useIIIFStore.getState();
+      expect(state.currentManifest).toBeNull();
+      expect(state.currentCollection).toBeNull();
+      expect(state.canvasId).toBe('');
+      expect(state.annotationsLoading).toBe(false);
+      expect(state.manifestUrls).toEqual([]);
+      expect(state.totalManifests).toBe(0);
+      expect(state.selectedManifestIndex).toBe(0);
+      expect(state.selectedImageIndex).toBe(0);
+      expect(state.annotations).toEqual([]);
+      expect(state.annotationsForCanvasId).toBeNull();
+      expect(state.searchResults).toEqual([]);
+      expect(state.selectedAnnotation).toBeNull();
+      expect(state.pendingAnnotationId).toBeNull();
+      expect(state.selectedSearchResultId).toBeNull();
+      expect(state.viewerReady).toBe(false);
+      expect(state.autocompleteUrl).toBe('');
+      expect(state.searchUrl).toBe('');
+      expect(state.searching).toBe(false);
+      expect(state.isNavigating).toBe(false);
+      expect(state.isSearchJump).toBe(false);
+      expect(state.selectionPhase).toBe('idle');
+      expect(state.manifestError).toBeNull();
+      expect(state.annotationsError).toBeNull();
+      expect(state.searchError).toBeNull();
+      expect(state.ensureVisible).toEqual({
+        tab: 'annotations',
+        id: null,
+        nonce: 0,
+      });
+    });
+
+    it('does not clear iiifContentUrl (the resource being loaded)', () => {
+      act(() => {
+        useIIIFStore.setState({
+          iiifContentUrl: 'https://example.com/collection.json',
+        });
+      });
+      act(() => {
+        useIIIFStore.getState().resetResourceContext();
+      });
+      expect(useIIIFStore.getState().iiifContentUrl).toBe(
+        'https://example.com/collection.json',
+      );
+    });
+  });
 });

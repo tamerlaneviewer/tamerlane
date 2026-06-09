@@ -15,7 +15,7 @@ interface AnnotationsListProps {
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
   manifestUrl?: string;
-  resourceUrl?: string;
+  collectionUrl?: string;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
@@ -28,11 +28,10 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   onPendingAnnotationProcessed,
   viewerReady,
   manifestUrl,
-  resourceUrl,
+  collectionUrl,
 }) => {
   const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     if (copied) {
@@ -40,13 +39,6 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
       return () => clearTimeout(timeout);
     }
   }, [copied]);
-
-  useEffect(() => {
-    if (copiedLink) {
-      const timeout = setTimeout(() => setCopiedLink(false), 1500);
-      return () => clearTimeout(timeout);
-    }
-  }, [copiedLink]);
 
   const actionButtonClass =
     'mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-black focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded';
@@ -78,18 +70,13 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
     const encoded = encodeContentState(
       annotation.target[0],
       manifestUrl,
-      annotation.id,
-      resourceUrl,
+      collectionUrl,
     );
     const params = new URLSearchParams({ 'iiif-content': encoded });
-    if (resourceUrl) {
-      params.set('iiif-resource', resourceUrl);
-    }
-    params.set('iiif-manifest', manifestUrl);
     const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     navigator.clipboard
       .writeText(url)
-      .then(() => setCopiedLink(true))
+      .then(() => setCopied(true))
       .catch((err) => logger.error('Clipboard write failed:', err));
   };
 
@@ -231,8 +218,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         {annotation.id && (
                           <button
                             type="button"
-                            aria-label="Copy annotation URI to clipboard"
-                            title="Copy annotation URI"
+                            aria-label="Copy Annotation ID to clipboard"
+                            title="Copy Annotation ID"
                             className={actionButtonClass}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -245,8 +232,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         {manifestUrl && annotation.target?.[0] && (
                           <button
                             type="button"
-                            aria-label="Copy deep link that opens this annotation in the viewer"
-                            title="Copy deep link to this annotation"
+                            aria-label="Share content: copy a link to this region"
+                            title="Share content"
                             className={actionButtonClass}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -271,8 +258,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                       {annotation.id && (
                         <button
                           type="button"
-                          aria-label="Copy annotation URI to clipboard"
-                          title="Copy annotation URI"
+                          aria-label="Copy Annotation ID to clipboard"
+                          title="Copy Annotation ID"
                           className={actionButtonClass}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -285,8 +272,8 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                       {manifestUrl && annotation.target?.[0] && (
                         <button
                           type="button"
-                          aria-label="Copy deep link that opens this annotation in the viewer"
-                          title="Copy deep link to this annotation"
+                          aria-label="Share content: copy a link to this region"
+                          title="Share content"
                           className={actionButtonClass}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -334,11 +321,6 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
       {copied && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg text-sm">
           Copied to clipboard
-        </div>
-      )}
-      {copiedLink && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg text-sm">
-          Link copied!
         </div>
       )}
     </div>

@@ -1,7 +1,6 @@
 import {
   encodeContentState,
   decodeContentState,
-  sanitizeIiifUrlParam,
 } from './contentState';
 
 describe('contentState', () => {
@@ -9,28 +8,52 @@ describe('contentState', () => {
   const canvasNoFrag = 'https://example.com/iiif/canvas/1';
   const manifest = 'https://example.com/iiif/manifest.json';
 
-  it('round-trips canvas, manifest, annotation and resource URLs', () => {
+  it('round-trips canvas, manifest and collection URLs', () => {
     const encoded = encodeContentState(
       canvas,
       manifest,
-      'https://example.com/anno/1',
       'https://example.com/collection.json',
     );
     const decoded = decodeContentState(encoded);
     expect(decoded).toEqual({
       manifestUrl: manifest,
       canvasTarget: canvas,
-      annotationId: 'https://example.com/anno/1',
-      resourceUrl: 'https://example.com/collection.json',
+      collectionUrl: 'https://example.com/collection.json',
     });
   });
 
-  it('omits annotationId and resourceUrl when not provided', () => {
+  it('encodes using standard IIIF properties only (no annotation identity)', () => {
+    const encoded = encodeContentState(
+      canvas,
+      manifest,
+      'https://example.com/collection.json',
+    );
+    const obj = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+    // No custom sibling fields, and no annotation identity is encoded.
+    expect(obj.annotationId).toBeUndefined();
+    expect(obj.resourceUrl).toBeUndefined();
+    expect(obj.target.annotations).toBeUndefined();
+    // The target is just the canvas region.
+    expect(obj.target).toMatchObject({ id: canvas, type: 'Canvas' });
+    // Collection nested under the manifest's partOf.
+    expect(obj.target.partOf[0]).toMatchObject({
+      id: manifest,
+      type: 'Manifest',
+    });
+    expect(obj.target.partOf[0].partOf[0]).toMatchObject({
+      id: 'https://example.com/collection.json',
+      type: 'Collection',
+    });
+  });
+
+  it('omits the collection node when not provided', () => {
     const encoded = encodeContentState(canvasNoFrag, manifest);
+    const obj = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+    expect(obj.target.partOf[0].partOf).toBeUndefined();
     const decoded = decodeContentState(encoded);
-    expect(decoded?.annotationId).toBeUndefined();
-    expect(decoded?.resourceUrl).toBeUndefined();
+    expect(decoded?.collectionUrl).toBeUndefined();
     expect(decoded?.manifestUrl).toBe(manifest);
+    expect(decoded?.canvasTarget).toBe(canvasNoFrag);
   });
 
   it('returns null for empty input', () => {
@@ -78,19 +101,23 @@ describe('contentState', () => {
     expect(decodeContentState(encoded)).toBeNull();
   });
 
-  it('drops resourceUrl when it uses an unsafe scheme but keeps the rest', () => {
+  it('drops the collection when it uses an unsafe scheme but keeps the rest', () => {
     const payload = JSON.stringify({
       type: 'Annotation',
-      resourceUrl: 'data:text/html,evil',
       target: {
         id: canvas,
-        partOf: [{ id: manifest }],
+        partOf: [
+          {
+            id: manifest,
+            partOf: [{ id: 'data:text/html,evil' }],
+          },
+        ],
       },
     });
     const encoded = Buffer.from(payload).toString('base64url');
     const decoded = decodeContentState(encoded);
     expect(decoded?.manifestUrl).toBe(manifest);
-    expect(decoded?.resourceUrl).toBeUndefined();
+    expect(decoded?.collectionUrl).toBeUndefined();
   });
 
   it('returns null when partOf is missing or wrong shape', () => {
@@ -111,40 +138,5 @@ describe('contentState', () => {
   it('rejects payloads larger than the size cap', () => {
     const huge = 'A'.repeat(65 * 1024);
     expect(decodeContentState(huge)).toBeNull();
-  });
-
-  it('rejects ignores annotationId of wrong type', () => {
-    const payload = JSON.stringify({
-      type: 'Annotation',
-      annotationId: { not: 'a string' },
-      target: { id: canvas, partOf: [{ id: manifest }] },
-    });
-    const encoded = Buffer.from(payload).toString('base64url');
-    const decoded = decodeContentState(encoded);
-    expect(decoded?.annotationId).toBeUndefined();
-  });
-});
-
-describe('sanitizeIiifUrlParam', () => {
-  it('returns null for null/empty/whitespace', () => {
-    expect(sanitizeIiifUrlParam(null)).toBeNull();
-    expect(sanitizeIiifUrlParam('')).toBeNull();
-    expect(sanitizeIiifUrlParam('   ')).toBeNull();
-  });
-
-  it('accepts http(s) URLs and trims them', () => {
-    expect(sanitizeIiifUrlParam('  https://example.com/m.json  ')).toBe(
-      'https://example.com/m.json',
-    );
-    expect(sanitizeIiifUrlParam('http://example.com')).toBe(
-      'http://example.com',
-    );
-  });
-
-  it('rejects unsafe schemes', () => {
-    expect(sanitizeIiifUrlParam('javascript:alert(1)')).toBeNull();
-    expect(sanitizeIiifUrlParam('data:text/html,evil')).toBeNull();
-    expect(sanitizeIiifUrlParam('file:///etc/passwd')).toBeNull();
-    expect(sanitizeIiifUrlParam('not a url at all')).toBeNull();
   });
 });
