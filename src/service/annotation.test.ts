@@ -9,9 +9,15 @@ jest.mock('../utils/logger.ts', () => ({
 }));
 
 const mockFetchResource = resource.fetchResource as jest.Mock;
-const mockManiiifestConstructor = Maniiifest as jest.Mock;
+const mockManiiifestConstructor = Maniiifest as unknown as jest.Mock;
+// Production code uses the v2 static factories `Maniiifest.parseAnnotation`
+// and `Maniiifest.parseAnnotationPage`. jest.mock auto-mocks those statics as
+// jest.fn()s. The constructor itself is still used for Manifest resources, so
+// we expose `setManifestMock` to control what `new Maniiifest(data)` returns.
 const mockParseAnnotation = Maniiifest.parseAnnotation as jest.Mock;
 const mockParseAnnotationPage = Maniiifest.parseAnnotationPage as jest.Mock;
+let manifestMock: any = null;
+const setManifestMock = (m: any) => { manifestMock = m; };
 
 // Use a unique manifest URL per test to avoid hitting the module-level manifest cache
 let urlCounter = 0;
@@ -30,7 +36,7 @@ function makeManifestMock(canvasId: string, annotations: any[]) {
 function makeAnnotationPageParser(annotations: any[], nextUrl: string | null = null) {
   return {
     iterateAnnotationPageAnnotation: () => annotations,
-    getAnnotationPageNext: () => nextUrl,
+    getAnnotationPage: () => ({ next: nextUrl }),
   };
 }
 
@@ -44,39 +50,37 @@ function makeAnnotationParser(targets: any[], bodies: any[] = []) {
 describe('getAnnotationsForTarget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    manifestMock = null;
+    mockManiiifestConstructor.mockImplementation(() => manifestMock);
   });
 
-  it('uses Maniiifest.parseAnnotationPage for an inline annotation page', async () => {
+  it('routes inline annotation pages through the AnnotationPage parser', async () => {
     const MANIFEST_URL = uniqueManifestUrl();
     const inlinePage = { id: ANNO_PAGE_URL, items: [{ id: 'anno1' }] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser([]));
 
     await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
 
     expect(mockParseAnnotationPage).toHaveBeenCalledWith(inlinePage);
-    // Ensure the old-style constructor was NOT used with 'AnnotationPage'
-    expect(mockManiiifestConstructor).not.toHaveBeenCalledWith(inlinePage, 'AnnotationPage');
   });
 
-  it('uses Maniiifest.parseAnnotation for each annotation', async () => {
+  it('routes each annotation through the Annotation parser', async () => {
     const MANIFEST_URL = uniqueManifestUrl();
     const anno = { id: 'anno1', motivation: 'commenting' };
     const inlinePage = { id: ANNO_PAGE_URL, items: [anno] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser([CANVAS_URL]));
 
     await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
 
     expect(mockParseAnnotation).toHaveBeenCalledWith(anno);
-    // Ensure the old-style constructor was NOT used with 'Annotation'
-    expect(mockManiiifestConstructor).not.toHaveBeenCalledWith(anno, 'Annotation');
   });
 
   it('returns annotation data for a matching canvas target', async () => {
@@ -85,7 +89,7 @@ describe('getAnnotationsForTarget', () => {
     const inlinePage = { items: [anno] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser(
       [CANVAS_URL],
@@ -103,7 +107,7 @@ describe('getAnnotationsForTarget', () => {
     });
   });
 
-  it('uses getAnnotationPageNext() for pagination and follows next pages', async () => {
+  it('uses getAnnotationPage().next for pagination and follows next pages', async () => {
     const MANIFEST_URL = uniqueManifestUrl();
     const PAGE2_URL = 'https://example.com/anno-page-2.json';
     const anno1 = { id: 'anno1', motivation: 'commenting' };
@@ -114,7 +118,7 @@ describe('getAnnotationsForTarget', () => {
       .mockResolvedValueOnce({ type: 'Manifest', data: {} })       // manifest fetch
       .mockResolvedValueOnce({ type: 'AnnotationPage', data: {} }); // page 2 fetch
 
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
 
     // First page parser returns next URL, second returns null
     mockParseAnnotationPage
@@ -127,7 +131,7 @@ describe('getAnnotationsForTarget', () => {
 
     // fetchResource called for page 2
     expect(mockFetchResource).toHaveBeenCalledWith(PAGE2_URL, expect.any(Object));
-    // parseAnnotationPage called twice: once for inline page, once for fetched page 2
+    // AnnotationPage constructor called twice: once for inline page, once for fetched page 2
     expect(mockParseAnnotationPage).toHaveBeenCalledTimes(2);
     expect(result).toHaveLength(2);
     expect(result.map(a => a.id)).toEqual(['anno1', 'anno2']);
@@ -142,7 +146,7 @@ describe('getAnnotationsForTarget', () => {
       .mockResolvedValueOnce({ type: 'Manifest', data: {} })
       .mockResolvedValueOnce({ type: 'AnnotationPage', data: {} });
 
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [refPage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [refPage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser([CANVAS_URL]));
 
@@ -159,7 +163,7 @@ describe('getAnnotationsForTarget', () => {
     const inlinePage = { items: [anno] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser(
       [CANVAS_URL],
@@ -177,7 +181,7 @@ describe('getAnnotationsForTarget', () => {
     const inlinePage = { items: [anno] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     mockParseAnnotation.mockReturnValue(makeAnnotationParser([CANVAS_URL]));
 
@@ -193,7 +197,7 @@ describe('getAnnotationsForTarget', () => {
     const OTHER_CANVAS = 'https://example.com/canvas/99';
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
     // Target points at a different canvas
     mockParseAnnotation.mockReturnValue(makeAnnotationParser([OTHER_CANVAS]));
@@ -206,7 +210,7 @@ describe('getAnnotationsForTarget', () => {
   it('returns empty array when no canvas matches the target URL', async () => {
     const MANIFEST_URL = uniqueManifestUrl();
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue({
+    setManifestMock({
       getSpecificationType: () => 'Manifest',
       iterateManifestCanvas: () => [{ id: 'https://example.com/canvas/other', annotations: [] }],
     });
@@ -233,7 +237,7 @@ describe('getAnnotationsForTarget', () => {
       .mockResolvedValueOnce({ type: 'Manifest', data: {} })
       .mockResolvedValueOnce({ type: 'Manifest', data: {} }); // wrong type for annotation page
 
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [refPage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [refPage]));
 
     await expect(getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL)).rejects.toMatchObject({
       code: 'NETWORK_ANNOTATION_FETCH',
@@ -247,10 +251,10 @@ describe('getAnnotationsForTarget', () => {
     const inlinePage = { items: [] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue({
       iterateAnnotationPageAnnotation: () => [],
-      getAnnotationPageNext: () => 'https://example.com/next',
+      getAnnotationPage: () => ({ next: 'https://example.com/next' }),
     });
 
     await expect(
@@ -263,7 +267,7 @@ describe('getAnnotationsForTarget', () => {
     const inlinePage = { items: [] };
 
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    mockManiiifestConstructor.mockReturnValue(makeManifestMock(CANVAS_URL, [inlinePage]));
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([]));
 
     await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);

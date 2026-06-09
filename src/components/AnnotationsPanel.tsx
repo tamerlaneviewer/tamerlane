@@ -58,6 +58,13 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const setPanelScrollTop = useIIIFStore((s) => s.setPanelScrollTop);
   const ensureVisible = useIIIFStore((s) => s.ensureVisible);
   const requestEnsureVisible = useIIIFStore((s) => s.requestEnsureVisible);
+  const manifestUrls = useIIIFStore((s) => s.manifestUrls);
+  const selectedManifestIndex = useIIIFStore((s) => s.selectedManifestIndex);
+  const currentCollection = useIIIFStore((s) => s.currentCollection);
+  const currentManifestUrl = manifestUrls[selectedManifestIndex] ?? '';
+  // Only a genuine parent collection is shared; for a manifest loaded directly
+  // there is no collection context to encode.
+  const currentCollectionUrl = currentCollection?.id;
 
   // Center the target within the scroller. If always=true, force centering.
   // Uses robust geometry to compute offset relative to scroller, avoiding offsetParent quirks.
@@ -171,7 +178,12 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
       }
       if (target) {
         scrollTargetToCenter(scroller, target, { always: true });
-        try { (target as any).focus({ preventScroll: true }); } catch { target.focus(); }
+        // Move keyboard focus to the row so that arrow keys / screen readers
+        // follow the selection. Use preventScroll so the centering above is not
+        // overridden by the browser's default focus scroll behaviour.
+        if (tab === 'annotations') {
+          try { (target as HTMLElement).focus({ preventScroll: true }); } catch { /* ignore */ }
+        }
         const clampId = requestAnimationFrame(() => {
           const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
           if (scroller.scrollTop > maxTop) scroller.scrollTop = maxTop;
@@ -348,6 +360,8 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               pendingAnnotationId={pendingAnnotationId}
               onPendingAnnotationProcessed={onPendingAnnotationProcessed}
               viewerReady={viewerReady}
+              manifestUrl={currentManifestUrl}
+              collectionUrl={currentCollectionUrl}
             />
           )
         ) : (

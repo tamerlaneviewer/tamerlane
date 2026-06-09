@@ -94,6 +94,7 @@ export interface IIIFManifest {
 }
 
 export interface IIIFCollection {
+  id: string;
   info: IIIFinfo;
   collectionSearch?: { service: string; autocomplete?: string };
 }

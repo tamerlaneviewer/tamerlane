@@ -28,18 +28,19 @@ export async function fetchResource(url: string, opts: FetchOpts = {}): Promise<
   const attemptFetch = async (): Promise<IIIFResource> => {
     logger.info(`Fetching new IIIF resource from: ${url}`);
 
-    // Combine external signal with internal timeout controller
+    const timeoutMs = opts.timeoutMs ?? networkConfig.fetchTimeoutMs ?? FETCH_TIMEOUT_MS_FALLBACK;
+
+    // Combine external signal with an internal timeout so the underlying fetch
+    // is actually cancelled on timeout/abort (avoids wasted bandwidth on slow
+    // remotes — important for deep IIIF pagination).
     const controller = new AbortController();
-  const timeoutMs = opts.timeoutMs ?? networkConfig.fetchTimeoutMs ?? FETCH_TIMEOUT_MS_FALLBACK;
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, timeoutMs);
 
-    const forwardAbort = (event: any) => {
-      controller.abort();
-    };
+    const forwardAbort = () => controller.abort();
     if (opts.signal) {
       if (opts.signal.aborted) controller.abort();
       else opts.signal.addEventListener('abort', forwardAbort, { once: true });
@@ -52,11 +53,15 @@ export async function fetchResource(url: string, opts: FetchOpts = {}): Promise<
       clearTimeout(timer);
       if (opts.signal) opts.signal.removeEventListener('abort', forwardAbort);
       if (e?.name === 'AbortError' && timedOut) {
-        const err = createError('NETWORK_MANIFEST_FETCH', `Request timed out after ${timeoutMs}ms: ${url}`, { recoverable: true });
+        const err = createError(
+          'NETWORK_MANIFEST_FETCH',
+          `Request timed out after ${timeoutMs}ms: ${url}`,
+          { recoverable: true },
+        );
         (err as any).timeout = true;
         throw err;
       }
-      throw e; // propagate (retry layer decides)
+      throw e; // propagate (retry layer / caller decides)
     }
     clearTimeout(timer);
     if (opts.signal) opts.signal.removeEventListener('abort', forwardAbort);

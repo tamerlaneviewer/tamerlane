@@ -69,7 +69,8 @@ export async function searchAnnotations(
 
     // Get the next page (if applicable)
     const mainParser = Maniiifest.parseAnnotationPage(resource.data);
-    nextPageUrl = mainParser.getAnnotationPageNext() ?? null;
+    const nextPage = mainParser.getAnnotationPage()?.next as any;
+    nextPageUrl = typeof nextPage === 'string' ? nextPage : nextPage?.id ?? null;
     pageCount++;
   }
 

@@ -10,6 +10,7 @@ interface MiddlePanelProps {
   imageWidth?: number;
   imageHeight?: number;
   selectedAnnotation: any;
+  regionTarget?: string | null;
   onViewerReady: () => void;
   onImageLoadError: (message: string) => void;
 }
@@ -22,6 +23,7 @@ const MiddlePanel: React.FC<MiddlePanelProps> = ({
   imageWidth,
   imageHeight,
   selectedAnnotation,
+  regionTarget,
   onViewerReady,
   onImageLoadError,
 }) => {
@@ -35,6 +37,7 @@ const MiddlePanel: React.FC<MiddlePanelProps> = ({
         imageWidth={imageWidth || canvasWidth || 1000}
         imageHeight={imageHeight || canvasHeight || 1000}
         selectedAnnotation={selectedAnnotation}
+        regionTarget={regionTarget}
         onViewerReady={onViewerReady}
         onImageLoadError={onImageLoadError}
       />

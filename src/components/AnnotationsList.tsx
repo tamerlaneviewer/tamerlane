@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
-import { ClipboardCopy } from 'lucide-react';
+import { ClipboardCopy, Share2 } from 'lucide-react';
 import { IIIFAnnotation } from '../types';
 import { logger } from '../utils/logger.ts';
+import { encodeContentState } from '../utils/contentState.ts';
 
 interface AnnotationsListProps {
   annotations: IIIFAnnotation[];
@@ -13,6 +14,8 @@ interface AnnotationsListProps {
   pendingAnnotationId?: string | null;
   onPendingAnnotationProcessed?: () => void;
   viewerReady?: boolean;
+  manifestUrl?: string;
+  collectionUrl?: string;
 }
 
 const AnnotationsList: React.FC<AnnotationsListProps> = ({
@@ -24,19 +27,11 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   pendingAnnotationId,
   onPendingAnnotationProcessed,
   viewerReady,
+  manifestUrl,
+  collectionUrl,
 }) => {
   const itemRefs = useRef<{ [id:string]: HTMLDivElement | null }>({});
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (selectedAnnotation?.id) {
-      const ref = itemRefs.current[selectedAnnotation.id];
-    if (ref) {
-  // Just focus the item - centering is handled by store ensureVisible
-  try { (ref as any).focus({ preventScroll: true }); } catch { ref.focus(); }
-      }
-    }
-  }, [selectedAnnotation]);
 
   useEffect(() => {
     if (copied) {
@@ -44,6 +39,9 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
       return () => clearTimeout(timeout);
     }
   }, [copied]);
+
+  const actionButtonClass =
+    'mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-black focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded';
 
   const renderHTML = (text: string, fallback: string = 'No text available') => {
     const safeString = (text || '').replace(/\n/g, '<br />');
@@ -63,6 +61,21 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   const copyToClipboard = (text: string) => {
     navigator.clipboard
       .writeText(text)
+      .then(() => setCopied(true))
+      .catch((err) => logger.error('Clipboard write failed:', err));
+  };
+
+  const copyShareLink = (annotation: IIIFAnnotation) => {
+    if (!manifestUrl || !annotation.target?.[0]) return;
+    const encoded = encodeContentState(
+      annotation.target[0],
+      manifestUrl,
+      collectionUrl,
+    );
+    const params = new URLSearchParams({ 'iiif-content': encoded });
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    navigator.clipboard
+      .writeText(url)
       .then(() => setCopied(true))
       .catch((err) => logger.error('Clipboard write failed:', err));
   };
@@ -203,16 +216,32 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                           dangerouslySetInnerHTML={renderHTML(text)}
                         />
                         {annotation.id && (
-                          <div
-                            title="Copy ID"
-                            className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                          <button
+                            type="button"
+                            aria-label="Copy Annotation ID to clipboard"
+                            title="Copy Annotation ID"
+                            className={actionButtonClass}
                             onClick={(e) => {
                               e.stopPropagation();
                               copyToClipboard(annotation.id!);
                             }}
                           >
                             <ClipboardCopy size={14} />
-                          </div>
+                          </button>
+                        )}
+                        {manifestUrl && annotation.target?.[0] && (
+                          <button
+                            type="button"
+                            aria-label="Share content: copy a link to this region"
+                            title="Share content"
+                            className={actionButtonClass}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyShareLink(annotation);
+                            }}
+                          >
+                            <Share2 size={14} />
+                          </button>
                         )}
                       </div>
                     );
@@ -227,16 +256,32 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                         dangerouslySetInnerHTML={renderHTML(text)}
                       />
                       {annotation.id && (
-                        <div
-                          title="Copy ID"
-                          className="mt-0.5 shrink-0 text-gray-400 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-black"
+                        <button
+                          type="button"
+                          aria-label="Copy Annotation ID to clipboard"
+                          title="Copy Annotation ID"
+                          className={actionButtonClass}
                           onClick={(e) => {
                             e.stopPropagation();
                             copyToClipboard(annotation.id!);
                           }}
                         >
                           <ClipboardCopy size={14} />
-                        </div>
+                        </button>
+                      )}
+                      {manifestUrl && annotation.target?.[0] && (
+                        <button
+                          type="button"
+                          aria-label="Share content: copy a link to this region"
+                          title="Share content"
+                          className={actionButtonClass}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyShareLink(annotation);
+                          }}
+                        >
+                          <Share2 size={14} />
+                        </button>
                       )}
                     </div>
                   ) : (

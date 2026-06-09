@@ -16,6 +16,8 @@ import { parseResource } from './service/parser.ts';
 import { logger } from './utils/logger.ts';
 import { extractLanguagesFromAnnotations } from './utils/iiifLangUtils.ts';
 import { DEFAULT_LANGUAGE } from './config/appConfig.ts';
+import { isSafeHttpUrl } from './utils/contentState.ts';
+import { useContentStateRestoration } from './components/useContentStateRestoration.ts';
 
 const App: React.FC = () => {
   // Granular selectors for state
@@ -37,6 +39,7 @@ const App: React.FC = () => {
   const manifestError = useIIIFStore((state) => state.manifestError);
   const showUrlDialog = useIIIFStore((state) => state.showUrlDialog);
   const selectedAnnotation = useIIIFStore((state) => state.selectedAnnotation);
+  const contentStateRegion = useIIIFStore((state) => state.contentStateRegion);
   const pendingAnnotationId = useIIIFStore(
     (state) => state.pendingAnnotationId,
   );
@@ -78,6 +81,9 @@ const App: React.FC = () => {
   const setSelectedMotivation = useIIIFStore(
     (state) => state.setSelectedMotivation,
   );
+  const resetResourceContext = useIIIFStore(
+    (state) => state.resetResourceContext,
+  );
   const handleManifestUpdate = useIIIFStore(
     (state) => state.handleManifestUpdate,
   );
@@ -95,11 +101,9 @@ const App: React.FC = () => {
   const liveNavRef = useRef<HTMLDivElement | null>(null);
   const liveErrorRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (iiifContentUrlFromParams) {
-      setIiifContentUrl(iiifContentUrlFromParams);
-    }
-  }, [iiifContentUrlFromParams, setIiifContentUrl]);
+  // Restore viewer state (manifest → canvas → annotation) from the
+  // self-contained iiif-content query parameter.
+  useContentStateRestoration();
 
   useEffect(() => {
     if (iiifContentUrl && manifestUrls.length === 0) {
@@ -115,19 +119,45 @@ const App: React.FC = () => {
             collection ?? null,
           );
         })
-        .catch((err) =>
-          setManifestError({ code: 'NETWORK_MANIFEST_FETCH', message: 'Failed to load IIIF content. Please check the URL.', at: Date.now(), recoverable: true }),
-        );
+        .catch((err) => {
+          logger.error('Failed to parse IIIF content:', err);
+          setManifestError({ code: 'NETWORK_MANIFEST_FETCH', message: 'Failed to load IIIF content. Please check the URL.', at: Date.now(), recoverable: true });
+        });
     }
   }, [iiifContentUrl, manifestUrls.length, handleManifestUpdate, setManifestError]);
 
   const handleUrlSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const url = formData.get('iiifContentUrl') as string;
-    if (url !== iiifContentUrl) {
-      setIiifContentUrl(url);
-      setSearchParams({ 'iiif-content': url });
+    const rawInput = formData.get('iiifContentUrl');
+    const input = (typeof rawInput === 'string' ? rawInput : '').trim();
+    if (!input) return;
+
+    try {
+      const parsed = new URL(input);
+      if (parsed.origin === window.location.origin) {
+        const content = parsed.searchParams.get('iiif-content');
+        if (content) {
+          setSearchParams({ 'iiif-content': content });
+          setShowUrlDialog(false);
+          return;
+        }
+      }
+    } catch {}
+
+    if (input !== iiifContentUrl) {
+      if (!isSafeHttpUrl(input)) {
+        setManifestError({
+          code: 'NETWORK_MANIFEST_FETCH',
+          message: 'Unsupported IIIF content URL. Only http(s) URLs are allowed.',
+          at: Date.now(),
+          recoverable: true,
+        });
+        return;
+      }
+      resetResourceContext();
+      setIiifContentUrl(input);
+      setSearchParams({ 'iiif-content': input });
       setShowUrlDialog(false);
     }
   };
@@ -475,6 +505,7 @@ const App: React.FC = () => {
           imageWidth={imageWidth}
           imageHeight={imageHeight}
           selectedAnnotation={selectedAnnotation}
+          regionTarget={contentStateRegion}
           onViewerReady={handleViewerReady}
           onImageLoadError={handleImageLoadError}
         />

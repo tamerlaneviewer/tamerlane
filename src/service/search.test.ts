@@ -10,6 +10,8 @@ jest.mock('../config/appConfig.ts', () => ({
 }));
 
 const mockFetchResource = resource.fetchResource as jest.Mock;
+// Production code uses `Maniiifest.parseAnnotationPage(data)` (v2 static
+// factory). jest.mock auto-mocks the static method as a jest.fn().
 const mockParseAnnotationPage = Maniiifest.parseAnnotationPage as jest.Mock;
 
 describe('searchAnnotations', () => {
@@ -74,7 +76,7 @@ describe('searchAnnotations', () => {
       if (data.id === MOCK_URL) { // Top-level page
         return {
           iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
         };
       }
       if (data.items) { // Nested page
@@ -84,7 +86,7 @@ describe('searchAnnotations', () => {
       }
       return { // Default mock
           iterateAnnotationPageAnnotation: () => [],
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
       };
     });
 
@@ -153,13 +155,13 @@ describe('searchAnnotations', () => {
             if (data.id === MOCK_URL_PAGE1) {
                 return {
                     iterateAnnotationPageAnnotation: () => mockPage1.items,
-                    getAnnotationPageNext: () => mockPage1.next,
+                    getAnnotationPage: () => ({ next: mockPage1.next }),
                 };
             }
             if (data.id === MOCK_URL_PAGE2) {
                 return {
                     iterateAnnotationPageAnnotation: () => mockPage2.items,
-                    getAnnotationPageNext: () => mockPage2.next,
+                    getAnnotationPage: () => ({ next: mockPage2.next }),
                 };
             }
              if (data.items) { // Nested page
@@ -167,7 +169,7 @@ describe('searchAnnotations', () => {
                     iterateAnnotationPageAnnotation: () => data.items,
                 };
             }
-            return { iterateAnnotationPageAnnotation: () => [], getAnnotationPageNext: () => null };
+            return { iterateAnnotationPageAnnotation: () => [], getAnnotationPage: () => ({ next: null  })};
         });
 
         // Act
@@ -225,7 +227,7 @@ describe('searchAnnotations', () => {
       if (data.id === MOCK_URL) {
         return {
           iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
         };
       }
       if (data.items) {
@@ -235,7 +237,7 @@ describe('searchAnnotations', () => {
       }
       return {
         iterateAnnotationPageAnnotation: () => [],
-        getAnnotationPageNext: () => null,
+        getAnnotationPage: () => ({ next: null }),
       };
     });
 
@@ -312,7 +314,7 @@ describe('searchAnnotations', () => {
       if (data.id === MOCK_URL) {
         return {
           iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
         };
       }
       if (data.items) {
@@ -322,7 +324,7 @@ describe('searchAnnotations', () => {
       }
       return {
         iterateAnnotationPageAnnotation: () => [],
-        getAnnotationPageNext: () => null,
+        getAnnotationPage: () => ({ next: null }),
       };
     });
 
@@ -413,7 +415,7 @@ describe('searchAnnotations', () => {
       if (data.id === MOCK_URL) {
         return {
           iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
         };
       }
       if (data.items) {
@@ -423,7 +425,7 @@ describe('searchAnnotations', () => {
       }
       return {
         iterateAnnotationPageAnnotation: () => [],
-        getAnnotationPageNext: () => null,
+        getAnnotationPage: () => ({ next: null }),
       };
     });
 
@@ -511,7 +513,7 @@ describe('searchAnnotations', () => {
       if (data.id === MOCK_URL) {
         return {
           iterateAnnotationPageAnnotation: () => mockAnnotationPage.items,
-          getAnnotationPageNext: () => null,
+          getAnnotationPage: () => ({ next: null }),
         };
       }
       if (data.items) {
@@ -521,7 +523,7 @@ describe('searchAnnotations', () => {
       }
       return {
         iterateAnnotationPageAnnotation: () => [],
-        getAnnotationPageNext: () => null,
+        getAnnotationPage: () => ({ next: null }),
       };
     });
 

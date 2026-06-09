@@ -14,6 +14,7 @@ interface IIIFViewerProps {
   imageWidth: number;
   imageHeight: number;
   selectedAnnotation: IIIFAnnotation | null;
+  regionTarget?: string | null;
   onViewerReady?: () => void;
   onImageLoadError: (message: string) => void;
 }
@@ -24,6 +25,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   imageWidth,
   imageHeight,
   selectedAnnotation,
+  regionTarget,
   onViewerReady,
   onImageLoadError,
 }) => {
@@ -84,14 +86,18 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
   ]);
 
   useEffect(() => {
-    if (!selectedAnnotation || !osdViewerRef.current) return;
+    if (!osdViewerRef.current) return;
+
+    // The region to draw comes from the selected annotation, or—when nothing is
+    // selected—from a region shared via a Content State link.
+    const targets =
+      selectedAnnotation?.target ?? (regionTarget ? [regionTarget] : null);
+    if (!targets || targets.length === 0) return;
 
     const viewer = osdViewerRef.current;
     viewer.clearOverlays();
 
     const overlayRects: OpenSeadragon.Rect[] = [];
-
-    const targets = selectedAnnotation.target;
 
     for (const target of targets) {
       if (typeof target === 'string') {
@@ -192,7 +198,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     }
 
     viewer.forceRedraw();
-  }, [selectedAnnotation, imageWidth, imageHeight]);
+  }, [selectedAnnotation, regionTarget, imageWidth, imageHeight]);
 
   return (
     <div
