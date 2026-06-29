@@ -69,6 +69,11 @@ export async function fetchResource(url: string, opts: FetchOpts = {}): Promise<
     if (!response.ok) {
       const err = createError('NETWORK_MANIFEST_FETCH', `HTTP error ${response.status} for ${url}`, { recoverable: response.status >= 500 || response.status === 429 });
       (err as any).httpStatus = response.status;
+      try {
+        (err as any).body = await response.text();
+      } catch {
+        // Ignore body read failures; the status code is sufficient.
+      }
       throw err;
     }
     const data: any = await response.json();

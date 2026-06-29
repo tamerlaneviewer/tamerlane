@@ -372,7 +372,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (searchError) {
+  if (searchError && searchError.code !== 'SEARCH_VALIDATION') {
     return (
       <ErrorDialog
         message={searchError.message}

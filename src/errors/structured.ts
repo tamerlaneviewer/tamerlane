@@ -5,6 +5,7 @@ export type ErrorCode =
   | 'PARSING_MANIFEST'
   | 'SELECTION_FAILED'
   | 'SEARCH_UNSUPPORTED'
+  | 'SEARCH_VALIDATION'
   | 'UNKNOWN';
 
 export interface StructuredError extends Error {
