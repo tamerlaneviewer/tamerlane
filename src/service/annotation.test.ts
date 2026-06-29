@@ -40,10 +40,11 @@ function makeAnnotationPageParser(annotations: any[], nextUrl: string | null = n
   };
 }
 
-function makeAnnotationParser(targets: any[], bodies: any[] = []) {
+function makeAnnotationParser(targets: any[], bodies: any[] = [], targetFeatures: any[] = []) {
   return {
     iterateAnnotationTarget: () => targets,
     iterateAnnotationTextualBody: () => bodies,
+    iterateAnnotationTargetFeature: () => targetFeatures,
   };
 }
 
@@ -275,6 +276,49 @@ describe('getAnnotationsForTarget', () => {
 
     // fetchResource should only be called once despite two getAnnotationsForTarget calls
     expect(mockFetchResource).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a GeoJSON Feature target as an svg overlay on the canvas', async () => {
+    const MANIFEST_URL = uniqueManifestUrl();
+    const feature = {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]],
+      },
+      properties: { source: 'extract' },
+    };
+    const geoAnno = {
+      id: 'geo1',
+      type: 'Annotation',
+      motivation: ['commenting', 'tagging'],
+      target: feature,
+      body: [{ type: 'TextualBody', purpose: 'identifying', value: 'Boundary' }],
+    };
+    const inlinePage = { id: ANNO_PAGE_URL, items: [geoAnno] };
+
+    mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
+    // maniiifest parses the page natively and yields the GeoJSON annotation.
+    mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([geoAnno]));
+    mockParseAnnotation.mockReturnValue(
+      makeAnnotationParser(
+        [],
+        [{ type: 'TextualBody', value: 'Boundary' }],
+        [feature],
+      ),
+    );
+
+    const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('geo1');
+    expect(result[0].motivation).toBe('commenting');
+    expect(result[0].target[0].startsWith(`${CANVAS_URL}#svg=`)).toBe(true);
+    expect((result[0].body as any[])[0].value).toBe('Boundary');
+
+    const decoded = decodeURIComponent(result[0].target[0].split('#svg=')[1]);
+    expect(decoded).toContain('<polygon');
   });
 });
 
