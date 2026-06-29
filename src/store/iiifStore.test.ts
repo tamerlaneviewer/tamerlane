@@ -213,6 +213,34 @@ describe('useIIIFStore', () => {
   expect(state.searchError?.message).toBe('Search failed');
       expect(state.searchResults).toEqual([]);
     });
+
+    it('should set a recoverable validation error and clear results for SEARCH_VALIDATION', async () => {
+      const validationErr: any = new Error('Validation error: Keyword "fo" must be at least 3 characters long.');
+      validationErr.code = 'SEARCH_VALIDATION';
+      validationErr.recoverable = true;
+      mockSearchAnnotations.mockRejectedValue(validationErr);
+
+      act(() => {
+        useIIIFStore.setState({
+          searchUrl: 'https://example.com/search',
+          searchResults: [{ id: 'stale' }],
+        });
+      });
+
+      await act(async () => {
+        await useIIIFStore.getState().handleSearch('fo ba');
+      });
+
+      const state = useIIIFStore.getState();
+      expect(mockSearchAnnotations).toHaveBeenCalledWith(
+        'https://example.com/search?q=fo%20ba', expect.any(Object)
+      );
+      expect(state.searchError?.code).toBe('SEARCH_VALIDATION');
+      expect(state.searchError?.recoverable).toBe(true);
+      expect(state.searchError?.message).toBe('Validation error: Keyword "fo" must be at least 3 characters long.');
+      expect(state.searchResults).toEqual([]);
+      expect(state.activePanelTab).toBe('search');
+    });
   });
 
   describe('fetchManifestByIndex', () => {

@@ -553,4 +553,56 @@ describe('searchAnnotations', () => {
     expect((snippets[2].motivation as string[]).includes('linking')).toBe(true);
   });
 
+  describe('400 validation responses', () => {
+    const make400 = (body: string) => {
+      const err: any = new Error('HTTP error 400');
+      err.code = 'NETWORK_MANIFEST_FETCH';
+      err.httpStatus = 400;
+      err.body = body;
+      return err;
+    };
+
+    it('throws a SEARCH_VALIDATION error with the parsed error field message', async () => {
+      mockFetchResource.mockRejectedValue(
+        make400('{"error":"Validation error: Keyword \\"fo\\" must be at least 3 characters long."}'),
+      );
+
+      await expect(searchAnnotations(MOCK_URL)).rejects.toMatchObject({
+        code: 'SEARCH_VALIDATION',
+        recoverable: true,
+        message: 'Validation error: Keyword "fo" must be at least 3 characters long.',
+      });
+    });
+
+    it('uses the message field when no error field is present', async () => {
+      mockFetchResource.mockRejectedValue(make400('{"message":"Query too short."}'));
+
+      await expect(searchAnnotations(MOCK_URL)).rejects.toMatchObject({
+        code: 'SEARCH_VALIDATION',
+        message: 'Query too short.',
+      });
+    });
+
+    it('falls back to a generic message when no readable field exists', async () => {
+      mockFetchResource.mockRejectedValue(make400('not json'));
+
+      await expect(searchAnnotations(MOCK_URL)).rejects.toMatchObject({
+        code: 'SEARCH_VALIDATION',
+        message: 'This search query is not valid.',
+      });
+    });
+
+    it('surfaces the validation message for a multi-keyword query', async () => {
+      mockFetchResource.mockRejectedValue(
+        make400('{"error":"Validation error: Keyword \\"fo\\" must be at least 3 characters long."}'),
+      );
+
+      await expect(searchAnnotations(`${MOCK_URL}?q=fo%20bar`)).rejects.toMatchObject({
+        code: 'SEARCH_VALIDATION',
+        recoverable: true,
+        message: 'Validation error: Keyword "fo" must be at least 3 characters long.',
+      });
+    });
+  });
+
 });

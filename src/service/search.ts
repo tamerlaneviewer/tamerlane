@@ -21,7 +21,22 @@ export async function searchAnnotations(
 
   while (nextPageUrl && pageCount < MAX_PAGES) {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  const resource = await fetchResource(nextPageUrl, { signal });
+  let resource;
+  try {
+    resource = await fetchResource(nextPageUrl, { signal });
+  } catch (err: any) {
+    // A 400 from the search service indicates the query itself is invalid
+    // (e.g. AnnoSearch's minimum keyword length). Surface a recoverable
+    // validation error with a readable message for inline display rather
+    // than a viewer-level failure.
+    if (err?.httpStatus === 400) {
+      throw createError('SEARCH_VALIDATION', parseSearchValidationMessage(err.body), {
+        cause: err,
+        recoverable: true,
+      });
+    }
+    throw err;
+  }
     if (resource.data.type !== 'AnnotationPage') {
       throw createError(
         'NETWORK_SEARCH_FETCH',
@@ -83,10 +98,29 @@ export async function searchAnnotations(
   return snippets;
 }
 
+const GENERIC_SEARCH_VALIDATION_MESSAGE = 'This search query is not valid.';
+
 /**
- * Converts a search result annotation to one or more IIIFSearchSnippets.
- * Handles both single targets and array targets.
+ * Extracts a readable validation message from a 400 search response body.
+ * Falls back to a generic message when no usable error/message field exists.
  */
+function parseSearchValidationMessage(body: unknown): string {
+  if (typeof body !== 'string' || !body.trim()) {
+    return GENERIC_SEARCH_VALIDATION_MESSAGE;
+  }
+  try {
+    const parsed = JSON.parse(body);
+    const message = parsed?.error ?? parsed?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim();
+    }
+  } catch {
+    // Not JSON; ignore and fall through to the generic message.
+  }
+  return GENERIC_SEARCH_VALIDATION_MESSAGE;
+}
+
+
 function buildSnippetsFromAnnotation(
   hitAnnotation: any,
   annotationLookup: Map<string, any>,

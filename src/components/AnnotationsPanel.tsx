@@ -61,6 +61,9 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const manifestUrls = useIIIFStore((s) => s.manifestUrls);
   const selectedManifestIndex = useIIIFStore((s) => s.selectedManifestIndex);
   const currentCollection = useIIIFStore((s) => s.currentCollection);
+  const searchError = useIIIFStore((s) => s.searchError);
+  const searchValidationMessage =
+    searchError?.code === 'SEARCH_VALIDATION' ? searchError.message : null;
   const currentManifestUrl = manifestUrls[selectedManifestIndex] ?? '';
   // Only a genuine parent collection is shared; for a manifest loaded directly
   // there is no collection context to encode.
@@ -369,7 +372,14 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
             {searching && (
               <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">Searching…</div>
             )}
-            {searchResults.length === 0 ? (
+            {searchValidationMessage ? (
+              <div
+                role="alert"
+                className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-2 py-2"
+              >
+                {searchValidationMessage}
+              </div>
+            ) : searchResults.length === 0 ? (
               <p className="text-gray-500 text-center">No search results found.</p>
             ) : (
               <SearchResults
@@ -389,9 +399,11 @@ const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
               : ''
             : searching
               ? 'Searching…'
-              : searchResults.length > 0
-                ? `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}.`
-                : 'No results.'}
+              : searchValidationMessage
+                ? searchValidationMessage
+                : searchResults.length > 0
+                  ? `${searchResults.length} result${searchResults.length === 1 ? '' : 's'}.`
+                  : 'No results.'}
         </div>
       </div>
     </div>

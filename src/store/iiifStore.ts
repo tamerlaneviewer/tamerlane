@@ -423,6 +423,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   const executeSearch = async () => {
       const controller = new AbortController();
       set({ searchAbortController: controller, searching: true });
+      setSearchError(null);
       try {
         const { selectedMotivation } = get();
         let searchEndpoint = `${searchUrl}?q=${encodeURIComponent(trimmed)}`;
@@ -466,6 +467,11 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       } catch (err: any) {
         if (err?.name === 'AbortError') {
           // ignore
+        } else if (err?.code === 'SEARCH_VALIDATION') {
+          // Recoverable query validation issue: clear results and show inline
+          // feedback in the search panel instead of the global error dialog.
+          set({ searchResults: [], activePanelTab: 'search' });
+          setSearchError(buildDomainError('SEARCH_VALIDATION', toUserMessage(err) || 'This search query is not valid.', { recoverable: true }));
         } else {
           setSearchError(buildDomainError('NETWORK_SEARCH_FETCH', toUserMessage(err) || 'Search failed. Please try again.', { recoverable: true }));
         }
