@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useIIIFStore } from '../store/iiifStore.ts';
-import {
-  decodeContentState,
-  isSafeHttpUrl,
-} from '../utils/contentState.ts';
+import { interpretContentStateParam } from '../utils/contentState.ts';
 
 // Pending content-state restoration tracked as a single object so the fields
 // are always set/cleared together. `null` means “no restoration in progress”.
@@ -65,11 +62,26 @@ export function useContentStateRestoration(): void {
   // Step 1: decode the query params and kick off resource loading.
   useEffect(() => {
     if (!iiifContentUrlFromParams) return;
-    const decoded = decodeContentState(iiifContentUrlFromParams);
+    const result = interpretContentStateParam(iiifContentUrlFromParams);
+
+    if (result.kind === 'error') {
+      // Decoding, JSON parsing, or Manifest discovery failed. Surface the
+      // stage-specific message so the user knows what went wrong.
+      setPendingContentState(null);
+      setManifestError({
+        code: 'NETWORK_MANIFEST_FETCH',
+        message: result.message,
+        at: Date.now(),
+        recoverable: true,
+      });
+      return;
+    }
+
     const nextResourceUrl =
-      decoded?.collectionUrl ??
-      decoded?.manifestUrl ??
-      iiifContentUrlFromParams;
+      result.kind === 'content-state'
+        ? (result.state.collectionUrl ?? result.state.manifestUrl)
+        : result.url;
+
     // When the underlying resource changes (e.g. user pastes a new share link),
     // clear the previous resource's derived state before loading the new one.
     if (
@@ -79,26 +91,15 @@ export function useContentStateRestoration(): void {
       resetResourceContext();
     }
     previousResourceUrlRef.current = nextResourceUrl;
-    if (decoded) {
-      setIiifContentUrl(nextResourceUrl);
+    setIiifContentUrl(nextResourceUrl);
+
+    if (result.kind === 'content-state') {
       setPendingContentState({
-        target: decoded.canvasTarget,
-        manifestUrl: decoded.manifestUrl,
+        target: result.state.canvasTarget ?? null,
+        manifestUrl: result.state.manifestUrl,
       });
-    } else if (isSafeHttpUrl(iiifContentUrlFromParams)) {
-      setIiifContentUrl(iiifContentUrlFromParams);
-      setPendingContentState(null);
     } else {
-      // Reject non-http(s) schemes (javascript:, data:, file:, …) so we never
-      // hand a hostile URL to fetchResource or surface it in the UI.
       setPendingContentState(null);
-      setManifestError({
-        code: 'NETWORK_MANIFEST_FETCH',
-        message:
-          'Unsupported IIIF content URL. Only http(s) URLs are allowed.',
-        at: Date.now(),
-        recoverable: true,
-      });
     }
   }, [
     iiifContentUrlFromParams,
