@@ -157,6 +157,80 @@ describe('useContentStateRestoration', () => {
     expect(setContentStateRegion).toHaveBeenCalledWith(canvas);
   });
 
+  it('restores from a compact IIIF Content State target body', () => {
+    const canvasId = 'https://example.com/canvas/1';
+    const canvas = `${canvasId}#xywh=0,0,10,10`;
+    const manifest = 'https://example.com/m1';
+    const collection = 'https://example.com/collection.json';
+    // Compact target body: base64url(encodeURIComponent(JSON)), per the IIIF
+    // Content State 1.0 encoding used by spec-compliant tools.
+    const compactBody = {
+      id: canvas,
+      type: 'Canvas',
+      partOf: [
+        {
+          id: manifest,
+          type: 'Manifest',
+          partOf: [{ id: collection, type: 'Collection' }],
+        },
+      ],
+    };
+    const encoded = Buffer.from(
+      encodeURIComponent(JSON.stringify(compactBody)),
+    ).toString('base64url');
+
+    const fetchManifestByIndex = jest.fn();
+    const setSelectedImageIndex = jest.fn();
+    const setActivePanelTab = jest.fn();
+    const setContentStateRegion = jest.fn();
+    act(() => {
+      useIIIFStore.setState({
+        fetchManifestByIndex,
+        setSelectedImageIndex,
+        setActivePanelTab,
+        setContentStateRegion,
+      });
+    });
+
+    renderAt(`/?iiif-content=${encodeURIComponent(encoded)}`);
+
+    // The nested collection becomes the content URL, just like the full form.
+    expect(useIIIFStore.getState().iiifContentUrl).toBe(collection);
+
+    act(() => {
+      useIIIFStore.setState({
+        manifestUrls: [manifest],
+        selectedManifestIndex: 0,
+        currentManifest: {
+          info: {},
+          images: [{ canvasTarget: canvasId }],
+        } as any,
+      });
+    });
+    expect(setSelectedImageIndex).toHaveBeenCalledWith(0);
+
+    act(() => {
+      useIIIFStore.setState({ viewerReady: true, canvasId });
+    });
+    expect(setActivePanelTab).toHaveBeenCalledWith('annotations');
+    expect(setContentStateRegion).toHaveBeenCalledWith(canvas);
+  });
+
+  it('surfaces a clear error when a content-state blob is malformed', () => {
+    const setManifestError = jest.fn();
+    act(() => {
+      useIIIFStore.setState({ setManifestError });
+    });
+    // Valid base64url, but the decoded bytes are not JSON.
+    const encoded = Buffer.from('not json at all').toString('base64url');
+    renderAt(`/?iiif-content=${encodeURIComponent(encoded)}`);
+    expect(setManifestError).toHaveBeenCalledTimes(1);
+    expect(setManifestError.mock.calls[0][0]).toMatchObject({
+      code: 'NETWORK_MANIFEST_FETCH',
+    });
+    expect(useIIIFStore.getState().iiifContentUrl).toBeNull();
+  });
+
   it('navigates without drawing a region for a whole-canvas target', () => {
     const canvas = 'https://example.com/canvas/1';
     const manifest = 'https://example.com/m1';
