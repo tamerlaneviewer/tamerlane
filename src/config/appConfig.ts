@@ -41,3 +41,16 @@ export const networkConfig = {
   searchDebounceMs: process.env.NODE_ENV === 'test' ? 0 : 300, // 0 in tests for sync behavior
 };
 
+// Basemap configuration for GeoJSON annotations rendered on a map (issue #59).
+// Defaults to OpenStreetMap. Point `tileUrl` at a different provider (e.g.
+// self-hosted tiles) to avoid leaking viewer IP / area of interest to OSM.
+// `tileUrl` must include Leaflet's `{z}/{x}/{y}` placeholders (and may include
+// `{s}` for tile subdomains and `{r}` for retina). Always set `attribution`
+// to match the chosen provider's terms.
+export const basemapConfig = {
+  tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 19,
+};
+
+

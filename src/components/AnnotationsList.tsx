@@ -4,6 +4,7 @@ import { ClipboardCopy, Share2 } from 'lucide-react';
 import { IIIFAnnotation } from '../types';
 import { logger } from '../utils/logger.ts';
 import { encodeContentState } from '../utils/contentState.ts';
+import GeoJsonMap from './GeoJsonMap.tsx';
 
 interface AnnotationsListProps {
   annotations: IIIFAnnotation[];
@@ -120,6 +121,9 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
   const filteredAnnotations = annotations.filter((annotation: IIIFAnnotation) => {
     if (!selectedLanguage) return true;
 
+    // GeoJSON-body annotations (recipe 0139) carry no language; always show them.
+    if (annotation.geo && annotation.geo.length > 0) return true;
+
     if (Array.isArray(annotation.body)) {
       return annotation.body.some((item) => matchesLanguage(item));
     }
@@ -215,7 +219,10 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                           className="text-sm text-gray-700 leading-tight flex-1"
                           dangerouslySetInnerHTML={renderHTML(text)}
                         />
-                        {annotation.id && (
+                        {/* Copy/share act on the whole annotation, so show the
+                            controls once (on the first body line) rather than
+                            repeating them for every textual body. */}
+                        {itemIndex === 0 && annotation.id && (
                           <button
                             type="button"
                             aria-label="Copy Annotation ID to clipboard"
@@ -229,7 +236,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                             <ClipboardCopy size={14} />
                           </button>
                         )}
-                        {manifestUrl && annotation.target?.[0] && (
+                        {itemIndex === 0 && manifestUrl && annotation.target?.[0] && (
                           <button
                             type="button"
                             aria-label="Share content: copy a link to this region"
@@ -289,6 +296,32 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                   );
                 })()
               )}
+              {annotation.geo && annotation.geo.length > 0 && (() => {
+                const hasBodyText = Array.isArray(annotation.body)
+                  ? annotation.body.some((b) => getTextValue(b))
+                  : !!getTextValue(annotation.body);
+                const labels = hasBodyText
+                  ? []
+                  : annotation.geo
+                      .map((f) => f.label)
+                      .filter((l): l is string => !!l && !!l.trim());
+                // Render the (relatively heavy) basemap only for the selected
+                // annotation to keep large feature sets responsive; labels still
+                // show so the annotation is identifiable in the list.
+                if (labels.length === 0 && !isSelected) return null;
+                return (
+                  <div className="mt-1">
+                    {labels.map((label, i) => (
+                      <p
+                        key={i}
+                        className="text-sm text-gray-700 leading-tight"
+                        dangerouslySetInnerHTML={renderHTML(label)}
+                      />
+                    ))}
+                    {isSelected && <GeoJsonMap features={annotation.geo} />}
+                  </div>
+                );
+              })()}
               {annotation.motivation && (() => {
                 const isTranscribing = Array.isArray(annotation.motivation)
                   ? annotation.motivation.includes('transcribing')
