@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { GeoJsonBodyFeature } from '../types/index.ts';
+import { basemapConfig } from '../config/appConfig.ts';
 import { logger } from '../utils/logger.ts';
 
 interface GeoJsonMapProps {
@@ -33,9 +34,9 @@ const GeoJsonMap: React.FC<GeoJsonMapProps> = ({ features, className }) => {
         scrollWheelZoom: false,
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
+      L.tileLayer(basemapConfig.tileUrl, {
+        maxZoom: basemapConfig.maxZoom,
+        attribution: basemapConfig.attribution,
       }).addTo(map);
 
       const collection = {
@@ -67,7 +68,12 @@ const GeoJsonMap: React.FC<GeoJsonMapProps> = ({ features, className }) => {
         onEachFeature: (feature, lyr) => {
           const label = feature?.properties?.label;
           if (typeof label === 'string' && label.trim()) {
-            lyr.bindPopup(label);
+            // Bind the label as plain text: Leaflet treats a string popup as
+            // HTML, so a malicious manifest label could otherwise inject markup.
+            // Using textContent neutralizes any HTML in untrusted manifest data.
+            const popupEl = document.createElement('div');
+            popupEl.textContent = label;
+            lyr.bindPopup(popupEl);
           }
         },
       }).addTo(map);
