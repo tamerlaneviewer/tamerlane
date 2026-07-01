@@ -219,7 +219,10 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                           className="text-sm text-gray-700 leading-tight flex-1"
                           dangerouslySetInnerHTML={renderHTML(text)}
                         />
-                        {annotation.id && (
+                        {/* Copy/share act on the whole annotation, so show the
+                            controls once (on the first body line) rather than
+                            repeating them for every textual body. */}
+                        {itemIndex === 0 && annotation.id && (
                           <button
                             type="button"
                             aria-label="Copy Annotation ID to clipboard"
@@ -233,7 +236,7 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                             <ClipboardCopy size={14} />
                           </button>
                         )}
-                        {manifestUrl && annotation.target?.[0] && (
+                        {itemIndex === 0 && manifestUrl && annotation.target?.[0] && (
                           <button
                             type="button"
                             aria-label="Share content: copy a link to this region"
