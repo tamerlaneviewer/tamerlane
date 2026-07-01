@@ -6,6 +6,15 @@ Tamerlane is a lightweight IIIF (International Image Interoperability Framework)
 
 [IIIF Cookbook: Basic Newspaper](https://tamerlaneviewer.github.io/tamerlane/?iiif-content=https://iiif.io/api/cookbook/recipe/0068-newspaper/newspaper_title-collection.json)
 
+## ✨ Features
+
+- **IIIF Presentation 3.0** — browse manifests and collections, with deep‑zoom image viewing via OpenSeadragon.
+- **Annotations** — view and navigate annotations, including transcriptions and tags, with language‑aware filtering.
+- **Search** — full‑text search over annotations using Content Search 2.0 endpoints.
+- **Content State** — share a link that restores the exact view, including the selected canvas and region.
+- **Geographic features** — render GeoJSON annotations on a basemap, and draw georeferenced geometry over a canvas when Georeference Extension control points are present.
+- **Lightweight and embeddable** — a small footprint and simple iframe embedding.
+
 ## 🎬 Demo
 
 A demo of the viewer is available with content from the Wellcome Collection: 
