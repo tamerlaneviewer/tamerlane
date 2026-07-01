@@ -3,6 +3,8 @@ import {
   geoFeaturesToSvgTarget,
   identityTransform,
   PointTransform,
+  flattenLabel,
+  toGeoJsonBodyFeature,
 } from './geojson';
 import { extractCanvasGcps } from './georeference';
 
@@ -174,5 +176,45 @@ describe('extractCanvasGcps', () => {
       annotations: [{ type: 'AnnotationPage', items: [] }],
     };
     expect(extractCanvasGcps(canvas)).toBeNull();
+  });
+});
+
+describe('flattenLabel', () => {
+  it('returns a plain string label unchanged', () => {
+    expect(flattenLabel('Hello')).toBe('Hello');
+  });
+
+  it('flattens an IIIF language map to the first value', () => {
+    expect(flattenLabel({ en: ['Targeted Map'] })).toBe('Targeted Map');
+  });
+
+  it('flattens an array of strings', () => {
+    expect(flattenLabel(['First', 'Second'])).toBe('First');
+  });
+
+  it('returns undefined for empty or missing labels', () => {
+    expect(flattenLabel(undefined)).toBeUndefined();
+    expect(flattenLabel({})).toBeUndefined();
+    expect(flattenLabel('   ')).toBeUndefined();
+  });
+});
+
+describe('toGeoJsonBodyFeature', () => {
+  it('normalizes a GeoJSON Feature body with a language-map label', () => {
+    const feature = {
+      type: 'Feature',
+      properties: { label: { en: ['Targeted Map'] } },
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+    };
+    expect(toGeoJsonBodyFeature(feature)).toEqual({
+      geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+      label: 'Targeted Map',
+      properties: { label: { en: ['Targeted Map'] } },
+    });
+  });
+
+  it('returns null when the feature has no usable geometry', () => {
+    expect(toGeoJsonBodyFeature({ type: 'Feature', properties: {} })).toBeNull();
+    expect(toGeoJsonBodyFeature(null)).toBeNull();
   });
 });

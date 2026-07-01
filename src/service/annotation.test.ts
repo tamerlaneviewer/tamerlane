@@ -40,11 +40,19 @@ function makeAnnotationPageParser(annotations: any[], nextUrl: string | null = n
   };
 }
 
-function makeAnnotationParser(targets: any[], bodies: any[] = [], targetFeatures: any[] = []) {
+function makeAnnotationParser(
+  targets: any[],
+  bodies: any[] = [],
+  targetFeatures: any[] = [],
+  bodyFeatures: any[] = [],
+  singleBody: any = null,
+) {
   return {
     iterateAnnotationTarget: () => targets,
     iterateAnnotationTextualBody: () => bodies,
     iterateAnnotationTargetFeature: () => targetFeatures,
+    iterateAnnotationFeature: () => bodyFeatures,
+    getAnnotationBody: () => singleBody,
   };
 }
 
@@ -319,6 +327,71 @@ describe('getAnnotationsForTarget', () => {
 
     const decoded = decodeURIComponent(result[0].target[0].split('#svg=')[1]);
     expect(decoded).toContain('<polygon');
+
+    // The raw geographic geometry is also surfaced for the basemap in the list.
+    expect(result[0].geo).toHaveLength(1);
+    expect(result[0].geo![0].geometry).toEqual(feature.geometry);
+  });
+
+  it('attaches a GeoJSON Feature body to a canvas-fragment annotation (recipe 0139)', async () => {
+    const MANIFEST_URL = uniqueManifestUrl();
+    const featureBody = {
+      id: 'https://example.com/geo.json',
+      type: 'Feature',
+      properties: { label: { en: ['Targeted Map'] } },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[-77.02, 38.91], [-77.11, 38.84], [-77.28, 38.99], [-77.02, 38.91]]],
+      },
+    };
+    const XYWH_TARGET = `${CANVAS_URL}#xywh=920,3600,1510,3000`;
+    const geoAnno = {
+      id: 'geoBody1',
+      type: 'Annotation',
+      motivation: 'tagging',
+      body: featureBody,
+      target: XYWH_TARGET,
+    };
+    const inlinePage = { id: ANNO_PAGE_URL, items: [geoAnno] };
+
+    mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
+    mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([geoAnno]));
+    // Single Feature body: no textual bodies, no target features, no feature
+    // collection iteration; exposed via getAnnotationBody().
+    mockParseAnnotation.mockReturnValue(
+      makeAnnotationParser([XYWH_TARGET], [], [], [], featureBody),
+    );
+
+    const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('geoBody1');
+    expect(result[0].target).toEqual([XYWH_TARGET]);
+    expect(result[0].geo).toHaveLength(1);
+    expect(result[0].geo![0]).toMatchObject({
+      label: 'Targeted Map',
+      geometry: { type: 'Polygon' },
+    });
+  });
+
+  it('skips georeferencing annotations (they define GCPs, not content)', async () => {
+    const MANIFEST_URL = uniqueManifestUrl();
+    const geoRefAnno = {
+      id: 'georef1',
+      type: 'Annotation',
+      motivation: 'georeferencing',
+      target: CANVAS_URL,
+    };
+    const inlinePage = { id: ANNO_PAGE_URL, items: [geoRefAnno] };
+
+    mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
+    mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([geoRefAnno]));
+
+    const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
+
+    expect(result).toHaveLength(0);
   });
 });
 

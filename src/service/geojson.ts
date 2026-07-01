@@ -33,6 +33,47 @@ export interface GeoJsonFeature {
   geometry?: { type?: string; coordinates?: any } | null;
 }
 
+/**
+ * Flattens an IIIF language map (`{ en: ['text'] }`) or plain string label into
+ * a single display string. Returns undefined when no label text is present.
+ */
+export function flattenLabel(label: any): string | undefined {
+  if (!label) return undefined;
+  if (typeof label === 'string') return label.trim() || undefined;
+  if (Array.isArray(label)) {
+    const first = label.find((v) => typeof v === 'string' && v.trim());
+    return typeof first === 'string' ? first.trim() : undefined;
+  }
+  if (typeof label === 'object') {
+    for (const key of Object.keys(label)) {
+      const flat = flattenLabel(label[key]);
+      if (flat) return flat;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Normalizes a raw GeoJSON Feature (from an annotation body) into a
+ * {@link GeoJsonBodyFeatureShape}. Returns null when the feature has no usable
+ * geometry.
+ */
+export interface GeoJsonBodyFeatureShape {
+  geometry: GeoJsonGeometry;
+  label?: string;
+  properties?: Record<string, any>;
+}
+
+export function toGeoJsonBodyFeature(raw: any): GeoJsonBodyFeatureShape | null {
+  const geometry = raw?.geometry;
+  if (!geometry || typeof geometry.type !== 'string') return null;
+  return {
+    geometry: { type: geometry.type, coordinates: geometry.coordinates },
+    label: flattenLabel(raw?.properties?.label),
+    properties: raw?.properties,
+  };
+}
+
 function round(n: number): number {
   return Number.isFinite(n) ? Math.round(n * 1000) / 1000 : 0;
 }

@@ -8,8 +8,10 @@ import {
   PointTransform,
   identityTransform,
   geoFeaturesToSvgTarget,
+  toGeoJsonBodyFeature,
 } from './geojson.ts';
 import { extractCanvasGcps, createGeoToResourceTransform } from './georeference.ts';
+import { GeoJsonBodyFeature } from '../types/index.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 
@@ -26,6 +28,11 @@ async function processAnnotationsWorker(
     const rawMotivation = annotation.motivation;
     const motivation = Array.isArray(rawMotivation) ? rawMotivation[0] : rawMotivation || '';
 
+    // Georeferencing annotations define the canvas geo->pixel transform (their
+    // FeatureCollection body holds Ground Control Points); they are consumed by
+    // `extractCanvasGcps`, not shown as content annotations.
+    if (motivation === 'georeferencing') continue;
+
     const annotationParser = Maniiifest.parseAnnotation(annotation);
 
     const body = Array.from(annotationParser.iterateAnnotationTextualBody()).map((bodyItem: any) => ({
@@ -38,11 +45,32 @@ async function processAnnotationsWorker(
           : bodyItem.language,
     }));
 
+    // GeoJSON `Feature` / `FeatureCollection` bodies (e.g. IIIF Cookbook recipe
+    // 0139) carry geographic geometry describing where the target region is
+    // located on Earth. Collect them so the annotation list can render them on a
+    // basemap; the geometry stays in geo space and is never drawn on the image.
+    const rawBodyFeatures = Array.from(annotationParser.iterateAnnotationFeature());
+    if (rawBodyFeatures.length === 0) {
+      const singleBody = annotationParser.getAnnotationBody() as any;
+      if (singleBody && singleBody.type === 'Feature') rawBodyFeatures.push(singleBody);
+    }
+    const geo = rawBodyFeatures
+      .map(toGeoJsonBodyFeature)
+      .filter((f): f is GeoJsonBodyFeature => f !== null);
+
     // GeoJSON `Feature` / `FeatureCollection` targets carry geographic geometry
     // instead of a canvas fragment. Render them as an SVG overlay (in resource
-    // space, applying any canvas georeference transform) on the current canvas.
+    // space, applying any canvas georeference transform) on the current canvas,
+    // and also surface the raw geographic geometry so the annotation list can
+    // show it on a basemap alongside any textual bodies. The target geometry is
+    // the authoritative annotated region, so it takes precedence over any
+    // geographic body for the basemap.
     const targetFeatures = Array.from(annotationParser.iterateAnnotationTargetFeature());
     if (targetFeatures.length > 0) {
+      const targetGeo = targetFeatures
+        .map(toGeoJsonBodyFeature)
+        .filter((f): f is GeoJsonBodyFeature => f !== null);
+      const combinedGeo = targetGeo.length > 0 ? targetGeo : geo;
       const svgTarget = geoFeaturesToSvgTarget(targetFeatures, targetUrl, transform);
       if (svgTarget) {
         resultsMap.set(id, {
@@ -51,6 +79,7 @@ async function processAnnotationsWorker(
           target: [svgTarget],
           generator: (annotation as any).generator,
           body,
+          ...(combinedGeo.length > 0 ? { geo: combinedGeo } : {}),
         });
       }
       continue;
@@ -70,6 +99,7 @@ async function processAnnotationsWorker(
             target: [],
             generator: (annotation as any).generator,
             body,
+            ...(geo.length > 0 ? { geo } : {}),
           });
         }
 

@@ -25,12 +25,24 @@ export interface AnnotationBody {
   creator?: string;
 }
 
+/**
+ * A GeoJSON feature carried in an annotation body (e.g. IIIF Cookbook recipe
+ * 0139). The geometry is in geographic (lon/lat) space and is rendered on a
+ * basemap rather than on the IIIF image.
+ */
+export interface GeoJsonBodyFeature {
+  geometry: { type: string; coordinates: any };
+  label?: string;
+  properties?: Record<string, any>;
+}
+
 export interface IIIFAnnotation {
   id: string;
   motivation: string | string[];
   target: string[];
   body: AnnotationBody | AnnotationBody[]
   generator?: string | { id?: string; type?: string; name?: string; homepage?: string };
+  geo?: GeoJsonBodyFeature[];
 }
 
 export interface IIIFSearchSnippet {
