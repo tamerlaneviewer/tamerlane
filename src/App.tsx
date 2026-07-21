@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Header from './components/Header.tsx';
 import SplashScreen from './components/SplashScreen.tsx';
@@ -55,6 +55,7 @@ const App: React.FC = () => {
   const annotationsLoading = useIIIFStore((state) => state.annotationsLoading);
   const annotationsError = useIIIFStore((state) => state.annotationsError);
   const searchError = useIIIFStore((state) => state.searchError);
+  const selectedChoices = useIIIFStore((state) => state.selectedChoices);
 
   // Granular selectors for actions
   const setActivePanelTab = useIIIFStore((state) => state.setActivePanelTab);
@@ -94,6 +95,7 @@ const App: React.FC = () => {
   const fetchManifestByIndex = useIIIFStore(
     (state) => state.fetchManifestByIndex,
   );
+  const setChoiceIndex = useIIIFStore((state) => state.setChoiceIndex);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const iiifContentUrlFromParams = searchParams.get('iiif-content');
@@ -184,7 +186,11 @@ const App: React.FC = () => {
   // Guarded canvasId update to avoid redundant resets in store
   useEffect(() => {
     if (!currentManifest || selectedImageIndex < 0) return;
-    const nextId = currentManifest.images[selectedImageIndex]?.canvasTarget || '';
+    // Strip any #xywh/#svg fragment: canvasId must be the bare canvas identity
+    // (composition sub-images carry a fragment on their canvasTarget).
+    const nextId = (
+      currentManifest.images[selectedImageIndex]?.canvasTarget || ''
+    ).replace(/#.*$/, '');
     if (nextId !== canvasId) {
       setCanvasId(nextId);
     }
@@ -261,11 +267,13 @@ const App: React.FC = () => {
   // Announce navigation changes and update title at top-level (must not be conditional)
   useEffect(() => {
     if (!currentManifest) return;
-    const total = Array.isArray(currentManifest.images)
-      ? currentManifest.images.length
-      : 0;
+    // Count canvases, not images: a single canvas may carry multiple images
+    // (IIIF composition/choice), so image count would over-report the total.
+    const canvasIds = currentManifest.canvases.map((c) => c.id);
+    const total = canvasIds.length;
     if (total <= 0) return;
-    const imagePosition = selectedImageIndex + 1;
+    const canvasPos = canvasIds.indexOf(canvasId);
+    const imagePosition = (canvasPos >= 0 ? canvasPos : selectedImageIndex) + 1;
     const titleBase = currentManifest?.info?.name || 'IIIF Resource';
     document.title = `${titleBase} – Image ${imagePosition} of ${total} – Tamerlane IIIF Viewer`;
     // Focus main region for SRs after navigation unless user is interacting in the panel or viewer
@@ -286,7 +294,7 @@ const App: React.FC = () => {
     if (el) {
       el.textContent = `Image ${imagePosition} of ${total}`;
     }
-  }, [currentManifest, selectedImageIndex, isSearchJump]);
+  }, [currentManifest, selectedImageIndex, canvasId, isSearchJump]);
 
   // --- Language extraction and selection logic ---
   const availableLanguages = React.useMemo(() => {
@@ -353,6 +361,48 @@ const App: React.FC = () => {
 
   // Use the store's handleSearch, which uses searchUrl internally
   const onSearch = (query: string) => handleSearch(query);
+
+  // All images for the current canvas, respecting Choice selections.
+  // - Images without a choiceId are always shown (IIIF composition).
+  // - Images with a choiceId are mutually exclusive; only the selected
+  //   option for each group is included (IIIF Choice, recipe 0033).
+  // Memoized so the array reference is stable and IIIFViewer's useEffect
+  // does not rebuild OpenSeadragon on unrelated re-renders.
+  const imagesForCanvas = useMemo(() => {
+    if (!currentManifest || !canvasId) return [];
+    const allForCanvas = currentManifest.images.filter(
+      (img) => img.canvasTarget.replace(/#.*$/, '') === canvasId,
+    );
+    const choiceCounters = new Map<string, number>();
+    return allForCanvas.filter((img) => {
+      if (!img.choiceId) return true; // Composition image – always included
+      const idx = choiceCounters.get(img.choiceId) ?? 0;
+      choiceCounters.set(img.choiceId, idx + 1);
+      return idx === (selectedChoices[img.choiceId] ?? 0);
+    });
+  }, [currentManifest, canvasId, selectedChoices]);
+
+  // Derive the list of Choice groups for the floating UI buttons.
+  const choiceGroups = useMemo(() => {
+    if (!currentManifest || !canvasId) return [];
+    const allForCanvas = currentManifest.images.filter(
+      (img) => img.canvasTarget.replace(/#.*$/, '') === canvasId,
+    );
+    const map = new Map<string, Array<{ label: string; index: number }>>();
+    const counters = new Map<string, number>();
+    for (const img of allForCanvas) {
+      if (!img.choiceId) continue;
+      const idx = counters.get(img.choiceId) ?? 0;
+      counters.set(img.choiceId, idx + 1);
+      if (!map.has(img.choiceId)) map.set(img.choiceId, []);
+      map.get(img.choiceId)!.push({ label: img.choiceLabel ?? `Option ${idx + 1}`, index: idx });
+    }
+    return Array.from(map.entries()).map(([choiceId, options]) => ({
+      choiceId,
+      options,
+      selectedIndex: selectedChoices[choiceId] ?? 0,
+    }));
+  }, [currentManifest, canvasId, selectedChoices]);
 
   if (showUrlDialog) {
     return <UrlDialog onSubmit={handleUrlSubmit} />;
@@ -422,7 +472,6 @@ const App: React.FC = () => {
     );
   }
 
-  const selectedImage = currentManifest.images[selectedImageIndex];
   let canvasWidth: number | undefined;
   let canvasHeight: number | undefined;
 
@@ -435,12 +484,6 @@ const App: React.FC = () => {
   } catch (error) {
     logger.warn('Error retrieving canvas dimensions:', error);
   }
-
-  const imageUrl = selectedImage?.imageUrl ?? '';
-  const imageType = selectedImage?.imageType ?? 'standard';
-  const imageWidth = selectedImage?.imageWidth ?? canvasWidth;
-  const imageHeight = selectedImage?.imageHeight ?? canvasHeight;
-
 
   return (
     <div className="flex flex-col h-screen min-h-0">
@@ -498,12 +541,11 @@ const App: React.FC = () => {
           collectionMetadata={collectionMetadata}
         />
         <MiddlePanel
-          imageUrl={imageUrl}
-          imageType={imageType}
+          images={imagesForCanvas}
           canvasWidth={canvasWidth}
           canvasHeight={canvasHeight}
-          imageWidth={imageWidth}
-          imageHeight={imageHeight}
+          choiceGroups={choiceGroups}
+          onChoiceSelect={setChoiceIndex}
           selectedAnnotation={selectedAnnotation}
           regionTarget={contentStateRegion}
           onViewerReady={handleViewerReady}

@@ -69,6 +69,10 @@ export interface IIIFImage {
   imageWidth?: number;
   imageHeight?: number;
   canvasTarget: string;
+  /** Annotation ID grouping mutually-exclusive Choice alternatives. */
+  choiceId?: string;
+  /** Human-readable label for this Choice option (from the body label). */
+  choiceLabel?: string;
 }
 
 export interface IIIFinfo {
