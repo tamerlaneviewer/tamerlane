@@ -60,6 +60,8 @@ interface IIIFState {
   isSearchJump: boolean;
   panelScrollTop: { annotations: number; search: number };
   ensureVisible: { tab: 'annotations' | 'search'; id: string | null; nonce: number };
+  /** Maps choiceId → selected option index for IIIF Choice annotation bodies. */
+  selectedChoices: Record<string, number>;
 
   setActivePanelTab: (tab: 'annotations' | 'search') => void;
   setIiifContentUrl: (url: string | null) => void;
@@ -99,6 +101,7 @@ interface IIIFState {
   clearSelectionLog: () => void;
   setPanelScrollTop: (tab: 'annotations' | 'search', top: number) => void;
   requestEnsureVisible: (tab: 'annotations' | 'search', id: string | null) => void;
+  setChoiceIndex: (choiceId: string, index: number) => void;
   getAnnotationLanguage: (annotation: any) => string | null;
 
   handleManifestUpdate: (
@@ -145,6 +148,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   isSearchJump: false,
   panelScrollTop: { annotations: 0, search: 0 },
   ensureVisible: { tab: 'annotations', id: null, nonce: 0 },
+  selectedChoices: {},
   selectionPhase: 'idle',
   selectionDebug: false,
   selectionLog: [],
@@ -268,6 +272,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       annotationsError: null,
       searchError: null,
       ensureVisible: { tab: 'annotations', id: null, nonce: 0 },
+      selectedChoices: {},
     }),
   setSelectionDebug: (debug) => set({ selectionDebug: debug }),
   clearSelectionLog: () => set({ selectionLog: [] }),
@@ -277,6 +282,10 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   requestEnsureVisible: (tab, id) => set((state) => ({
     ensureVisible: { tab, id, nonce: state.ensureVisible.nonce + 1 },
   })),
+  setChoiceIndex: (choiceId, index) => set((state) => {
+    if ((state.selectedChoices[choiceId] ?? 0) === index) return {};
+    return { selectedChoices: { ...state.selectedChoices, [choiceId]: index } };
+  }),
 
   clearPendingAnnotation: () => {
     set((state) => ({

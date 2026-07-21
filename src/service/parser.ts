@@ -136,6 +136,29 @@ async function parseManifest(jsonData: any): Promise<IIIFManifest> {
     if (typeof canvasTarget !== 'string') {
       throw createError('PARSING_MANIFEST', 'Expected canvas target to be a string');
     }
+
+    // IIIF Choice body: the annotation body is an object of type "Choice"
+    // whose `items` are mutually-exclusive image alternatives (e.g. recipe 0033).
+    const rawBody = (anno as any).body;
+    if (rawBody?.type === 'Choice' && Array.isArray(rawBody.items)) {
+      const choiceId = typeof (anno as any).id === 'string'
+        ? (anno as any).id
+        : canvasTarget;
+      for (const item of rawBody.items) {
+        try {
+          const image = getImage(item, canvasTarget);
+          images.push({
+            ...image,
+            choiceId,
+            choiceLabel: pickLabel(item.label) ?? undefined,
+          });
+        } catch (error) {
+          logger.debug('Skipping non-image choice item while parsing manifest', error);
+        }
+      }
+      continue;
+    }
+
     for (const resourceBody of annoParser.iterateAnnotationResourceBody()) {
       try {
         images.push(getImage(resourceBody, canvasTarget));

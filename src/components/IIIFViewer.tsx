@@ -1,29 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import OpenSeadragon from 'openseadragon';
 import SplashScreen from './SplashScreen.tsx';
-import { IIIFAnnotation } from '../types/index';
+import { IIIFAnnotation, IIIFImage } from '../types/index';
 import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
 import { ensureHttps } from '../utils/ensureHttps.ts';
 import { logger } from '../utils/logger.ts';
 
 interface IIIFViewerProps {
-  imageUrl: string;
-  imageType: 'standard' | 'iiif';
+  images: IIIFImage[];
   canvasWidth: number;
   canvasHeight: number;
-  imageWidth: number;
-  imageHeight: number;
   selectedAnnotation: IIIFAnnotation | null;
   regionTarget?: string | null;
   onViewerReady?: () => void;
   onImageLoadError: (message: string) => void;
 }
 
+/** Parse an optional #xywh= fragment from a canvas target URI. */
+function parseXywh(canvasTarget: string): { x: number; y: number; w: number; h: number } | null {
+  const match = canvasTarget.match(/#xywh=(-?\d+),(-?\d+),(\d+),(\d+)/);
+  if (!match) return null;
+  return { x: Number(match[1]), y: Number(match[2]), w: Number(match[3]), h: Number(match[4]) };
+}
+
 const IIIFViewer: React.FC<IIIFViewerProps> = ({
-  imageUrl,
-  imageType,
-  imageWidth,
-  imageHeight,
+  images,
+  canvasWidth,
+  canvasHeight,
   selectedAnnotation,
   regionTarget,
   onViewerReady,
@@ -31,19 +34,98 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
 }) => {
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const osdViewerRef = useRef<OpenSeadragon.Viewer | null>(null);
+  // The bare canvas identity currently shown. When only the images change but
+  // the canvas is the same (e.g. switching a Choice option), we swap the tiled
+  // images in place on the existing viewer so the zoom/pan is preserved for
+  // comparison. Navigating to a different canvas rebuilds the viewer (reset).
+  const lastCanvasKeyRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Destroy the OpenSeadragon instance only when the component unmounts, not on
+  // every images change — that would force a home-fit and lose the viewport.
   useEffect(() => {
-    if (!viewerRef.current) return;
+    return () => {
+      if (osdViewerRef.current) {
+        osdViewerRef.current.destroy();
+        osdViewerRef.current = null;
+      }
+      lastCanvasKeyRef.current = null;
+    };
+  }, []);
 
-    // Apply HTTPS upgrade based on configuration, not just page protocol
-    const safeImageUrl = ensureHttps(imageUrl);
+  useEffect(() => {
+    if (!viewerRef.current || images.length === 0) return;
 
-    const tileSource: string | OpenSeadragon.TileSourceOptions =
-      imageType === 'iiif'
-        ? safeImageUrl
-        : { type: 'image', url: safeImageUrl };
+    // Build a placement spec for each image on this canvas. When the canvas
+    // target includes an #xywh= fragment, the image is positioned at that
+    // region (in canvas-pixel space) rather than covering the full canvas. OSD
+    // world coordinates are normalised so the full canvas width = 1.
+    const items = images.map((image) => {
+      const safeUrl = ensureHttps(image.imageUrl);
+      const src: string | OpenSeadragon.TileSourceOptions =
+        image.imageType === 'iiif'
+          ? safeUrl
+          : { type: 'image', url: safeUrl };
 
+      const xywh = parseXywh(image.canvasTarget);
+      if (xywh && canvasWidth > 0) {
+        return {
+          tileSource: src,
+          x: xywh.x / canvasWidth,
+          y: xywh.y / canvasWidth,
+          width: xywh.w / canvasWidth,
+        };
+      }
+      // No position fragment – image covers the full canvas.
+      return { tileSource: src, x: 0, y: 0, width: 1 };
+    });
+
+    // The bare canvas identity (fragment stripped). All images on a canvas
+    // share this, so a change here means we navigated to a different canvas.
+    const canvasKey = images[0].canvasTarget.replace(/#.*$/, '');
+    const sameCanvas = lastCanvasKeyRef.current === canvasKey;
+    lastCanvasKeyRef.current = canvasKey;
+
+    // Same canvas + live viewer → swap tiled images in place, keeping the
+    // viewport untouched. Overlays (annotation regions) also persist.
+    if (sameCanvas && osdViewerRef.current) {
+      const viewer = osdViewerRef.current;
+      // Capture the exact current viewport so we can restore it after the swap
+      // (comparison UX: switching a Choice option must not move the image).
+      const bounds = viewer.viewport.getBounds(true);
+      // Snapshot the existing world items so we can remove them only *after*
+      // the replacements have loaded — this avoids emptying the world, which
+      // makes OpenSeadragon treat the next add as a fresh "open" and home-fit.
+      const oldItems: any[] = [];
+      for (let i = 0; i < viewer.world.getItemCount(); i++) {
+        oldItems.push(viewer.world.getItemAt(i));
+      }
+      let remaining = items.length;
+      const finalize = () => {
+        remaining -= 1;
+        if (remaining > 0) return;
+        // New images are in; drop the previous ones and restore the viewport.
+        oldItems.forEach((item) => item && viewer.world.removeItem(item));
+        try {
+          viewer.viewport.fitBounds(bounds, true);
+        } catch {
+          /* ignore – viewport already correct */
+        }
+      };
+      // Add in array order so later images stack on top (composition/detail).
+      items.forEach((item) => {
+        viewer.addTiledImage({
+          tileSource: item.tileSource,
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          success: finalize,
+        });
+      });
+      return;
+    }
+
+    // First load or different canvas → (re)create the viewer, resetting the view.
     if (osdViewerRef.current) {
       osdViewerRef.current.destroy();
       osdViewerRef.current = null;
@@ -51,36 +133,30 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
 
     setIsLoading(true);
 
-    osdViewerRef.current = OpenSeadragon({
+    const viewer = OpenSeadragon({
       element: viewerRef.current,
       prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
-      tileSources: [tileSource],
+      tileSources: items,
       showNavigator: true,
       crossOriginPolicy: 'Anonymous',
       maxZoomPixelRatio: 10,
     });
+    osdViewerRef.current = viewer;
 
-    osdViewerRef.current.addHandler('open', () => {
+    viewer.addHandler('open', () => {
       setIsLoading(false);
       if (onViewerReady) onViewerReady();
     });
 
-    osdViewerRef.current.addHandler('open-failed', () => {
+    viewer.addHandler('open-failed', () => {
       setIsLoading(false);
       onImageLoadError(
         'Could not load image.',
       );
     });
-
-    return () => {
-      if (osdViewerRef.current) {
-        osdViewerRef.current.destroy();
-        osdViewerRef.current = null;
-      }
-    };
   }, [
-    imageUrl,
-    imageType,
+    images,
+    canvasWidth,
     onViewerReady,
     onImageLoadError,
   ]);
@@ -145,7 +221,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
               if (!svgElem.hasAttribute('viewBox')) {
                 svgElem.setAttribute(
                   'viewBox',
-                  `0 0 ${imageWidth} ${imageHeight}`,
+                  `0 0 ${canvasWidth} ${canvasHeight}`,
                 );
               }
 
@@ -167,8 +243,8 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
               const viewportRect = viewer.viewport.imageToViewportRectangle(
                 0,
                 0,
-                imageWidth,
-                imageHeight,
+                canvasWidth,
+                canvasHeight,
               );
               viewer.addOverlay({
                 element: overlayDiv,
@@ -198,7 +274,7 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     }
 
     viewer.forceRedraw();
-  }, [selectedAnnotation, regionTarget, imageWidth, imageHeight]);
+  }, [selectedAnnotation, regionTarget, canvasWidth, canvasHeight]);
 
   return (
     <div

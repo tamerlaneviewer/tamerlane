@@ -207,6 +207,118 @@ describe('parseResource', () => {
     ]);
   });
 
+  it('extracts every painting body composed onto a single canvas (recipe 0036)', async () => {
+    // Two painting annotations target the same canvas: a full-page image and a
+    // positioned detail (#xywh). Both must appear as separate images.
+    const canvasId = 'https://example.com/canvas/1';
+    const detailTarget = `${canvasId}#xywh=3949,994,1091,1232`;
+    const fullAnno = { id: 'anno-full', motivation: 'painting' };
+    const detailAnno = { id: 'anno-detail', motivation: 'painting' };
+    const m: ManifestFixture = {
+      id: 'm1',
+      label: 'M1',
+      canvases: [canvasId],
+      annotations: [fullAnno, detailAnno],
+    };
+    installFetchMock([m], []);
+    installManiiifestMock({ manifests: [m] });
+    mockGetImage.mockImplementation((body: any, canvasTarget: string) => ({
+      imageUrl: body.id,
+      imageType: 'iiif',
+      imageWidth: body.width,
+      imageHeight: body.height,
+      canvasTarget,
+    }));
+    mockParseAnnotation.mockImplementation((annotation: any) => {
+      if (annotation.id === 'anno-full') {
+        return {
+          iterateAnnotationTarget: () => [canvasId],
+          iterateAnnotationResourceBody: () => [
+            { id: 'full.jpg', type: 'Image', width: 7216, height: 5412 },
+          ],
+        };
+      }
+      return {
+        iterateAnnotationTarget: () => [detailTarget],
+        iterateAnnotationResourceBody: () => [
+          { id: 'detail.jpg', type: 'Image', width: 1091, height: 1232 },
+        ],
+      };
+    });
+
+    const result = await parseResource('m1');
+
+    expect(result.firstManifest?.images).toEqual([
+      {
+        imageUrl: 'full.jpg',
+        imageType: 'iiif',
+        imageWidth: 7216,
+        imageHeight: 5412,
+        canvasTarget: canvasId,
+      },
+      {
+        imageUrl: 'detail.jpg',
+        imageType: 'iiif',
+        imageWidth: 1091,
+        imageHeight: 1232,
+        canvasTarget: detailTarget,
+      },
+    ]);
+  });
+
+  it('expands a Choice painting body into labelled options (recipe 0033)', async () => {
+    const canvasId = 'https://example.com/canvas/1';
+    const choiceAnno = {
+      id: 'anno-choice',
+      motivation: 'painting',
+      body: {
+        type: 'Choice',
+        items: [
+          { id: 'natural.jpg', type: 'Image', label: { en: ['Natural Light'] } },
+          { id: 'xray.jpg', type: 'Image', label: { en: ['X-Ray'] } },
+        ],
+      },
+    };
+    const m: ManifestFixture = {
+      id: 'm1',
+      label: 'M1',
+      canvases: [canvasId],
+      annotations: [choiceAnno],
+    };
+    installFetchMock([m], []);
+    installManiiifestMock({ manifests: [m] });
+    mockGetImage.mockImplementation((body: any, canvasTarget: string) => ({
+      imageUrl: body.id,
+      imageType: 'iiif',
+      canvasTarget,
+    }));
+    mockParseAnnotation.mockImplementation(() => ({
+      iterateAnnotationTarget: () => [canvasId],
+      // A Choice body yields no plain resource bodies; the parser reads
+      // body.items directly, so this must not be consulted.
+      iterateAnnotationResourceBody: () => [],
+    }));
+
+    const result = await parseResource('m1');
+
+    expect(result.firstManifest?.images).toEqual([
+      {
+        imageUrl: 'natural.jpg',
+        imageType: 'iiif',
+        canvasTarget: canvasId,
+        choiceId: 'anno-choice',
+        choiceLabel: 'Natural Light',
+      },
+      {
+        imageUrl: 'xray.jpg',
+        imageType: 'iiif',
+        canvasTarget: canvasId,
+        choiceId: 'anno-choice',
+        choiceLabel: 'X-Ray',
+      },
+    ]);
+  });
+
   it('parses a flat collection', async () => {
     const m1: ManifestFixture = { id: 'm1' };
     const c: CollectionFixture = {
