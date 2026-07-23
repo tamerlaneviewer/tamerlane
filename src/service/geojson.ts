@@ -91,17 +91,19 @@ function ringToPolygon(coords: GeoPoint[], transform: PointTransform): string {
     coords[0][1] === coords[coords.length - 1][1];
   const ring = closed ? coords.slice(0, -1) : coords;
   const points = ring.map((c) => pointString(transform(c))).join(' ');
-  return `<polygon points="${points}" fill="rgba(255,0,0,0.2)" stroke="red" stroke-width="2"/>`;
+  return `<polygon points="${points}" fill="rgba(255,0,0,0.2)" stroke="red" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
 }
 
 function lineToPolyline(coords: GeoPoint[], transform: PointTransform): string {
   const points = coords.map((c) => pointString(transform(c))).join(' ');
-  return `<polyline points="${points}" fill="none" stroke="red" stroke-width="2"/>`;
+  // A single red route line. `non-scaling-stroke` keeps its on-screen width
+  // constant at any zoom.
+  return `<polyline points="${points}" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
 }
 
 function pointToCircle(coord: GeoPoint, transform: PointTransform): string {
   const p = transform(coord);
-  return `<circle cx="${round(p[0])}" cy="${round(p[1])}" r="5" fill="rgba(255,0,0,0.4)" stroke="red" stroke-width="2"/>`;
+  return `<circle cx="${round(p[0])}" cy="${round(p[1])}" r="5" fill="rgba(255,0,0,0.4)" stroke="red" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
 }
 
 function geometryToShapes(

@@ -36,6 +36,13 @@ export function sanitizeSvg(
         }
     }
 
-    // 4. Sanitize using DOMPurify with SVG-safe profile
-    return DOMPurify.sanitize(svgString, { USE_PROFILES: { svg: true } });
+    // 4. Sanitize using DOMPurify with SVG-safe profile. `vector-effect` is a
+    // safe SVG presentation attribute but is not in DOMPurify's default SVG
+    // allowlist, so add it explicitly — overlays rely on
+    // `vector-effect="non-scaling-stroke"` to keep line width constant on
+    // screen at any zoom.
+    return DOMPurify.sanitize(svgString, {
+        USE_PROFILES: { svg: true },
+        ADD_ATTR: ['vector-effect'],
+    });
 }
