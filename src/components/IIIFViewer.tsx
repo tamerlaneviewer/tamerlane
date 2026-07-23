@@ -4,6 +4,7 @@ import SplashScreen from './SplashScreen.tsx';
 import { IIIFAnnotation, IIIFImage } from '../types/index';
 import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
 import { ensureHttps } from '../utils/ensureHttps.ts';
+import { computeSvgPixelBounds } from '../utils/svgBounds.ts';
 import { logger } from '../utils/logger.ts';
 
 interface IIIFViewerProps {
@@ -250,6 +251,29 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
                 element: overlayDiv,
                 location: viewportRect,
               });
+
+              // The SVG overlay always covers the whole canvas, so it can't be
+              // used to zoom to the annotation. Measure the tight pixel bounds
+              // of the actual geometry and feed that into the shared fitBounds
+              // path below, so selecting a GeoJSON/SVG annotation navigates to
+              // it just like an #xywh= region (important for small features on
+              // large georeferenced maps).
+              const bounds = computeSvgPixelBounds(svgElem);
+              if (bounds) {
+                // Pad with surrounding context so tiny features aren't
+                // over-zoomed: at least 100% of the feature size, and never
+                // less than 2% of the canvas width.
+                const padX = Math.max(bounds.width, canvasWidth * 0.02);
+                const padY = Math.max(bounds.height, canvasWidth * 0.02);
+                overlayRects.push(
+                  viewer.viewport.imageToViewportRectangle(
+                    bounds.minX - padX,
+                    bounds.minY - padY,
+                    bounds.width + padX * 2,
+                    bounds.height + padY * 2,
+                  ),
+                );
+              }
             }
           } catch (err) {
             logger.warn('Skipped unsafe SVG annotation:', err);
