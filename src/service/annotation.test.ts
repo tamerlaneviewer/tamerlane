@@ -43,14 +43,12 @@ function makeAnnotationPageParser(annotations: any[], nextUrl: string | null = n
 function makeAnnotationParser(
   targets: any[],
   bodies: any[] = [],
-  targetFeatures: any[] = [],
   bodyFeatures: any[] = [],
   singleBody: any = null,
 ) {
   return {
     iterateAnnotationTarget: () => targets,
     iterateAnnotationTextualBody: () => bodies,
-    iterateAnnotationTargetFeature: () => targetFeatures,
     iterateAnnotationFeature: () => bodyFeatures,
     getAnnotationBody: () => singleBody,
   };
@@ -286,53 +284,6 @@ describe('getAnnotationsForTarget', () => {
     expect(mockFetchResource).toHaveBeenCalledTimes(1);
   });
 
-  it('renders a GeoJSON Feature target as an svg overlay on the canvas', async () => {
-    const MANIFEST_URL = uniqueManifestUrl();
-    const feature = {
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[[0, 0], [10, 0], [10, 10], [0, 0]]],
-      },
-      properties: { source: 'extract' },
-    };
-    const geoAnno = {
-      id: 'geo1',
-      type: 'Annotation',
-      motivation: ['commenting', 'tagging'],
-      target: feature,
-      body: [{ type: 'TextualBody', purpose: 'identifying', value: 'Boundary' }],
-    };
-    const inlinePage = { id: ANNO_PAGE_URL, items: [geoAnno] };
-
-    mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
-    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
-    // maniiifest parses the page natively and yields the GeoJSON annotation.
-    mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([geoAnno]));
-    mockParseAnnotation.mockReturnValue(
-      makeAnnotationParser(
-        [],
-        [{ type: 'TextualBody', value: 'Boundary' }],
-        [feature],
-      ),
-    );
-
-    const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('geo1');
-    expect(result[0].motivation).toBe('commenting');
-    expect(result[0].target[0].startsWith(`${CANVAS_URL}#svg=`)).toBe(true);
-    expect((result[0].body as any[])[0].value).toBe('Boundary');
-
-    const decoded = decodeURIComponent(result[0].target[0].split('#svg=')[1]);
-    expect(decoded).toContain('<polygon');
-
-    // The raw geographic geometry is also surfaced for the basemap in the list.
-    expect(result[0].geo).toHaveLength(1);
-    expect(result[0].geo![0].geometry).toEqual(feature.geometry);
-  });
-
   it('attaches a GeoJSON Feature body to a canvas-fragment annotation (recipe 0139)', async () => {
     const MANIFEST_URL = uniqueManifestUrl();
     const featureBody = {
@@ -357,10 +308,9 @@ describe('getAnnotationsForTarget', () => {
     mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
     setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
     mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([geoAnno]));
-    // Single Feature body: no textual bodies, no target features, no feature
-    // collection iteration; exposed via getAnnotationBody().
+    // Single Feature body exposed via getAnnotationBody() fallback.
     mockParseAnnotation.mockReturnValue(
-      makeAnnotationParser([XYWH_TARGET], [], [], [], featureBody),
+      makeAnnotationParser([XYWH_TARGET], [], [], featureBody),
     );
 
     const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
@@ -372,6 +322,37 @@ describe('getAnnotationsForTarget', () => {
     expect(result[0].geo![0]).toMatchObject({
       label: 'Targeted Map',
       geometry: { type: 'Polygon' },
+    });
+  });
+
+  it('extracts geo from a mixed array body containing a Feature and a TextualBody', async () => {
+    const MANIFEST_URL = uniqueManifestUrl();
+    const featureBody = {
+      type: 'Feature',
+      properties: { label: { en: ['01/02/1803 — London'] } },
+      geometry: { type: 'Point', coordinates: [-0.078317477, 51.5125719] },
+    };
+    const textBody = { type: 'TextualBody', value: "Lloyd's Register", format: 'text/plain' };
+    const XYWH_TARGET = `${CANVAS_URL}#xywh=100,200,50,50`;
+    const anno = { id: 'anno-mixed', motivation: 'tagging' };
+    const inlinePage = { id: ANNO_PAGE_URL, items: [anno] };
+
+    mockFetchResource.mockResolvedValue({ type: 'Manifest', data: {} });
+    setManifestMock(makeManifestMock(CANVAS_URL, [inlinePage]));
+    mockParseAnnotationPage.mockReturnValue(makeAnnotationPageParser([anno]));
+    // iterateAnnotationFeature returns empty; getAnnotationBody returns the array.
+    mockParseAnnotation.mockReturnValue(
+      makeAnnotationParser([XYWH_TARGET], [], [], [featureBody, textBody]),
+    );
+
+    const result = await getAnnotationsForTarget(MANIFEST_URL, CANVAS_URL);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].target).toEqual([XYWH_TARGET]);
+    expect(result[0].geo).toHaveLength(1);
+    expect(result[0].geo![0]).toMatchObject({
+      label: '01/02/1803 — London',
+      geometry: { type: 'Point', coordinates: [-0.078317477, 51.5125719] },
     });
   });
 

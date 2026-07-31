@@ -4,13 +4,7 @@ import { createError } from '../errors/structured.ts';
 import { IIIFAnnotation } from '../types/index.ts';
 import { logger } from '../utils/logger.ts';
 import { maxAnnotationPages } from '../config/appConfig.ts';
-import {
-  PointTransform,
-  identityTransform,
-  geoFeaturesToSvgTarget,
-  toGeoJsonBodyFeature,
-} from './geojson.ts';
-import { extractCanvasGcps, createGeoToResourceTransform } from './georeference.ts';
+import { toGeoJsonBodyFeature } from './geojson.ts';
 import { GeoJsonBodyFeature } from '../types/index.ts';
 
 const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
@@ -19,7 +13,6 @@ const manifestCache: Record<string, Maniiifest> = {}; // In-memory cache
 async function processAnnotationsWorker(
   manifest: ManiiifestAnnotationPage,
   targetUrl: string,
-  transform: PointTransform = identityTransform,
 ): Promise<IIIFAnnotation[]> {
   const resultsMap: Map<string, IIIFAnnotation> = new Map();
 
@@ -52,38 +45,17 @@ async function processAnnotationsWorker(
     const rawBodyFeatures = Array.from(annotationParser.iterateAnnotationFeature());
     if (rawBodyFeatures.length === 0) {
       const singleBody = annotationParser.getAnnotationBody() as any;
-      if (singleBody && singleBody.type === 'Feature') rawBodyFeatures.push(singleBody);
+      if (singleBody && singleBody.type === 'Feature') {
+        rawBodyFeatures.push(singleBody);
+      } else if (Array.isArray(singleBody)) {
+        for (const item of singleBody) {
+          if (item && item.type === 'Feature') rawBodyFeatures.push(item);
+        }
+      }
     }
     const geo = rawBodyFeatures
       .map(toGeoJsonBodyFeature)
       .filter((f): f is GeoJsonBodyFeature => f !== null);
-
-    // GeoJSON `Feature` / `FeatureCollection` targets carry geographic geometry
-    // instead of a canvas fragment. Render them as an SVG overlay (in resource
-    // space, applying any canvas georeference transform) on the current canvas,
-    // and also surface the raw geographic geometry so the annotation list can
-    // show it on a basemap alongside any textual bodies. The target geometry is
-    // the authoritative annotated region, so it takes precedence over any
-    // geographic body for the basemap.
-    const targetFeatures = Array.from(annotationParser.iterateAnnotationTargetFeature());
-    if (targetFeatures.length > 0) {
-      const targetGeo = targetFeatures
-        .map(toGeoJsonBodyFeature)
-        .filter((f): f is GeoJsonBodyFeature => f !== null);
-      const combinedGeo = targetGeo.length > 0 ? targetGeo : geo;
-      const svgTarget = geoFeaturesToSvgTarget(targetFeatures, targetUrl, transform);
-      if (svgTarget) {
-        resultsMap.set(id, {
-          id,
-          motivation,
-          target: [svgTarget],
-          generator: (annotation as any).generator,
-          body,
-          ...(combinedGeo.length > 0 ? { geo: combinedGeo } : {}),
-        });
-      }
-      continue;
-    }
 
     for (const target of annotationParser.iterateAnnotationTarget()) {
       const normalizedTargets = normalizeAnnotationTargets(target);
@@ -115,7 +87,6 @@ async function processAnnotationsWorker(
 async function processAnnotations(
   rawPage: any,
   targetUrl: string,
-  transform: PointTransform = identityTransform,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
   let currentPage: any = rawPage;
@@ -126,10 +97,8 @@ async function processAnnotations(
   while (currentPage) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    // maniiifest parses GeoJSON `Feature` targets natively; the worker converts
-    // them to SVG overlays via the supplied transform.
     const parser = Maniiifest.parseAnnotationPage(currentPage);
-    const result = await processAnnotationsWorker(parser, targetUrl, transform);
+    const result = await processAnnotationsWorker(parser, targetUrl);
     allAnnotations = allAnnotations.concat(result);
 
     const nextPage = (parser.getAnnotationPage()?.next ?? currentPage?.next) as any;
@@ -165,23 +134,21 @@ async function processAnnotations(
 async function processAnnotationPageRef(
   annotationPageUrl: string,
   targetUrl: string,
-  transform: PointTransform = identityTransform,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
   const resource = await fetchResource(annotationPageUrl, { signal });
   if (!resource.type || resource.type !== 'AnnotationPage') {
     throw createError('NETWORK_ANNOTATION_FETCH', 'No JSON data returned from fetchJson', { cause: resource });
   }
-  return processAnnotations(resource.data, targetUrl, transform, signal);
+  return processAnnotations(resource.data, targetUrl, signal);
 }
 
 async function processAnnotationPage(
   page: any,
   targetUrl: string,
-  transform: PointTransform = identityTransform,
   signal?: AbortSignal,
 ): Promise<IIIFAnnotation[]> {
-  return processAnnotations(page, targetUrl, transform, signal);
+  return processAnnotations(page, targetUrl, signal);
 }
 
 export async function getAnnotationsForTarget(
@@ -216,25 +183,17 @@ export async function getAnnotationsForTarget(
     if (canvas.id === targetUrl) {
       logger.debug(`Processing canvas: ${canvas.id}`);
 
-      // Build a geo -> resource transform from any canvas-level georeference
-      // control points so GeoJSON targets can be rendered in image space.
-      const gcps = extractCanvasGcps(canvas);
-      const transform = gcps
-        ? await createGeoToResourceTransform(gcps)
-        : identityTransform;
-
       const annotations = canvas.annotations;
 
       if (Array.isArray(annotations) && annotations.length > 0) {
         for (const annotationPage of annotations) {
           let result: IIIFAnnotation[] = [];
           if (Array.isArray(annotationPage.items)) {
-            result = await processAnnotationPage(annotationPage, targetUrl, transform, signal);
+            result = await processAnnotationPage(annotationPage, targetUrl, signal);
           } else if (typeof annotationPage.id === 'string') {
             result = await processAnnotationPageRef(
               annotationPage.id,
               targetUrl,
-              transform,
               signal,
             );
           } else {
