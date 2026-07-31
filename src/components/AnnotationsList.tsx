@@ -177,6 +177,15 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               : 'bg-blue-200 border-l-4 border-blue-500'
             : 'hover:bg-gray-100';
 
+          // Label to show when a Feature is the sole body and there is no TextualBody.
+          const geoFallbackLabel: string | null = (() => {
+            const hasTextBody = Array.isArray(annotation.body)
+              ? annotation.body.some((b) => !!getTextValue(b))
+              : !!getTextValue(annotation.body);
+            if (hasTextBody) return null;
+            return annotation.geo?.find((f) => f.label?.trim())?.label ?? null;
+          })();
+
           return (
             <div
               key={annotation.id || index}
@@ -200,62 +209,65 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
               }}
               className={`relative mb-1 last:mb-0 p-1 cursor-pointer rounded transition-all scroll-mt-4 scroll-mb-4 ${selectionClass} group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
             >
-              {Array.isArray(annotation.body) ? (
-                annotation.body
+              {Array.isArray(annotation.body) ? (() => {
+                const items = annotation.body
                   .filter((item) => {
                     const text = getTextValue(item);
                     if (!text) return false;
-                    
-                    // Always filter by language, even for selected annotations
                     return matchesLanguage(item);
-                  })
-                  .map((item, itemIndex) => {
-                    const text = getTextValue(item);
-                    if (!text) return null;
-                    
-                    return (
-                      <div key={itemIndex} className="flex items-start gap-2">
-                        <p
-                          className="text-sm text-gray-700 leading-tight flex-1"
-                          dangerouslySetInnerHTML={renderHTML(text)}
-                        />
-                        {/* Copy/share act on the whole annotation, so show the
-                            controls once (on the first body line) rather than
-                            repeating them for every textual body. */}
-                        {itemIndex === 0 && annotation.id && (
-                          <button
-                            type="button"
-                            aria-label="Copy Annotation ID to clipboard"
-                            title="Copy Annotation ID"
-                            className={actionButtonClass}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(annotation.id!);
-                            }}
-                          >
-                            <ClipboardCopy size={14} />
-                          </button>
-                        )}
-                        {itemIndex === 0 && manifestUrl && annotation.target?.[0] && (
-                          <button
-                            type="button"
-                            aria-label="Share content: copy a link to this region"
-                            title="Share content"
-                            className={actionButtonClass}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyShareLink(annotation);
-                            }}
-                          >
-                            <Share2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-              ) : (
+                  });
+
+                const displayText = (item: any, idx: number) => {
+                  const text = getTextValue(item);
+                  if (!text) return null;
+                  return (
+                    <div key={idx} className="flex items-start gap-2">
+                      <p
+                        className="text-sm text-gray-700 leading-tight flex-1"
+                        dangerouslySetInnerHTML={renderHTML(text)}
+                      />
+                      {/* Copy/share act on the whole annotation, so show the
+                          controls once (on the first body line) rather than
+                          repeating them for every textual body. */}
+                      {idx === 0 && annotation.id && (
+                        <button
+                          type="button"
+                          aria-label="Copy Annotation ID to clipboard"
+                          title="Copy Annotation ID"
+                          className={actionButtonClass}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(annotation.id!);
+                          }}
+                        >
+                          <ClipboardCopy size={14} />
+                        </button>
+                      )}
+                      {idx === 0 && manifestUrl && annotation.target?.[0] && (
+                        <button
+                          type="button"
+                          aria-label="Share content: copy a link to this region"
+                          title="Share content"
+                          className={actionButtonClass}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyShareLink(annotation);
+                          }}
+                        >
+                          <Share2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                };
+
+                if (items.length > 0) return items.map(displayText);
+
+                // Feature-only body: surface the geo Feature's label as display text.
+                return geoFallbackLabel ? displayText({ value: geoFallbackLabel }, 0) : null;
+              })() : (
                 (() => {
-                  const text = getTextValue(annotation.body);
+                  const text = getTextValue(annotation.body) ?? geoFallbackLabel;
                   return text ? (
                     <div className="flex items-start gap-2">
                       <p
@@ -297,9 +309,9 @@ const AnnotationsList: React.FC<AnnotationsListProps> = ({
                 })()
               )}
               {annotation.geo && annotation.geo.length > 0 && (() => {
-                const hasBodyText = Array.isArray(annotation.body)
-                  ? annotation.body.some((b) => getTextValue(b))
-                  : !!getTextValue(annotation.body);
+                // Label already shown in body area; suppress here to avoid duplication.
+                const hasBodyText = !!getTextValue(annotation.body) || !!geoFallbackLabel ||
+                  (Array.isArray(annotation.body) && annotation.body.some((b) => !!getTextValue(b)));
                 const labels = hasBodyText
                   ? []
                   : annotation.geo
