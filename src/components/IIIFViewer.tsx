@@ -5,6 +5,12 @@ import { IIIFAnnotation, IIIFImage } from '../types/index';
 import { sanitizeSvg } from '../utils/sanitizeSvg.ts';
 import { ensureHttps } from '../utils/ensureHttps.ts';
 import { computeSvgPixelBounds } from '../utils/svgBounds.ts';
+import {
+  computeAnnotationZoomTarget,
+  unionPixelRects,
+  MAX_ZOOM_MULTIPLIER,
+  PixelRect,
+} from '../utils/annotationZoom.ts';
 import { logger } from '../utils/logger.ts';
 
 interface IIIFViewerProps {
@@ -174,7 +180,13 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
     const viewer = osdViewerRef.current;
     viewer.clearOverlays();
 
-    const overlayRects: OpenSeadragon.Rect[] = [];
+    // Raw (unexpanded) pixel bounds of every target, used only to decide
+    // where/how far to zoom — the annotation's true centre and extent, not
+    // the padded region we actually fit in the viewport.
+    let rawBounds: PixelRect | null = null;
+    const addRawBounds = (rect: PixelRect) => {
+      rawBounds = rawBounds ? unionPixelRects(rawBounds, rect) : rect;
+    };
 
     for (const target of targets) {
       if (typeof target === 'string') {
@@ -182,13 +194,13 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
           const bbox = target.split('#xywh=')[1].split(',').map(Number);
           if (bbox.length !== 4) continue;
           const [x, y, width, height] = bbox;
+          addRawBounds({ minX: x, minY: y, width, height });
           const viewportRect = viewer.viewport.imageToViewportRectangle(
             x,
             y,
             width,
             height,
           );
-          overlayRects.push(viewportRect);
           const overlayDiv = document.createElement('div');
           overlayDiv.style.position = 'absolute';
           overlayDiv.style.pointerEvents = 'none';
@@ -254,26 +266,12 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
 
               // The SVG overlay always covers the whole canvas, so it can't be
               // used to zoom to the annotation. Measure the tight pixel bounds
-              // of the actual geometry and feed that into the shared fitBounds
-              // path below, so selecting a GeoJSON/SVG annotation navigates to
-              // it just like an #xywh= region (important for small features on
-              // large georeferenced maps).
+              // of the actual geometry and feed that into the shared zoom
+              // logic below, so selecting a GeoJSON/SVG annotation navigates
+              // to it just like an #xywh= region (important for small
+              // features on large georeferenced maps).
               const bounds = computeSvgPixelBounds(svgElem);
-              if (bounds) {
-                // Pad with surrounding context so tiny features aren't
-                // over-zoomed: at least 100% of the feature size, and never
-                // less than 2% of the canvas width.
-                const padX = Math.max(bounds.width, canvasWidth * 0.02);
-                const padY = Math.max(bounds.height, canvasWidth * 0.02);
-                overlayRects.push(
-                  viewer.viewport.imageToViewportRectangle(
-                    bounds.minX - padX,
-                    bounds.minY - padY,
-                    bounds.width + padX * 2,
-                    bounds.height + padY * 2,
-                  ),
-                );
-              }
+              if (bounds) addRawBounds(bounds);
             }
           } catch (err) {
             logger.warn('Skipped unsafe SVG annotation:', err);
@@ -282,18 +280,30 @@ const IIIFViewer: React.FC<IIIFViewerProps> = ({
       }
     }
 
-    if (overlayRects.length > 0) {
-      const unionRect = overlayRects.reduce((acc, rect) => acc.union(rect));
-      viewer.viewport.fitBounds(unionRect, {
-        immediate: true,
-        padding: 0,
-      });
+    if (rawBounds) {
+      const { fitRect, center } = computeAnnotationZoomTarget(
+        rawBounds,
+        canvasWidth,
+        canvasHeight,
+      );
+      const viewportFitRect = viewer.viewport.imageToViewportRectangle(
+        fitRect.minX,
+        fitRect.minY,
+        fitRect.width,
+        fitRect.height,
+      );
+      viewer.viewport.fitBounds(viewportFitRect, true);
 
-      // Optional: zoom in more if narrow
-      const aspectRatio = unionRect.width / unionRect.height;
-      if (unionRect.width < 0.05 && aspectRatio > 2) {
-        const zoom = viewer.viewport.getZoom(true);
-        viewer.viewport.zoomTo(zoom * 1.5, unionRect.getCenter(), true);
+      // The annotation's true centre determines where we look, even after
+      // clamping — not merely the (expanded) rectangle we just fit.
+      const viewportCenter = viewer.viewport.imageToViewportCoordinates(
+        center.x,
+        center.y,
+      );
+      const homeZoom = viewer.viewport.getHomeZoom();
+      const maxZoom = homeZoom * MAX_ZOOM_MULTIPLIER;
+      if (viewer.viewport.getZoom(true) > maxZoom) {
+        viewer.viewport.zoomTo(maxZoom, viewportCenter, true);
       }
     }
 
