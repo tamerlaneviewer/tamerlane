@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM node:20-slim AS build
+FROM node:24.22.1-slim AS build
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ ENV PUBLIC_URL=${PUBLIC_URL}
 RUN npm run build
 
 # --- Runtime stage ---
-FROM node:20-slim
+FROM node:24.22.1-slim
 
 WORKDIR /app
 
