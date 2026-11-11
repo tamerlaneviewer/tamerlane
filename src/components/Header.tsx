@@ -16,6 +16,7 @@ interface HeaderProps {
   onPreviousManifest: () => void;
   onNextManifest: () => void;
   resetImageIndex: () => void;
+  initialNavMode?: 'image' | 'manifest';
   onLanguageChange: (lang: string) => void;
   selectedLanguage: string | null;
   searching: boolean;
@@ -35,6 +36,7 @@ const Header: React.FC<HeaderProps> = ({
   onPreviousManifest,
   onNextManifest,
   resetImageIndex,
+  initialNavMode = 'image',
   autocompleteUrl,
   onLanguageChange,
   selectedLanguage,
@@ -68,6 +70,7 @@ const Header: React.FC<HeaderProps> = ({
           onPreviousManifest={onPreviousManifest}
           onNextManifest={onNextManifest}
           resetImageIndex={resetImageIndex}
+          initialMode={initialNavMode}
         />
       </div>
 
