@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const canvasId = useIIIFStore((state) => state.canvasId);
   const manifestUrls = useIIIFStore((state) => state.manifestUrls);
   const totalManifests = useIIIFStore((state) => state.totalManifests);
+  const startInManifestMode = useIIIFStore((state) => state.startInManifestMode);
   const selectedManifestIndex = useIIIFStore(
     (state) => state.selectedManifestIndex,
   );
@@ -518,6 +519,7 @@ const App: React.FC = () => {
           )
         }
         resetImageIndex={() => setSelectedImageIndex(0)}
+        initialNavMode={startInManifestMode ? 'manifest' : 'image'}
         onLanguageChange={handleLanguageChange}
         selectedLanguage={selectedLanguage}
         availableLanguages={languagesForHeader}

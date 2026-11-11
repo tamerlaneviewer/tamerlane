@@ -84,6 +84,32 @@ describe('useIIIFStore', () => {
       expect(state.collectionMetadata.label).toBe('Test Collection');
       expect(state.searchUrl).toBe('collection-search'); // Collection search should take precedence
     });
+
+    it('should start in manifest mode for a collection whose first manifest has a single image', () => {
+      const mockManifest = { info: { name: 'M1' }, canvases: [], images: [{ imageUrl: 'i1' }] };
+      const mockCollection = { info: { name: 'C' } };
+      act(() => {
+        useIIIFStore.getState().handleManifestUpdate(mockManifest as any, ['url1', 'url2'], 2, mockCollection as any);
+      });
+      expect(useIIIFStore.getState().startInManifestMode).toBe(true);
+    });
+
+    it('should not start in manifest mode when the first manifest has multiple images', () => {
+      const mockManifest = { info: { name: 'M1' }, canvases: [], images: [{ imageUrl: 'i1' }, { imageUrl: 'i2' }] };
+      const mockCollection = { info: { name: 'C' } };
+      act(() => {
+        useIIIFStore.getState().handleManifestUpdate(mockManifest as any, ['url1', 'url2'], 2, mockCollection as any);
+      });
+      expect(useIIIFStore.getState().startInManifestMode).toBe(false);
+    });
+
+    it('should not start in manifest mode for a single manifest', () => {
+      const mockManifest = { info: { name: 'M1' }, canvases: [], images: [{ imageUrl: 'i1' }] };
+      act(() => {
+        useIIIFStore.getState().handleManifestUpdate(mockManifest as any, ['url1'], 1, null);
+      });
+      expect(useIIIFStore.getState().startInManifestMode).toBe(false);
+    });
   });
 
   describe('handleSearch', () => {

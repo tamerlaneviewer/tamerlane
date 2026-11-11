@@ -10,6 +10,7 @@ const IIIFControls = ({
   onPreviousManifest,
   onNextManifest,
   resetImageIndex,
+  initialMode = 'image',
 }: {
   currentIndex: number;
   totalImages: number;
@@ -20,8 +21,13 @@ const IIIFControls = ({
   onPreviousManifest: () => void;
   onNextManifest: () => void;
   resetImageIndex: () => void;
+  initialMode?: 'image' | 'manifest';
 }) => {
-  const [mode, setMode] = useState<'image' | 'manifest'>('image');
+  const [mode, setMode] = useState<'image' | 'manifest'>(initialMode);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMode = e.target.value as 'image' | 'manifest';

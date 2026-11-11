@@ -29,6 +29,8 @@ interface IIIFState {
   manifestUrls: string[];
   totalManifests: number;
   selectedManifestIndex: number;
+  // Collection of single-image manifests: default navigation to manifests on load.
+  startInManifestMode: boolean;
   selectedImageIndex: number;
   annotations: IIIFAnnotation[];
   annotationsForCanvasId: string | null;
@@ -125,6 +127,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
   manifestUrls: [],
   totalManifests: 0,
   selectedManifestIndex: 0,
+  startInManifestMode: false,
   selectedImageIndex: 0,
   annotations: [],
   annotationsForCanvasId: null,
@@ -251,6 +254,7 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       manifestUrls: [],
       totalManifests: 0,
       selectedManifestIndex: 0,
+      startInManifestMode: false,
       selectedImageIndex: 0,
       annotations: [],
       annotationsForCanvasId: null,
@@ -383,6 +387,9 @@ export const useIIIFStore = create<IIIFState>((set, get) => ({
       currentManifest: firstManifest,
       manifestUrls: manifestUrls,
       totalManifests: total,
+      // Heuristic: only the first manifest is fetched, so it stands in for the rest.
+      startInManifestMode:
+        !!collection && total > 1 && firstManifest?.images?.length === 1,
       manifestMetadata: {
         label: firstManifest?.info?.name || '',
         metadata: firstManifest?.info?.metadata || [],
